@@ -58,3 +58,26 @@ the Opal does not hold DFS "auto"). Example, the hub's backhaul:
 Still to capture (schemas not yet reverse-engineered): LAN IP + DHCP, the repeater
 join (5 GHz backhaul), and port forwarding. Changing the LAN IP drops the path to
 the box, so do it last / on-site. See `docs/design/routers.html` for the per-role plan.
+
+## First-run init and the repeater backhaul (classroom routers joining the hub)
+
+A factory router is uninitialised; set its admin password first (unauth `ui init`):
+
+    GLINET_PASSWORD='...' tools/routers/glinet.py init     # no-op if already initialised
+
+Join the hub's 5 GHz WormHole-Core (make a classroom router a repeater of the hub):
+
+    call repeater scan                 # returns res[] of {ssid, band, bssid, signal, encryption.uci, ...}
+    call repeater connect {"ssid":"WormHole-Core","key":"<backhaul>","bssid":"<from scan>",
+                           "device":"radio1","band":"5g","encryption":"psk2"}
+    call repeater get_status           # state_name "connected", ipv4.ip = lease from the hub
+
+Order for a classroom router (Tunnel N): set 2.4 GHz WormHole, then LAN to 192.168.8N.1
+(so its LAN does not overlap the hub's 192.168.8.0/24 WAN it joins), then the repeater
+connect, then the Burrow port-forward. Change the LAN last — it drops the path to the box.
+
+### Firmware note
+Boxes ship on mixed firmware (seen: 4.3.28 and 4.8.3). The login handshake, `wifi set_config`,
+`ui init` and `repeater scan/connect` are the same across both. The admin-panel RPC method names
+for LAN/DHCP/port-forward differ between versions, so upgrade a router to the fleet's target
+(4.8.3) before scripting those. `repeater scan`/`connect` need a longer RPC timeout (~35 s).

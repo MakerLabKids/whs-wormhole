@@ -69,6 +69,15 @@ class Router:
     def call(self, obj, method, params=None):
         return self.rpc("call", [self.sid, obj, method, params or {}])
 
+    def init(self, password, lang="en", username="root"):
+        """First-run setup of a factory router: set the admin password. Unauth
+        (no login first). Safe to call again; an already-initialised router errors."""
+        return self.rpc("call", ["", "ui", "init",
+                                 {"lang": lang, "username": username, "password": password}])
+
+    def is_initialized(self):
+        return bool(self.rpc("call", ["", "ui", "check_initialized", {}]).get("initialized"))
+
 
 def _crypt(password, setting):
     return crypt.crypt(password, setting)
@@ -109,6 +118,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("login")
     sub.add_parser("status")
+    sub.add_parser("init")
     c = sub.add_parser("call")
     c.add_argument("object")
     c.add_argument("method")
@@ -119,6 +129,13 @@ def main():
     if pw is None:
         sys.exit("no router password: set GLINET_PASSWORD or put router_admin=... in /workspace/.env")
     r = Router(a.host)
+    if a.cmd == "init":
+        if r.is_initialized():
+            print("already initialized (%s)" % a.host)
+            return 0
+        r.init(pw)
+        print("initialized %s (admin password set)" % a.host)
+        return 0
     try:
         r.login(pw)
     except RpcError as e:

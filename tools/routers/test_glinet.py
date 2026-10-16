@@ -50,6 +50,21 @@ class RpcTest(unittest.TestCase):
         out = r.call("system", "get_status")
         self.assertEqual(out, {"sid_used": "SID123", "obj": "system", "method": "get_status"})
 
+    def test_init_payload(self):
+        seen = []
+        def fake(payload):
+            seen.append(payload)
+            if payload["params"][2] == "check_initialized":
+                return {"result": {"initialized": False}}
+            return {"result": {}}
+        r = glinet.Router(opener=fake)
+        self.assertFalse(r.is_initialized())
+        r.init("SuperDuperSecret!")
+        init = [p for p in seen if p["params"][2] == "init"][0]
+        self.assertEqual(init["params"][1], "ui")
+        self.assertEqual(init["params"][3], {"lang": "en", "username": "root", "password": "SuperDuperSecret!"})
+        self.assertEqual(init["params"][0], "")   # unauth: empty sid
+
     def test_error_raises(self):
         r = glinet.Router(opener=lambda p: {"error": {"message": "Access denied", "code": -32000}})
         with self.assertRaises(glinet.RpcError):
