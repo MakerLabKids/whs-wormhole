@@ -1,0 +1,28 @@
+// Local dev / test config: same bindings, but a tiny assets dir that exists
+// in this repo, no routes, and dummy secrets as plain vars.
+// Use: npx wrangler dev -c wrangler.local.jsonc   (D1 and R2 are local by default)
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wormhole-surface",
+  "main": "src/index.js",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": "./test-assets",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/v1/*", "/live/*"]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "wormhole", "database_id": "local" }
+  ],
+  "r2_buckets": [
+    { "binding": "CASTINGS", "bucket_name": "wormhole-castings" }
+  ],
+  "vars": {
+    "TUNNEL_DOMAIN": "whs.makerlabkids.com",
+    "SESSION_SECRET": "local-dev-session-secret-not-for-production",
+    "EDGE_TOKENS": "{\"burrow1\":\"tok1\",\"burrow2\":\"tok2\",\"burrow3\":\"tok3\"}",
+    "LIVE_KEY": "local-live-key",
+    "ADMIN_BOOTSTRAP": "bootstrap-me"
+  }
+}

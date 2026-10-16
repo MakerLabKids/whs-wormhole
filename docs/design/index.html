@@ -56,8 +56,8 @@
 
 <div class="subnav">
   <a class="on" href="index.html">Design</a>
-  <a class="soon" href="routers.html">Routers</a>
-  <a class="soon" href="burrow.html">Pi 5 edge</a>
+  <a href="routers.html">Routers</a>
+  <a href="burrow.html">Pi 5 edge</a>
   <a class="soon" href="bins.html">Pico fleet</a>
   <a class="soon" href="cloud.html">Cloudflare</a>
   <a class="soon" href="dashboards.html">Dashboards</a>
@@ -482,7 +482,7 @@ The pages in the strip above are the step-by-step build.</p>
 <tr><td>R2 class A ops (writes)</td><td>1,000,000 / month</td><td>~9,000</td><td>100×</td></tr>
 <tr><td>R2 class B ops (reads)</td><td>10,000,000 / month</td><td>~9,000 HEADs for verification + exports</td><td>large</td></tr>
 <tr><td>Workers KV</td><td>1,000 writes / day</td><td><b>not used</b> (would be exceeded by snapshots)</td><td>n/a</td></tr>
-<tr><td>Durable Objects</td><td>paid plan only</td><td><b>not used</b>; live streaming goes through the tunnel instead</td><td>n/a</td></tr>
+<tr><td>Durable Objects</td><td>free (SQLite-backed), shares the 100k requests/day</td><td><b>not used</b>: live streaming goes through the tunnel so no per-row request reaches the cloud at all</td><td>n/a</td></tr>
 <tr><td>Cloudflare Tunnel</td><td>free, unlimited tunnels</td><td>3 tunnels, one per Burrow</td><td>fine</td></tr>
 <tr><td>Static assets</td><td>free with Workers</td><td>dashboard HTML/JS/CSS</td><td>fine</td></tr>
 </table></div>

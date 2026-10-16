@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pi 5 Edge · Telemetry Build</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../guide.css">
+<link rel="stylesheet" href="build.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="../index.html">🪱 Wormhole</a>
+  <div class="links">
+    <a class="nl" href="../index.html">Home</a>
+    <a class="nl" href="../start.html">Start Here</a>
+    <a class="nl" href="../sessions.html">Sessions</a>
+    <a class="nl" href="../stations.html">Sensors</a>
+    <a class="nl" href="../research.html">Ideas</a>
+    <a class="nl" href="../demos/mission-control.html">Demos</a>
+    <a class="nl" href="../glossary.html">Glossary</a>
+    <a class="nl" href="../cheatsheet.html">Code</a>
+    <a class="nl" href="../reset.html">Fix a Board</a><a class="nl" href="../tools.html">Board Tools</a>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<div class="subnav">
+  <a href="index.html">Design</a>
+  <a href="routers.html">Routers</a>
+  <a class="on" href="burrow.html">Pi 5 edge</a>
+  <a href="bins.html">Pico fleet</a>
+  <a href="cloud.html">Cloudflare</a>
+  <a href="dashboards.html">Dashboards</a>
+  <a href="runbook.html">Runbook</a>
+</div>
+
+<h1>Pi 5 edge: the three Burrows</h1>
+<hr class="rule">
+<p class="lead">A fresh Raspberry Pi OS Lite card, one script, one reboot. About 20 minutes per Pi, most of it waiting. The result is a Pi whose operating system cannot be corrupted by a pulled plug, with a small separate data partition that holds every reading as immutable castings.</p>
+
+<div class="card">
+  <h3>What you need, per room</h3>
+  <ul>
+    <li>Raspberry Pi 5 (1 GB or 2 GB is plenty: the whole stack is about 150 MB of RAM) with the official 27 W USB-C supply or any 5 V / 5 A supply.</li>
+    <li>A 32 GB or 64 GB microSD, A1/A2 class. Nothing else storage-wise, on purpose.</li>
+    <li>A short Ethernet cable to the Tunnel's <b>LAN</b> port.</li>
+    <li>Optional and recommended: the <a class="ext" href="https://www.raspberrypi.com/products/rtc-battery/">official Pi 5 RTC battery</a> (about $5) on the J5 connector. With it, a Burrow that has been off for a week boots knowing the time.</li>
+    <li>A laptop with <b>Raspberry Pi Imager 2.x</b> (1.x cannot customise the current Trixie images) and an SD card reader.</li>
+  </ul>
+  <p>The code lives in the repo under <span class="file">edge/burrow/</span>: <a class="ext" href="https://github.com/MakerLabKids/wormhole/tree/main/edge/burrow">github.com/MakerLabKids/wormhole/tree/main/edge/burrow</a>. The <a class="ext" href="https://github.com/MakerLabKids/wormhole/blob/main/edge/burrow/README.md">README</a> there explains the files; this page is the procedure.</p>
+</div>
+
+<h2 id="image">Step 1 · Write the card</h2>
+<hr class="rule g">
+<ol class="steps">
+  <li>Raspberry Pi Imager → Device <b>Raspberry Pi 5</b> → OS <b>Raspberry Pi OS Lite (64-bit)</b> (under "Raspberry Pi OS (other)") → your card.</li>
+  <li>Edit settings before writing:
+    <ul>
+      <li>Hostname <code>burrow1</code> (or 2, 3).</li>
+      <li>User <code>worm</code> with a password you will remember. (Not <code>pi</code>; and not the Wi-Fi password.)</li>
+      <li>Wi-Fi: leave <b>unconfigured</b>. The Burrow is wired, and the script turns the radio off.</li>
+      <li>Services: enable SSH, password authentication (or paste your public key).</li>
+      <li>Locale/timezone as you like.</li>
+    </ul></li>
+  <li>Write. Wait for "verified".</li>
+</ol>
+
+<h2 id="cmdline">Step 2 · Stop the root partition from eating the card</h2>
+<hr class="rule">
+<p>On first boot, Raspberry Pi OS expands its root partition to fill the card. We want the root to stay small (about 3 GB) so the rest becomes a separate, read-write <code>/data</code> partition. One edit, before the card ever boots:</p>
+<ol class="steps">
+  <li>Eject and re-insert the card. A small FAT volume called <code>bootfs</code> appears.</li>
+  <li>Open <code>cmdline.txt</code> on it in a plain-text editor. It is one long line.</li>
+  <li>Delete this token (and the space before it), leaving everything else exactly as it is: <pre><code>init=/usr/lib/raspberrypi-sys-mods/firstboot</code></pre> Save. The file must stay a single line with no trailing newline weirdness; Notepad, TextEdit (plain text) and nano are all fine.</li>
+  <li>Eject.</li>
+</ol>
+<div class="note">
+  <b>If you forget</b> (or the token was not there and the card still fills): the setup script detects that there is no free space and falls back to <i>single-partition mode</i>: <code>/data</code> becomes a directory on the root filesystem and the read-only lock is refused, because locking a root that holds the data would defeat the point. Everything else works. To get the real thing, re-image (20 minutes). Current Trixie images handle Imager's user/SSH settings through cloud-init, which is separate from this token, so removing it does not lose your customisation.
+</div>
+
+<h2 id="firstboot">Step 3 · First boot and the setup script</h2>
+<hr class="rule">
+<ol class="steps">
+  <li>Card in, Ethernet to the Tunnel's LAN port, power. Give it two minutes; the first boot generates keys and reboots once.</li>
+  <li>Find it. Easiest: the Tunnel's admin page → Clients lists <code>burrowN</code> with a 192.168.8N.1xx address. Or from a laptop on the room's <code>WormHole</code>: <pre><code>ssh worm@burrow1.local</code></pre></li>
+  <li>Get the code and run the setup (replace the room number):
+<pre><code>sudo apt-get update &amp;&amp; sudo apt-get install -y git
+git clone https://github.com/MakerLabKids/wormhole.git
+cd wormhole/edge/burrow
+sudo ./setup-pi.sh 1</code></pre>
+    It takes about five minutes with an internet uplink through the Portal. (No internet yet? It needs apt for <code>chrony</code> and <code>parted</code>; everything else is offline. Do this step somewhere with Wi-Fi, or tether the Portal to a phone.)</li>
+  <li>Near the end the script moves the Pi to its fixed address, so your SSH session may freeze. Reconnect: <pre><code>ssh worm@192.168.81.10</code></pre> (82 or 83 for the other rooms).</li>
+</ol>
+
+<h3>What the script did, so you can check it</h3>
+<div class="tablewrap"><table>
+<tr><th>Change</th><th>Why</th><th>Check</th></tr>
+<tr><td>Hostname <code>burrowN</code>; cloud-init disabled after its first run</td><td>cloud-init re-applies its config every boot on Trixie and would undo changes</td><td><code>hostnamectl</code></td></tr>
+<tr><td>Installed <code>chrony</code>, <code>parted</code>; removed <code>fake-hwclock</code></td><td>fake-hwclock on Trixie can revert the clock to a stale time; chrony + the RTC do its job</td><td><code>chronyc sources</code></td></tr>
+<tr><td>New partition labelled <code>burrowdata</code> on <code>/data</code>, ext4, <code>noatime,data=journal,commit=5</code></td><td>the only place that is ever written; journaled data so a power cut leaves whole files</td><td><code>findmnt /data</code></td></tr>
+<tr><td>journald in RAM (16 MB cap), swap off and masked, apt timers and man-db timer masked, root <code>noatime</code></td><td>no background write churn on the card</td><td><code>swapon --show</code> is empty; <code>systemctl is-enabled rpi-swap</code> says masked</td></tr>
+<tr><td>Static <code>192.168.8N.10/24</code>, gateway <code>.1</code>, Wi-Fi and Bluetooth disabled (<code>dtoverlay=disable-wifi</code>, <code>disable-bt</code>)</td><td>a fixed address the Picos and peers can rely on; nothing extra radiating</td><td><code>ip -4 a show eth0</code>; <code>ls /etc/NetworkManager/system-connections/</code> has <code>burrow-lan.nmconnection</code></td></tr>
+<tr><td><code>/etc/chrony/chrony.conf</code>: internet pool, the other two Burrows as peers, <code>local stratum 10 orphan</code></td><td>with no internet, the three Burrows agree on one clock among themselves</td><td><code>chronyc tracking</code></td></tr>
+<tr><td>User <code>burrow</code>, <code>/etc/burrow/burrow.json</code>, sudoers rule for <code>/bin/date</code> only</td><td>the service runs unprivileged; it may step the clock when the cloud proves it wrong</td><td><code>cat /etc/burrow/burrow.json</code></td></tr>
+<tr><td>Code in <code>/opt/burrow</code>, <code>burrow.service</code> enabled (<code>ProtectSystem=strict</code>, only <code>/data</code> writable)</td><td>the service cannot write anywhere else even if it wanted to</td><td><code>systemctl status burrow</code></td></tr>
+</table></div>
+
+<h2 id="verify">Step 4 · Verify</h2>
+<hr class="rule g">
+<pre><code>curl -s http://192.168.81.10:8080/health
+# {"ok":true,"edge":"burrow1","room":1,"ts":...,"clk":"free","version":"0.1.0"}
+curl -s http://192.168.81.10:8080/api/status | python3 -m json.tool | head -40
+sudo journalctl -u burrow -n 20 --no-pager</code></pre>
+<ul>
+  <li>From a phone on the room's <code>WormHole</code>: <code>http://192.168.81.10:8080/</code> shows the (empty) dashboard.</li>
+  <li><code>clk</code> will say <code>free</code> until chrony has agreed with a peer or the internet; that is expected on a lone first Burrow. It becomes <code>peer</code> when a second Burrow is up, <code>ntp</code> when the Portal has an uplink.</li>
+  <li>No Picos yet? Pretend: from your laptop, <code>python3 edge/burrow/tools/simbins.py --edge http://192.168.81.10:8080 --n 5 --once</code> and five fake bins appear.</li>
+  <li>Peers: <code>/api/status</code> → <code>peers</code> shows <code>burrow2</code>/<code>burrow3</code> as unreachable until they exist. That is fine.</li>
+</ul>
+
+<h2 id="cloud">Step 5 · Cloud link (after the <a href="cloud.html">Cloudflare</a> page)</h2>
+<hr class="rule">
+<p>Two small files and one package. Do this before locking, or unlock first (below).</p>
+<pre><code>echo 'the-burrow1-edge-token'   | sudo tee /etc/burrow/cloud.token
+echo 'the-shared-live-key'       | sudo tee /etc/burrow/live.key
+sudo chgrp burrow /etc/burrow/cloud.token /etc/burrow/live.key
+sudo chmod 640   /etc/burrow/cloud.token /etc/burrow/live.key
+sudo systemctl restart burrow
+sudo /opt/burrow/install-cloudflared.sh 'eyJ...the tunnel token for burrow1...'</code></pre>
+<p>The tunnel runs HTTP/2 over TCP 443 only, so it works through anything a browser works through. Check: <code>curl -s http://192.168.81.10:8080/api/status | grep -o '"reachable": *[a-z]*'</code> says true within a minute of the Portal having internet, and <code>systemctl status cloudflared</code> shows "Registered tunnel connection".</p>
+
+<h2 id="lock">Step 6 · Lock it</h2>
+<hr class="rule r">
+<pre><code>sudo /opt/burrow/burrow-lock.sh</code></pre>
+<p>This adds the <code>overlay</code> module to the initramfs (Trixie needs that or the overlay silently does nothing), enables the overlay root and the read-only boot partition through <code>raspi-config</code>, and reboots. From now on the OS lives in RAM on top of a read-only card; only <code>/data</code> is written. Verify after the reboot:</p>
+<pre><code>findmnt /            # FSTYPE overlay
+sudo touch /etc/x    # Read-only file system
+touch /data/x &amp;&amp; rm /data/x   # works
+systemctl status burrow</code></pre>
+<div class="note g"><b>Changing anything later</b> (code update, new token, apt): <code>sudo /opt/burrow/burrow-unlock.sh</code> (reboots writable) → make the change (for code: <code>cd ~/wormhole &amp;&amp; git pull &amp;&amp; sudo edge/burrow/install.sh</code>) → <code>sudo /opt/burrow/burrow-lock.sh</code>. The data partition is untouched by lock and unlock.</div>
+
+<h2 id="replace">Replacing a dead Burrow</h2>
+<hr class="rule o">
+<p>Same six steps with a new card, same room number, same address. The moment it is up, it pulls every casting the other two Burrows hold (all three rooms' history) and resumes. The only data that can be lost with a dead card is the room's unsealed open log: at most the last 15 minutes before the failure, and only if the Picos' own 24-hour RAM graphs are not consulted. The cloud, if it was reachable at any point, already has everything older.</p>
+<p>If the <i>card</i> is fine and the Pi died, move the card. Nothing on it is tied to the board.</p>
+
+<h2 id="clock">About the clock</h2>
+<hr class="rule">
+<ul>
+  <li>The Pi 5 has a real-time clock. Without the battery it keeps time only while powered; after a power cut it boots with the time it last saved, which could be hours or days behind.</li>
+  <li>chrony fixes it from the internet when there is any (the Portal's uplink), or agrees with the other Burrows (orphan mode elects one as the reference). The Burrow service also steps the clock itself if the cloud answers with a time more than 60 s away while chrony has no source.</li>
+  <li>Every row records <code>clk</code> = <code>ntp</code>, <code>peer</code> or <code>free</code>, so a later reader knows how much to trust a timestamp. The dashboard shows it as a badge.</li>
+  <li>With the battery fitted, also add <code>dtparam=rtc_bbat_vchg=3000000</code> to <code>/boot/firmware/config.txt</code> (while unlocked) so the Pi trickle-charges it, and check with <code>sudo hwclock -r</code>.</li>
+</ul>
+
+<h2 id="disk">How much disk, how long</h2>
+<hr class="rule">
+<div class="tablewrap"><table>
+<tr><th>Scenario</th><th>Per Burrow per day</th><th>25 GB data partition lasts</th></tr>
+<tr><td>Cloud reachable at least weekly</td><td>steady state ~130 MB (7 days × 3 rooms)</td><td>forever (reclaim keeps up)</td></tr>
+<tr><td>No cloud ever</td><td>~18 MB (3 rooms × 288 castings × ~20 KB)</td><td>about 3.8 years</td></tr>
+</table></div>
+<p>The dashboard's status panel shows the data partition percentage and the count of castings the cloud has not confirmed. If the partition ever passes 85 %, nothing is deleted; it just goes orange and tells you.</p>
+
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share. · This page is unlisted.</footer>
+</body>
+</html>

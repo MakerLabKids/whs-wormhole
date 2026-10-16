@@ -1,0 +1,31 @@
+// Wormhole "Surface": the Cloudflare Worker. Wrangler v4.
+// Secrets (wrangler secret put): SESSION_SECRET, EDGE_TOKENS, LIVE_KEY, ADMIN_BOOTSTRAP.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wormhole-surface",
+  "main": "src/index.js",
+  "compatibility_date": "2026-01-01",
+  "observability": { "enabled": true },
+
+  // The dashboard SPA lives in web/dash and is served as static assets.
+  // The Worker runs first only for the API paths; everything else is a file.
+  "assets": {
+    "directory": "../../web/dash",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/v1/*", "/live/*"]
+  },
+
+  "d1_databases": [
+    { "binding": "DB", "database_name": "wormhole", "database_id": "REPLACE_ME" }
+  ],
+  "r2_buckets": [
+    { "binding": "CASTINGS", "bucket_name": "wormhole-castings" }
+  ],
+  "vars": {
+    "TUNNEL_DOMAIN": "whs.makerlabkids.com"
+  },
+  "routes": [
+    { "pattern": "whs.makerlabkids.com", "custom_domain": true }
+  ]
+}

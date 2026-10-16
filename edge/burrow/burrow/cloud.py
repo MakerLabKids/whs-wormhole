@@ -193,11 +193,11 @@ class Cloud:
         # Verify everything not yet verified (cheap; the Worker reads R2 back).
         unverified = [m["id"] for m in self.store.list_metas() if not m["cloud"].get("verified_at")
                       and m["cloud"].get("uploaded_at")]
-        for i in range(0, len(unverified), 200):
+        for i in range(0, len(unverified), 40):
             if time.monotonic() > t_end + 30:
                 break
             try:
-                self.verify(unverified[i:i + 200])
+                self.verify(unverified[i:i + 40])
             except Exception as e:
                 self.state["error"] = "verify: %s" % str(e)[:100]
                 log("cloud: verify failed:", e)

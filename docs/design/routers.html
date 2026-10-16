@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Routers · Telemetry Build</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../guide.css">
+<link rel="stylesheet" href="build.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="../index.html">🪱 Wormhole</a>
+  <div class="links">
+    <a class="nl" href="../index.html">Home</a>
+    <a class="nl" href="../start.html">Start Here</a>
+    <a class="nl" href="../sessions.html">Sessions</a>
+    <a class="nl" href="../stations.html">Sensors</a>
+    <a class="nl" href="../research.html">Ideas</a>
+    <a class="nl" href="../demos/mission-control.html">Demos</a>
+    <a class="nl" href="../glossary.html">Glossary</a>
+    <a class="nl" href="../cheatsheet.html">Code</a>
+    <a class="nl" href="../reset.html">Fix a Board</a><a class="nl" href="../tools.html">Board Tools</a>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<div class="subnav">
+  <a href="index.html">Design</a>
+  <a class="on" href="routers.html">Routers</a>
+  <a href="burrow.html">Pi 5 edge</a>
+  <a href="bins.html">Pico fleet</a>
+  <a href="cloud.html">Cloudflare</a>
+  <a href="dashboards.html">Dashboards</a>
+  <a href="runbook.html">Runbook</a>
+</div>
+
+<h1>Routers: four GL-SFT1200 Opals</h1>
+<hr class="rule">
+<p class="lead">One Portal in the hallway that is the only thing the school network ever sees, and one Tunnel per classroom. About 25 minutes per router the first time, 10 once you have done one. Everything here is the stock GL.iNet 4.x admin panel; no SSH, no LuCI, no custom firmware.</p>
+
+<div class="card">
+  <h3>Before you start</h3>
+  <ul>
+    <li><b>Four Opals, four USB-C supplies rated 5 V / 3 A.</b> The Opal's spec is 3 A; a 2 A phone charger browns out under load and the symptom is random reboots. A phone charger that says "5V⎓3A" is fine.</li>
+    <li><b>Four labels:</b> <code>PORTAL 192.168.80.1</code>, <code>TUNNEL 1 192.168.81.1</code>, <code>TUNNEL 2 192.168.82.1</code>, <code>TUNNEL 3 192.168.83.1</code>. Put them on now; identical boxes get swapped.</li>
+    <li><b>The latest firmware file</b> for GL-SFT1200 from <a class="ext" href="https://dl.gl-inet.com/router/sft1200">dl.gl-inet.com/router/sft1200</a> (4.8.3 as of this writing; "Local Upgrade" file). Download it once on your laptop.</li>
+    <li><b>The passwords you will reuse</b>, written down: the admin password (same on all four), the <code>WormHole-Core</code> backhaul password (long, only the Tunnels know it), and the <code>WormHole</code> classroom password (the Picos' <code>wifi.json</code> must match it; the flash script on the <a href="bins.html">Pico fleet</a> page writes it).</li>
+    <li><b>Ports on the Opal:</b> one WAN port and one LAN port. The Burrow plugs into the Tunnel's <i>LAN</i> port. If you cable a Tunnel to the Portal, that cable goes Portal <i>LAN</i> → Tunnel <i>WAN</i>, and the Portal only has one LAN port, so at most one Tunnel can be cabled; the rest use the 5 GHz backhaul.</li>
+  </ul>
+</div>
+
+<h2 id="common">Step 0 · The same first five minutes on every router</h2>
+<hr class="rule g">
+<ol class="steps">
+  <li><b>Power it, wait for the LED to settle</b> (about a minute). Join its default Wi-Fi from your laptop: SSID <code>GL-SFT1200-xxx</code>, password <code>goodlife</code> (both printed on the bottom label).</li>
+  <li><b>Open <code>http://192.168.8.1</code>.</b> The first-run wizard asks for a language and an admin password. Use your shared admin password. There is no default admin password to remember; this is the only one.</li>
+  <li><b>SYSTEM → Upgrade → Local Upgrade.</b> Upload the firmware file. If the box shipped with 3.x, <i>untick "Keep Settings"</i>. Wait for the reboot (3–4 minutes), rejoin the Wi-Fi, log in again. Confirm the version at the bottom of the Overview page.</li>
+  <li><b>SYSTEM → Time Zone:</b> set your zone and let it sync when it can.</li>
+  <li><b>APPLICATIONS → GoodCloud:</b> leave disabled. <b>NETWORK → UPnP:</b> off. Nothing in this design needs either.</li>
+  <li>Factory reset, if you ever need it: hold the reset button <b>10 seconds</b> until the LED flashes fast, then wait for it to go solid. (3 seconds is "repair network", a softer reset.)</li>
+</ol>
+
+<h2 id="portal">The Portal (hallway)</h2>
+<hr class="rule">
+<div class="kv">
+  <b>Role</b><span>Router + Repeater. Its WAN is whatever upstream it can find (school Wi-Fi, a hotspot). Its LAN is the 192.168.80.0/24 "core" the Tunnels hang off.</span>
+  <b>Why only this box touches the school</b><span>One MAC address to authorise on a captive portal, one device to blame, and nothing inside depends on anything the school does.</span>
+</div>
+<ol class="steps">
+  <li><b>NETWORK → LAN.</b> Router IP <code>192.168.80.1</code>, netmask <code>255.255.255.0</code>. DHCP: start <code>192.168.80.100</code>, end <code>192.168.80.199</code>, lease 12 h. Apply. The page goes away; reconnect to the Wi-Fi and open <code>http://192.168.80.1</code>.</li>
+  <li><b>WIRELESS → 5 GHz.</b> SSID <code>WormHole-Core</code>, WPA2-PSK, the long backhaul password. Channel: pick a fixed <b>non-DFS</b> channel, 36 or 149 (the Opal does not do DFS radar detection well, so "Auto" can land on a channel it cannot actually hold). Bandwidth 80 MHz is fine. Leave "Hide SSID" off until the Tunnels are joined; you can hide it afterwards if you like (the Tunnels reconnect by name either way).</li>
+  <li><b>WIRELESS → 2.4 GHz.</b> Either switch the radio off (nothing needs it) or make it a hallway <code>WormHole</code> with the classroom password so a Pico carried into the hallway still has a home. Fixed channel 6 if you leave it on.</li>
+  <li><b>INTERNET → Repeater.</b> Scan, choose the school's student network, enter its password, Join. If the school network is open behind a captive portal, join it with no password. Once connected, open any http site in a new tab from your laptop; the portal login page should appear. Log in. That authorisation is tied to the Portal's WAN MAC, so everything behind it is covered until the portal forgets.</li>
+  <li><b>INTERNET → Repeater → the gear icon / Repeater Options.</b> Turn on <b>"Allow Switching to Other Saved Networks"</b>. This is the hotspot failover: when the current upstream disappears, it works down the saved list by itself. Turn on <b>"Auto-Enable Login Mode for Public Hotspots"</b> (firmware 4.6+) so the captive portal page is pushed to a client the next time the school portal re-arms. Leave <b>Band Selection</b> on Auto.</li>
+  <li><b>Add the hotspots to the saved list.</b> Bring each phone next to the Portal, turn its hotspot on, then on the Portal: Repeater → Scan → join it (password) → it is now saved. Then switch back to the school network (Repeater → Switch Network → Known Networks → pick it). Do this for every phone that should be able to rescue the uplink. Phone settings:
+    <ul>
+      <li>Name the hotspot <code>wormsurface</code> (iPhone: Settings → General → About → Name; Android: Hotspot name). <b>Not</b> <code>wormmaster</code>: that name is the Picos' rescue net and every Bin in range would abandon the classroom Wi-Fi for it.</li>
+      <li>iPhone: turn on <b>Maximize Compatibility</b> (2.4 GHz, longer range). Android: set the hotspot band to 2.4 GHz.</li>
+      <li>Give all hotspots the same password so you can type it from memory.</li>
+    </ul></li>
+  <li><b>NETWORK → DNS.</b> Mode Automatic. Switch <b>off</b> "DNS Rebinding Attack Protection" (it blocks captive portal pages from loading). Leave "Override DNS for all clients" off.</li>
+  <li><b>Address reservations</b> (do this after the Tunnels have joined once, below): NETWORK → LAN → Address Reservation → Add, pick each Tunnel from the dropdown (they show up as <code>GL-SFT1200-xxx</code>) and give them <code>192.168.80.21</code>, <code>.22</code>, <code>.23</code> for Tunnel 1, 2, 3. Name them. A Tunnel picks up its reservation the next time it reconnects (toggle its repeater or reboot it).</li>
+  <li><b>Check:</b> your laptop on the Portal's Wi-Fi reaches the internet, and <code>http://192.168.80.1</code> is the Portal.</li>
+</ol>
+<div class="note">
+  <b>Captive portals that re-arm daily.</b> Some school portals expire sessions every night or every few days. The <a href="runbook.html">runbook</a> has the two-minute fix (open a web page from any laptop on <code>WormHole</code>; the login applies to the Portal's MAC). The Burrows notice the condition themselves: their cloud check gets HTML instead of JSON and reports "captive" on the dashboard.
+</div>
+
+<h2 id="tunnel">Tunnel 1, 2, 3 (one per classroom)</h2>
+<hr class="rule">
+<div class="kv">
+  <b>Role</b><span>Router + Repeater. Its 5 GHz radio is a client of <code>WormHole-Core</code> (or its WAN port is cabled to the Portal). Its 2.4 GHz radio is the room's <code>WormHole</code> for the Picos and phones. Its LAN port has the Burrow.</span>
+  <b>Why routed, not bridged</b><span>The room keeps its own DHCP, Wi-Fi and Burrow address when the Portal is unplugged. The only cross-room rule it needs is one port forward.</span>
+</div>
+<p>Replace <b>N</b> with the room number (1, 2 or 3).</p>
+<ol class="steps">
+  <li><b>NETWORK → LAN.</b> Router IP <code>192.168.8N.1</code>, netmask <code>255.255.255.0</code>. DHCP start <code>192.168.8N.100</code>, end <code>192.168.8N.249</code>, lease 12 h. Apply; reconnect; open <code>http://192.168.8N.1</code>. (The Burrow will be <code>.10</code>, outside the pool, set statically on the Pi.)</li>
+  <li><b>WIRELESS → 2.4 GHz.</b> SSID <code>WormHole</code>, WPA2-PSK only (not WPA3 or mixed: the Pico W is happiest on plain WPA2), the classroom password. <b>Fixed channel: 1 for room 1, 6 for room 2, 11 for room 3.</b> Bandwidth 20 MHz. Do not hide it. The Opal lists a maximum of 52 clients; a room is 17 Picos plus phones.</li>
+  <li><b>WIRELESS → 5 GHz.</b> Turn the 5 GHz access point <b>off</b> if the panel lets you while the repeater uses that band; if it insists on an AP, give it SSID <code>WormHole-5G</code> with the classroom password and ignore it. The radio's job here is the backhaul.</li>
+  <li><b>Backhaul, option A (radio): INTERNET → Repeater.</b> Scan, join <code>WormHole-Core</code> with the backhaul password. Repeater Options: Band Selection <b>5 GHz</b>, "Allow Switching to Other Saved Networks" <b>off</b> (a Tunnel must never wander onto the school network on its own). <b>Option B (cable):</b> Portal LAN port → this Tunnel's WAN port; the INTERNET page shows "Cable" connected; leave Repeater off.</li>
+  <li><b>NETWORK → Port Forwarding → Add.</b> Name <code>Burrow</code>, Protocol <code>TCP</code>, External Port <code>8080</code>, Internal IP <code>192.168.8N.10</code>, Internal Port <code>8080</code>. Enable. This single rule is what lets the other rooms' Burrows mirror this room's data and lets a Pico that lost its own Burrow post here. Optional second rule for remote maintenance from the hallway: <code>2222</code> → <code>192.168.8N.10:22</code>.</li>
+  <li><b>On the Portal:</b> reserve this Tunnel's address (<code>192.168.80.2N</code>) as described above, then on the Tunnel toggle the repeater off and on (or reboot) and confirm on the Tunnel's INTERNET page that its WAN address is <code>192.168.80.2N</code>.</li>
+  <li><b>SYSTEM → Security.</b> SSH stays on (default) in case you ever need it; "Open Ports on Router" and admin panel access from WAN stay off (defaults).</li>
+  <li><b>Check, from a phone on this room's <code>WormHole</code>:</b> <code>http://192.168.8N.1</code> is this Tunnel, <code>http://192.168.80.1</code> is the Portal, and a web page loads from the internet (via Portal → school). From a laptop: <code>ping 192.168.80.2M</code> for another room's Tunnel answers once that Tunnel is up.</li>
+</ol>
+
+<h2 id="placement">Placement and power</h2>
+<hr class="rule">
+<ul>
+  <li><b>Portal:</b> hallway, as central to the three rooms as you can, high up (top of a cabinet, not the floor), away from metal. It needs line of sight through at most one wall to each Tunnel. Check the signal from each Tunnel's INTERNET → Repeater page: anything above about −70 dBm is comfortable.</li>
+  <li><b>Tunnel:</b> wherever the Burrow lives, near the door side of the room if the Portal is in the hall. The Burrow's Ethernet cable goes to the Tunnel's LAN port.</li>
+  <li><b>Power:</b> all four routers on their own supply, on an outlet that will not be switched off at night. A kicked cord is a designed-for event (everything recovers), but it is still a boring thing to debug the next morning.</li>
+</ul>
+
+<h2 id="check">Final checklist</h2>
+<hr class="rule g">
+<div class="tablewrap"><table>
+<tr><th>Router</th><th>LAN</th><th>Uplink</th><th>Wi-Fi</th><th>Extra</th></tr>
+<tr><td>Portal</td><td>192.168.80.1, DHCP .100–.199, reservations .21 .22 .23</td><td>Repeater: school + hotspots, "Allow Switching" on, login mode on</td><td>5 GHz <code>WormHole-Core</code> ch 36/149; 2.4 off or hallway <code>WormHole</code></td><td>DNS rebinding protection off</td></tr>
+<tr><td>Tunnel 1</td><td>192.168.81.1, DHCP .100–.249</td><td>5 GHz repeater → WormHole-Core (or cable), gets .80.21</td><td>2.4 GHz <code>WormHole</code> ch 1, WPA2</td><td>fwd TCP 8080 → .81.10</td></tr>
+<tr><td>Tunnel 2</td><td>192.168.82.1, DHCP .100–.249</td><td>same, gets .80.22</td><td><code>WormHole</code> ch 6</td><td>fwd TCP 8080 → .82.10</td></tr>
+<tr><td>Tunnel 3</td><td>192.168.83.1, DHCP .100–.249</td><td>same, gets .80.23</td><td><code>WormHole</code> ch 11</td><td>fwd TCP 8080 → .83.10</td></tr>
+</table></div>
+
+<h2 id="trouble">If something is off</h2>
+<hr class="rule o">
+<ul>
+  <li><b>A Tunnel keeps dropping its backhaul.</b> Confirm it is on 5 GHz (Repeater → Band Selection) and the Portal's 5 GHz channel is fixed and non-DFS. The Opal's known weak spot is a 2.4 GHz repeater link; do not use one for the backhaul.</li>
+  <li><b>The Portal shows "connected, no internet".</b> Captive portal. Open a page from any device behind it and log in. If the page never appears, re-check "DNS Rebinding Attack Protection" is off and that no VPN client is enabled on the Portal.</li>
+  <li><b>A hotspot does not take over.</b> It must be in the saved list (join it once, manually), "Allow Switching to Other Saved Networks" must be on, and the phone must be in range of the Portal, not of a Tunnel. Walking the phone to the hallway is the whole trick.</li>
+  <li><b>Picos cannot join.</b> WPA2 only, 2.4 GHz on, SSID exactly <code>WormHole</code>, password matches <code>wifi.json</code>. The <a href="../reset.html">Fix a Board</a> page covers the Pico side.</li>
+  <li><b>Too many clients?</b> The Opal is rated for 52. If a room grows past 20 Bins, reduce the 2.4 GHz bandwidth to 20 MHz (already recommended) and keep phones off it where possible (give phones the hallway <code>WormHole</code> or the 5 GHz SSID).</li>
+</ul>
+
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share. · This page is unlisted.</footer>
+</body>
+</html>

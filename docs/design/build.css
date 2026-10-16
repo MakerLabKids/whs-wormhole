@@ -1,0 +1,32 @@
+/* Shared extras for the unlisted design/build pages. */
+.subnav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px 0; }
+.subnav a { font-size: 13.5px; font-weight: 600; text-decoration: none; color: var(--navy);
+            background: var(--light); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.subnav a.on { background: var(--navy); color: #FFF; border-color: var(--navy); }
+.subnav a.soon { color: var(--gray); border-style: dashed; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 18px; font-size: 14.5px; margin: 6px 0 14px 0; }
+.kv b { color: var(--navy); }
+@media (max-width: 560px) { .kv { grid-template-columns: 1fr; } }
+ul, ol { margin: 0 0 12px 0; padding-left: 22px; } li { margin-bottom: 6px; }
+ol.steps { counter-reset: s; list-style: none; padding-left: 0; }
+ol.steps > li { counter-increment: s; position: relative; padding-left: 40px; margin-bottom: 12px; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: 2px; width: 26px; height: 26px;
+  border-radius: 50%; background: var(--navy); color: #FFF; font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; }
+ol.steps ul { margin-top: 6px; }
+.note { background: #FDF3E7; border-left: 4px solid var(--orange); border-radius: 6px; padding: 10px 14px; margin: 14px 0; font-size: 14.5px; }
+.note.g { background: #EEF6E6; border-color: var(--green); }
+.note.b { background: #E9F2FA; border-color: var(--blue); }
+pre { background: #1B3A5C; color: #E8F0F8; border-radius: 8px; padding: 12px 14px; overflow-x: auto;
+      font-size: 13px; line-height: 1.45; margin: 8px 0 14px 0; }
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+.card { margin: 14px 0 18px 0; }
+.card h3 { margin-top: 0; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.ok { color: #2E7D32; font-weight: 700; } .no { color: var(--red); font-weight: 700; }
+.pill { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+        padding: 2px 9px; border-radius: 999px; color: #FFF; background: var(--blue); vertical-align: 2px; }
+.pill.g { background: var(--green); } .pill.o { background: var(--orange); } .pill.r { background: var(--red); }
+.file { font-family: Consolas, Menlo, monospace; font-size: 13px; color: var(--navy); }
+.check { background: var(--light); border-radius: 8px; padding: 10px 14px; margin: 10px 0 16px 0; }
+.check b { color: #2E7D32; }

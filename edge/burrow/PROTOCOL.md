@@ -77,7 +77,7 @@ before they are stored.
 | `POST /v1/edge/snapshot` | `{"edge","room","ts","bins":{uid: entry},"status":{...},"roster":[...]?}` | `{"ok": true}` |
 | `PUT  /v1/edge/castings/<id>` | the gz bytes; header `X-Casting-Meta: <meta json>` | `{"ok": true, "sha256": "..."}` (Worker hashes what it received) |
 | `POST /v1/edge/rollups` | `{"casting": "<id>", "rows": [{"uid","step","ts","data"}]}` | `{"ok": true, "n": 150}` |
-| `POST /v1/edge/verify` | `{"ids": ["r1-...", ...]}` (<= 200) | `{"verified": [...], "rollups": [...], "missing": [...]}` |
+| `POST /v1/edge/verify` | `{"ids": ["r1-...", ...]}` (<= 40: the Worker reads each from R2, and free Workers get 50 subrequests) | `{"verified": [...], "rollups": [...], "missing": [...]}` |
 
 Verification is a read-back: the Worker fetches the object from R2, hashes
 it, compares with the stored sha256, and only then stamps `verified_at`.
@@ -104,3 +104,35 @@ numbers becomes `<field>_<i>`. A rollup row is
 5-minute buckets are computed at seal time from the casting; hourly buckets
 are computed from the 5-minute ones when the hour closes. Both are
 derivable from castings and may be rebuilt at any time.
+
+## Surface-only endpoints (the Worker; cookie `wh_session` unless noted)
+
+| call | auth | meaning |
+| ---- | ---- | ------- |
+| `GET /api/teams` | none | `[{"id","name","period"}]` for the login form's dropdown |
+| `POST /api/login` | none | `{"team_id","passphrase","first_name"}` -> sets cookie, `{"ok":true,"me":{...}}`; rate-limited per IP |
+| `POST /api/logout` | cookie | clears the cookie |
+| `GET /api/me` | cookie | `{"ok":true,"role":"team"|"teacher"|"admin","team":{...},"first_name":"..."}`; 401 `{"ok":false}` when not logged in |
+| `GET /api/now` | cookie | merged snapshot of all edges, `Cache-Control: max-age=10` |
+| `GET /api/bins` | cookie | roster |
+| `GET /api/history?uid=&from=&to=&step=` | cookie | from D1 rollups |
+| `GET /live/<room>` | cookie | SSE proxied from `https://burrow<room>.<TUNNEL_DOMAIN>/live` with header `X-Burrow-Key` |
+| `GET /api/admin/edges` | admin/teacher | edges table (status, last_seen, version) |
+| `GET /api/admin/teams` · `POST /api/admin/teams` · `POST /api/admin/teams/<id>/reset` · `DELETE /api/admin/teams/<id>` | admin | manage teams; create/reset return the new passphrase once |
+| `POST /api/admin/teams/import` | admin | CSV body `team,period,bin,room`; returns the passphrases |
+| `GET /api/admin/visits?since=&team=` | admin/teacher | recent visits + per-team counts |
+| `GET /api/admin/sessions` | admin/teacher | who is logged in (last_seen within 10 min) |
+| `GET /api/admin/castings?room=&day=` · `GET /api/admin/castings/<id>` | admin | list / stream a raw casting from R2 |
+| `GET /api/admin/stats` | admin/teacher | D1 row counts, R2 object count estimate, writes today (if tracked) |
+
+Roles: `team` (students; one login per team, each student types a first
+name), `teacher` (read everything, see visitors), `admin` (everything). Page
+views (any non-`/api` HTML request with a valid cookie) write one `visits`
+row; API polls do not. `sessions.last_seen` is bumped at most every 5 min.
+
+Secrets (wrangler secret put): `SESSION_SECRET` (HMAC for cookies),
+`EDGE_TOKENS` (JSON `{"burrow1":"...","burrow2":"...","burrow3":"..."}`),
+`LIVE_KEY` (sent to Burrows on /live), `ADMIN_BOOTSTRAP` (one-time password
+that `POST /api/admin/bootstrap {"name","password"}` accepts to create the
+first admin when the teams table has no admin yet).
+Vars: `TUNNEL_DOMAIN` (e.g. `whs.makerlabkids.com`, giving burrow1.whs.makerlabkids.com).
