@@ -1,0 +1,3 @@
+# The Burrow service may set the clock when it is free-running and the cloud
+# tells it the real time. Nothing else.
+burrow ALL=(root) NOPASSWD: /bin/date

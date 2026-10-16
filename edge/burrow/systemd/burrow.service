@@ -1,0 +1,26 @@
+[Unit]
+Description=Burrow: Wormhole classroom edge service
+After=network-online.target data.mount
+Wants=network-online.target
+RequiresMountsFor=/data
+
+[Service]
+Type=simple
+User=burrow
+Group=burrow
+WorkingDirectory=/opt/burrow
+Environment=PYTHONUNBUFFERED=1
+Environment=BURROW_CONFIG=/etc/burrow/burrow.json
+ExecStart=/usr/bin/python3 -m burrow
+Restart=always
+RestartSec=3
+# the data partition is the only thing it may write
+ReadWritePaths=/data
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=false
+MemoryMax=400M
+
+[Install]
+WantedBy=multi-user.target

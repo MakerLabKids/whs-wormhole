@@ -1,0 +1,16 @@
+# /etc/chrony/chrony.conf for a Burrow. Written by setup-pi.sh; ROOM is 1..3.
+# Internet time when the Portal has an uplink:
+pool 2.debian.pool.ntp.org iburst maxsources 3
+# The other Burrows, via their Tunnels' WAN addresses. All three carry
+# 'local stratum 10 orphan' with the SAME stratum, so with no internet
+# exactly one of them is elected the reference and the others follow it.
+__PEERS__
+local stratum 10 orphan
+allow 192.168.80.0/22
+allow 192.168.0.0/16
+# Step the clock freely in the first minutes after boot (RTC or fake time
+# may be far off), then slew.
+makestep 1 10
+rtcsync
+driftfile /var/lib/chrony/chrony.drift
+logdir /var/log/chrony

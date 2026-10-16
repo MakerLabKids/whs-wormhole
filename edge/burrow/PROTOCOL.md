@@ -1,0 +1,106 @@
+# Wormhole telemetry: the wire protocol
+
+One page that every piece agrees on: Bins (Pico 2 W), Burrows (Pi 5), Surface
+(Cloudflare Worker). If you change a field here, change it in all three.
+
+## Bin -> Burrow: `POST /ingest`  (port 8080, every 60 s)
+
+Body: the same JSON the Bin serves at `/data`, which already carries its
+identity (`id` = 16-hex flash serial, `name`, `ip`, `ssid`, `mode`, `net`),
+plus three things the push loop adds:
+
+| field  | type   | meaning |
+| ------ | ------ | ------- |
+| `bin`  | object | `{"team": "Dirt Vader", "period": 3, "bin": 7, "room": 1}` from `bin.json` (absent if the file is missing) |
+| `up`   | int    | seconds since boot (dedup + "did it reboot?") |
+| `rssi` | int    | station RSSI in dBm when joined |
+
+Reply: `{"ok": true, "ts": 1760600000, "edge": "burrow1", "room": 1}`.
+`ts` is the Burrow's unix time; the Bin keeps it to label its own graph.
+
+Any Burrow accepts any Bin. The Bin tries, in order: `<own subnet>.10`,
+then `192.168.80.21`, `.22`, `.23` (the Tunnels' WAN addresses, which
+forward 8080 to their Burrow). Overridable with `"edges": [...]` in `bin.json`.
+
+## Burrow -> Bin: `GET /data` (pull sweep, every 5 min, only for quiet Bins)
+
+Same dict as above minus `bin`/`up`/`rssi` (older firmware). Rows ingested
+this way carry `src: "pull"`.
+
+## Row format (what goes into a casting)
+
+One JSON object per line, UTF-8, newline terminated:
+
+```json
+{"ts": 1760600000, "clk": "ntp", "uid": "e66118604b7c2b2a", "name": "Dirt Vader",
+ "room": 1, "edge": "burrow1", "src": "push", "d": { ...the Bin's dict... }}
+```
+
+`clk` is the Burrow's clock quality at stamping time: `ntp` (internet or a
+peer that has internet), `peer` (agreed with another Burrow, no upstream),
+`free` (nobody to agree with; could be off by the length of a power cut).
+
+## Castings (immutable blocks)
+
+Window: 15 minutes, UTC-aligned. Id: `r<room>-<YYYYMMDD>T<HHMM>` of the
+window start, e.g. `r1-20261016T1415`. File: `<id>.jsonl.gz` (gzip of the
+rows, sorted by ts). Sidecar: `<id>.meta.json`:
+
+```json
+{"id": "r1-20261016T1415", "room": 1, "edge": "burrow1", "t0": 1760624100,
+ "t1": 1760624999, "rows": 743, "sha256": "...", "size": 19877,
+ "created": 1760625020, "replicas": {"burrow2": 1760625140},
+ "cloud": {"uploaded_at": null, "rollups_at": null, "verified_at": null, "by": null}}
+```
+
+The `.jsonl.gz` is never modified. The sidecar is rewritten atomically.
+Reclaim (delete both files) only when `now - t1 >= 7 days` AND
+`cloud.verified_at` is set.
+
+## Burrow <-> Burrow (port 8080 via the Tunnel WAN forward)
+
+| call | reply |
+| ---- | ----- |
+| `GET /castings?since=<unix>` | `{"edge": "burrow2", "castings": [meta, ...]}` for castings with `created >= since` (all, if omitted) |
+| `GET /castings/<id>` | the `.jsonl.gz` bytes, `Content-Type: application/gzip`, `X-Casting-Sha256` header |
+| `GET /castings/<id>/meta` | the sidecar |
+| `GET /health` | `{"ok": true, "edge": "burrow2", "room": 2, "ts": ..., "clk": "peer"}` |
+
+Pull only; a Burrow never pushes to a peer. Downloaded files are hashed
+before they are stored.
+
+## Burrow -> Surface (HTTPS, `Authorization: Bearer <per-burrow token>`)
+
+| call | body | reply |
+| ---- | ---- | ----- |
+| `GET  /v1/edge/ping` | | `{"ok": true, "ts": <unix>}` (also used to set a free-running clock) |
+| `POST /v1/edge/snapshot` | `{"edge","room","ts","bins":{uid: entry},"status":{...},"roster":[...]?}` | `{"ok": true}` |
+| `PUT  /v1/edge/castings/<id>` | the gz bytes; header `X-Casting-Meta: <meta json>` | `{"ok": true, "sha256": "..."}` (Worker hashes what it received) |
+| `POST /v1/edge/rollups` | `{"casting": "<id>", "rows": [{"uid","step","ts","data"}]}` | `{"ok": true, "n": 150}` |
+| `POST /v1/edge/verify` | `{"ids": ["r1-...", ...]}` (<= 200) | `{"verified": [...], "rollups": [...], "missing": [...]}` |
+
+Verification is a read-back: the Worker fetches the object from R2, hashes
+it, compares with the stored sha256, and only then stamps `verified_at`.
+`missing` ids get re-uploaded by whoever asked.
+
+A snapshot `bins` entry is the latest row for that uid as `{"ts","clk","src","d"}`
+plus `"team","period","bin","room"` lifted out of `d.bin` for convenience.
+
+## Viewer API (same on a Burrow and on the Surface; Surface requires the cookie)
+
+| call | meaning |
+| ---- | ------- |
+| `GET /api/now` | `{"ts", "edges": {edge: status}, "bins": {uid: entry}}` |
+| `GET /api/bins` | roster: `{uid: {"name","team","period","bin","room","seen"}}` |
+| `GET /api/history?uid=&from=&to=&step=5m\|1h` | `{"uid","step","points":[[ts, {metric:[min,avg,max,n]}], ...]}` |
+| `GET /live` (Burrow) / `GET /live/<room>` (Surface) | SSE; `event: row` with a row JSON per ingest, `event: hello` on connect |
+| `GET /api/status` (Burrow) | peers, cloud, disk, clock, counts |
+
+## Rollups
+
+Metrics are every numeric, non-boolean top-level field of `d`; a list of
+numbers becomes `<field>_<i>`. A rollup row is
+`{"uid","step": "5m"|"1h","ts": <bucket start>,"data": {metric: [min, avg, max, n]}}`.
+5-minute buckets are computed at seal time from the casting; hourly buckets
+are computed from the 5-minute ones when the hour closes. Both are
+derivable from castings and may be rebuilt at any time.

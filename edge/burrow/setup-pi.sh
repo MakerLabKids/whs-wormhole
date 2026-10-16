@@ -1,0 +1,144 @@
+#!/bin/bash
+# setup-pi.sh: turn a fresh Raspberry Pi OS Lite (64-bit, Trixie) into a Burrow.
+#
+#   sudo ./setup-pi.sh <room 1|2|3> [--no-partition]
+#
+# Run ONCE, as root, on a Pi that has booted, has internet (for apt), and
+# whose root partition was NOT auto-expanded (see docs/design/burrow.html:
+# remove the firstboot init= token from cmdline.txt before the first boot).
+# Idempotent where it can be. It does NOT enable the read-only overlay: that
+# is burrow-lock.sh, run last, after cloudflared has its token.
+set -euo pipefail
+
+ROOM="${1:-}"
+case "$ROOM" in 1|2|3) ;; *) echo "usage: sudo $0 <room 1|2|3> [--no-partition]"; exit 2;; esac
+NOPART=0; [ "${2:-}" = "--no-partition" ] && NOPART=1
+[ "$(id -u)" = 0 ] || { echo "run with sudo"; exit 2; }
+
+HOST="burrow$ROOM"
+LAN_IP="192.168.8${ROOM}.10"
+LAN_GW="192.168.8${ROOM}.1"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+say() { printf '\n\033[1;32m== %s\033[0m\n' "$*"; }
+
+say "hostname -> $HOST"
+hostnamectl set-hostname "$HOST"
+sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t$HOST/" /etc/hosts || true
+# cloud-init re-applies user-data every boot on Trixie and would undo the
+# hostname; it has done its job (user, ssh), so switch it off.
+touch /etc/cloud/cloud-init.disabled 2>/dev/null || true
+
+say "packages"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq chrony parted curl ca-certificates gnupg >/dev/null
+# fake-hwclock on Trixie has a bug that reverts the clock; the Pi 5 RTC +
+# chrony cover its job.
+apt-get purge -y -qq fake-hwclock >/dev/null 2>&1 || true
+
+say "data partition"
+DEV="$(findmnt -n -o SOURCE / | sed 's/p[0-9]*$//')"       # /dev/mmcblk0
+ROOTP="$(findmnt -n -o SOURCE /)"
+if [ "$NOPART" = 0 ] && ! blkid -L burrowdata >/dev/null 2>&1; then
+  FREE_START="$(parted -ms "$DEV" unit s print free | awk -F: '/free/ {s=$2} END {print s}')"
+  FREE_END="$(parted -ms "$DEV" unit s print free | awk -F: '/free/ {e=$3} END {print e}')"
+  FREE_S=$(( ${FREE_END%s} - ${FREE_START%s} ))
+  if [ "$FREE_S" -gt $((4*1024*1024*2)) ]; then      # > 4 GiB of free sectors
+    echo "creating data partition in free space ($((FREE_S/2048)) MiB)"
+    parted -s "$DEV" mkpart primary ext4 "$FREE_START" 100%
+    partprobe "$DEV"; sleep 2
+    NEWP="$(lsblk -nlo NAME,TYPE "$DEV" | awk '$2=="part"{print $1}' | tail -1)"
+    mkfs.ext4 -q -L burrowdata "/dev/$NEWP"
+  else
+    echo "!! no free space after root ($FREE_S sectors). Root was auto-expanded."
+    echo "!! Continuing in single-partition mode: /data lives on the root filesystem"
+    echo "!! and burrow-lock.sh will refuse to enable the overlay. Re-image to fix."
+    NOPART=1
+  fi
+fi
+mkdir -p /data
+if blkid -L burrowdata >/dev/null 2>&1; then
+  grep -q 'LABEL=burrowdata' /etc/fstab || \
+    echo 'LABEL=burrowdata  /data  ext4  defaults,noatime,data=journal,commit=5  0  2' >> /etc/fstab
+  mount -a
+  echo "/data mounted: $(findmnt -n -o SOURCE,OPTIONS /data)"
+else
+  echo "single-partition mode: /data is a directory on /"
+fi
+
+say "quiet the SD card: journald in RAM, no swap, no apt timers"
+install -D -m 644 "$HERE/etc/journald-volatile.conf" /etc/systemd/journald.conf.d/volatile.conf
+systemctl restart systemd-journald
+swapoff -a || true
+for u in rpi-swap.service dphys-swapfile.service apt-daily.timer apt-daily-upgrade.timer man-db.timer; do
+  systemctl disable --now "$u" >/dev/null 2>&1 || true
+  systemctl mask "$u" >/dev/null 2>&1 || true
+done
+# the root stays rw until burrow-lock.sh; still, no atime churn
+sed -i 's#\(\s/\s\+ext4\s\+\)defaults#\1defaults,noatime#' /etc/fstab || true
+
+say "network: static $LAN_IP on eth0, Wi-Fi and Bluetooth off"
+CON="$(nmcli -t -f NAME,DEVICE connection show | awk -F: '$2=="eth0"{print $1}' | head -1)"
+[ -n "$CON" ] || CON="$(nmcli -t -f NAME,TYPE connection show | awk -F: '$2=="802-3-ethernet"{print $1}' | head -1)"
+[ -n "$CON" ] || { nmcli connection add type ethernet ifname eth0 con-name burrow-lan >/dev/null; CON=burrow-lan; }
+nmcli connection modify "$CON" connection.id burrow-lan ipv4.method manual \
+  ipv4.addresses "$LAN_IP/24" ipv4.gateway "$LAN_GW" ipv4.dns "$LAN_GW" ipv6.method disabled \
+  connection.autoconnect yes
+# Trixie sometimes files nmcli profiles in /run; make sure it is persistent
+if [ ! -f /etc/NetworkManager/system-connections/burrow-lan.nmconnection ] && \
+   ls /run/NetworkManager/system-connections/burrow-lan* >/dev/null 2>&1; then
+  cp /run/NetworkManager/system-connections/burrow-lan* /etc/NetworkManager/system-connections/
+  chmod 600 /etc/NetworkManager/system-connections/*
+fi
+nmcli radio wifi off || true
+CFG=/boot/firmware/config.txt
+grep -q '^dtoverlay=disable-wifi' $CFG || echo 'dtoverlay=disable-wifi' >> $CFG
+grep -q '^dtoverlay=disable-bt' $CFG || echo 'dtoverlay=disable-bt' >> $CFG
+
+say "time: chrony peers with the other Burrows, orphan mode when offline"
+PEERS=""
+for r in 1 2 3; do
+  [ "$r" = "$ROOM" ] && continue
+  PEERS="${PEERS}peer 192.168.80.2${r} minpoll 4 maxpoll 6 xleave
+"
+done
+awk -v peers="$PEERS" '{ if ($0=="__PEERS__") printf "%s", peers; else print }' \
+  "$HERE/etc/chrony.conf.template" > /etc/chrony/chrony.conf
+systemctl enable --now chrony >/dev/null
+systemctl restart chrony
+
+say "burrow user, config, sudoers"
+id burrow >/dev/null 2>&1 || useradd --system --home /opt/burrow --shell /usr/sbin/nologin burrow
+mkdir -p /etc/burrow /data/burrow
+chown burrow:burrow /data/burrow
+if [ ! -f /etc/burrow/burrow.json ]; then
+  python3 - "$ROOM" > /etc/burrow/burrow.json <<'PY'
+import json, sys
+room = int(sys.argv[1])
+cfg = {
+  "edge": "burrow%d" % room, "room": room, "listen": "0.0.0.0", "port": 8080,
+  "data_dir": "/data/burrow", "www_dir": "/opt/burrow/www",
+  "peers": {"burrow%d" % r: "http://192.168.80.2%d:8080" % r for r in (1, 2, 3) if r != room},
+  "cloud": {"url": "https://whs.makerlabkids.com", "token_file": "/etc/burrow/cloud.token",
+            "live_key_file": "/etc/burrow/live.key", "every_s": 60},
+  "seal_minutes": 15, "fsync_s": 30, "retain_days": 7, "replicate_every_s": 120,
+  "sweep": {"enabled": True, "every_s": 300, "first": 100, "last": 249}}
+print(json.dumps(cfg, indent=2))
+PY
+fi
+install -m 440 "$HERE/etc/sudoers-burrow" /etc/sudoers.d/burrow
+visudo -c -q
+
+say "install the service"
+"$HERE/install.sh"
+
+say "done. Next:"
+cat <<TXT
+  1. Check:   curl -s http://$LAN_IP:8080/health
+  2. Cloud:   when the Surface exists, put the tokens in place:
+                echo '<token>' | sudo tee /etc/burrow/cloud.token
+                echo '<key>'   | sudo tee /etc/burrow/live.key
+                sudo chmod 640 /etc/burrow/*.token /etc/burrow/*.key; sudo chgrp burrow /etc/burrow/*.token /etc/burrow/*.key
+              and install cloudflared:  sudo ./install-cloudflared.sh <tunnel token>
+  3. Lock:    sudo ./burrow-lock.sh      (read-only root; reboot)
+TXT
