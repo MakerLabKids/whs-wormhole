@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pico Fleet · Telemetry Build</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../guide.css">
+<link rel="stylesheet" href="build.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="../index.html">🪱 Wormhole</a>
+  <div class="links">
+    <a class="nl" href="../index.html">Home</a>
+    <a class="nl" href="../start.html">Start Here</a>
+    <a class="nl" href="../sessions.html">Sessions</a>
+    <a class="nl" href="../stations.html">Sensors</a>
+    <a class="nl" href="../research.html">Ideas</a>
+    <a class="nl" href="../demos/mission-control.html">Demos</a>
+    <a class="nl" href="../glossary.html">Glossary</a>
+    <a class="nl" href="../cheatsheet.html">Code</a>
+    <a class="nl" href="../reset.html">Fix a Board</a><a class="nl" href="../tools.html">Board Tools</a>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<div class="subnav">
+  <a href="index.html">Design</a>
+  <a href="routers.html">Routers</a>
+  <a href="burrow.html">Pi 5 edge</a>
+  <a class="on" href="bins.html">Pico fleet</a>
+  <a href="cloud.html">Cloudflare</a>
+  <a href="dashboards.html">Dashboards</a>
+  <a href="runbook.html">Runbook</a>
+</div>
+
+<h1>Pico fleet: fifty Bins with names</h1>
+<hr class="rule">
+<p class="lead">Every board gets the same firmware, the same worm-bin project, and one team card from the roster. A desk, a USB cable, and about a minute per board: plug in, watch it get a name, unplug, next. Nothing about the sensors, the truth light, the OLED pages, or the dashboard changed; the boards learned three new habits.</p>
+
+<div class="card">
+  <h3>What changed on the Pico (and what did not)</h3>
+  <div class="two">
+    <div>
+      <p><b>Unchanged.</b> <code>projects/worm-bin/main.py</code> is untouched: parts list, hot-plug sensors, POST codes, OLED pages, servos, relay, calibration, <code>/data</code>, <code>/set</code>, <code>/cal</code>. Every other demo project is unchanged too.</p>
+      <p><b>Changed: <code>lib/picolab.py</code></b> (shared by all projects), version <b>0.1.2</b>. All of it is opt-in through files on the board, so a demo without <code>wifi.json</code> behaves exactly as before.</p>
+    </div>
+    <div>
+      <ul>
+        <li><b>Wi-Fi state machine.</b> The join ladder (<code>wormmaster&lt;n&gt;</code> → <code>wormmaster</code> → <code>WormHole</code>) now runs continuously: lost link → 60 s → own hotspot opens while it keeps scanning every 2 min → rejoin → hotspot closes after 10 stable minutes. Never blocks the sensor loop.</li>
+        <li><b>Push loop.</b> Every 60 s, a joined board POSTs its <code>/data</code> dict to its Burrow (own subnet <code>.10</code>, then the three Tunnel addresses). <code>"push": false</code> in <code>wifi.json</code> turns it off.</li>
+        <li><b>History ring.</b> 288 five-minute samples of every numeric reading in RAM, served at <code>/history</code>; the board's own page draws 24-hour graphs from it, hotspot or not.</li>
+        <li><b>Team card.</b> <code>bin.json</code> gives the board its team, period, bin number and room; <code>name.txt</code> gets the team name, so the hotspot SSID and the wall label are the team.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2 id="need">What you need</h2>
+<hr class="rule g">
+<ul>
+  <li>A laptop with this repo cloned, Python 3, and <b>mpremote</b>: <code>pipx install mpremote</code> (or <code>pip install --user mpremote</code>). Linux, macOS or Windows.</li>
+  <li>A good USB data cable (charge-only cables are the classic time sink).</li>
+  <li>The classroom Wi-Fi password you gave the Tunnels. The script asks once and keeps it in <code>~/.config/wormhole/wifi-password</code>; it is never written into the repo.</li>
+  <li>Sticky labels, one per board, with the team name. The script prints the name the moment a board is done.</li>
+</ul>
+
+<h2 id="roster">Step 1 · The roster</h2>
+<hr class="rule">
+<p>The roster is <span class="file">tools/fleet/roster.csv</span>: one line per bin, with team, period, bin number and room, plus the board uid once a board has been flashed. Team names come from <span class="file">tools/fleet/names.txt</span> (the Mission Control demo's pool, 142 names, in order) and the room/period layout from <span class="file">tools/fleet/fleet.json</span>:</p>
+<pre><code>"rooms": {"1": {"periods": [1, 2], "bins": 17},
+          "2": {"periods": [3, 4], "bins": 17},
+          "3": {"periods": [5, 6], "bins": 16}}</code></pre>
+<ol class="steps">
+  <li>Edit <code>fleet.json</code> if your periods or counts differ. Reorder or add names in <code>names.txt</code> if you want particular teams to get particular names.</li>
+  <li>Build the roster (a roster is already committed; rebuild only if you changed the layout): <pre><code>tools/fleet/flash.py --init --force</code></pre></li>
+  <li>Open <code>roster.csv</code> in a spreadsheet if you like, but keep the columns. You can swap team names between lines freely until a line has a uid.</li>
+  <li>Commit it. The roster is the fleet's memory: which physical board is which team. <pre><code>git add tools/fleet/roster.csv &amp;&amp; git commit -m "fleet: roster" &amp;&amp; git push</code></pre></li>
+</ol>
+
+<h2 id="loop">Step 2 · The flashing loop</h2>
+<hr class="rule">
+<pre><code>tools/fleet/flash.py</code></pre>
+<p>Then, for each board:</p>
+<ol class="steps">
+  <li><b>Brand-new board:</b> hold BOOTSEL while plugging it in. It mounts as a drive called <code>RP2350</code>; the script notices, copies <code>firmware/RPI_PICO2_W-20260406-v1.28.0.uf2</code> onto it, and waits for MicroPython to boot. <b>Board that already runs MicroPython</b> (your test units): just plug it in.</li>
+  <li>The script reads the board's permanent uid. New uid → the next roster line without one. Known uid → that line again, so a re-flashed test unit keeps its team.</li>
+  <li>It wipes the filesystem (<code>tools/wipe.py</code>, same as the "Fix a Board" page), copies every file the worm-bin project's <code>package.json</code> lists (<code>main.py</code>, <code>index.html</code>, <code>lib/*.py</code>, <code>cal.js</code>), then writes the three identity files:
+<pre><code>wifi.json   {"ssid": "WormHole", "password": "…", "rescue": "wormmaster"}
+bin.json    {"team": "Dirt Vader", "period": 3, "bin": 7, "room": 1}
+name.txt    Dirt Vader</code></pre></li>
+  <li>It records uid, time and <code>picolab</code> version in the roster, resets the board, and prints <b>✔ Dirt Vader ready</b>. Label the board. Unplug it.</li>
+  <li>Plug in the next one. The loop runs until you Ctrl-C. Fifty boards is about an hour.</li>
+</ol>
+<div class="note b">
+  <b>Order matters only if you want it to.</b> Boards take roster lines top to bottom: room 1 period 1 bin 1 first. If you want a specific board to be a specific team, write its uid into that roster line before flashing (<code>flash.py --check</code> prints a connected board's uid).
+</div>
+<p>Useful variants:</p>
+<pre><code>tools/fleet/flash.py --check            # who is this board? uid, name, bin.json, version, files
+tools/fleet/flash.py --once             # one board, then exit
+tools/fleet/flash.py --port /dev/ttyACM0
+tools/fleet/flash.py --dry-run          # rehearse the loop with an imaginary board
+cd tools/fleet &amp;&amp; python3 -m unittest test_flash   # the roster logic, no hardware</code></pre>
+<p>When the roster has its uids, commit it again. Re-running the loop later (a firmware update for the whole fleet) is the same command: every board keeps its team because its uid is known.</p>
+
+<h2 id="firstboot">Step 3 · First boot, what you should see</h2>
+<hr class="rule g">
+<ul>
+  <li>The OLED opening card, then the usual sensor pages, with the team name as the page header instead of <code>PicoLab742</code>.</li>
+  <li>In the terminal (Viper or <code>mpremote</code>), the banner now includes <code>Team: Dirt Vader (P3 bin 7, room 1)</code> and <code>Pushes: to 192.168.81.10:8080, 192.168.80.21:8080...</code>, and within a few seconds <code>push: Burrow burrow1 at 192.168.81.10:8080 accepted us</code>.</li>
+  <li>On the Burrow dashboard (<code>http://192.168.81.10:8080/</code>) a tile called <b>Dirt Vader</b> appears within 60 s.</li>
+  <li>On the board's own page (its IP, printed in the terminal and shown on the OLED), the status line reads <i>Dirt Vader (P3 bin 7) live on WormHole · reporting to 192.168.81.10:8080</i>, and after ten minutes the "LAST 24 HOURS" card has its first two points.</li>
+</ul>
+<div class="check"><b>Check:</b> unplug the Tunnel in that room (or walk the board out of range). Within about a minute the OLED header switches to the team-name hotspot; join it from a phone and open <code>http://192.168.4.1</code>: the page and the 24-hour graphs are there. Plug the Tunnel back in: within about two minutes the board rejoins, the push resumes, and ten minutes later the hotspot goes away by itself.</div>
+
+<h2 id="ladder">The ladder, for the record</h2>
+<hr class="rule">
+<div class="tablewrap"><table>
+<tr><th>Priority</th><th>Network</th><th>When</th><th>Who joins</th></tr>
+<tr><td>1</td><td><code>wormmaster&lt;n&gt;</code> (n = the board's number from its uid)</td><td>You stand up a phone hotspot with exactly that name</td><td>that one board: single-board rescue</td></tr>
+<tr><td>2</td><td><code>wormmaster</code></td><td>A phone hotspot with that name is in range</td><td>every board in range: all-hands mode (keep it away from the Portal; it is not the Portal's uplink hotspot, that one is <code>wormsurface</code>)</td></tr>
+<tr><td>3</td><td><code>WormHole</code></td><td>Normal</td><td>everyone, pushing to the room's Burrow</td></tr>
+<tr><td>4</td><td>its own hotspot, named for the team</td><td>Nothing above answers for 60 s</td><td>whoever walks up with a phone; page + graphs from RAM</td></tr>
+</table></div>
+<p>All of 1–3 use the password in <code>wifi.json</code>. The hotspot (4) is open, as the demos always were.</p>
+
+<h2 id="dev">Changing the firmware later</h2>
+<hr class="rule">
+<ul>
+  <li>Edit <code>lib/picolab.py</code> or the project; bump <code>VERSION</code> in <code>picolab.py</code> (the OLED and the self-test show it, the roster records it).</li>
+  <li>Run the laptop test first: <code>tools/picotest/run.sh</code> runs the real firmware under the MicroPython unix port with stub radios and a fake clock against a real Burrow, and walks the whole join/lose/hotspot/rejoin story (17 checks). It needs <code>apt install micropython</code>.</li>
+  <li>Then one real board on the bench, then the loop for the fleet. Boards keep their teams.</li>
+</ul>
+
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share. · This page is unlisted.</footer>
+</body>
+</html>

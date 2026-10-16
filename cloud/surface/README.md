@@ -64,10 +64,10 @@ curl -sS -b jar.txt https://whs.makerlabkids.com/api/admin/teams \
   -H 'content-type: application/json' -d '{"name":"Mr Soil","role":"teacher","password":"<8+ chars>"}'
 ```
 
-Then on each Burrow: write its token (from `gen-secrets.sh`) to the
-`cloud.token_file`, set `cloud.url` to `https://whs.makerlabkids.com`, and make
-its cloudflared ingress for `burrow<N>.whs.makerlabkids.com` require
-`X-Burrow-Key: <LIVE_KEY>`.
+Then on each Burrow: write its token (from `gen-secrets.sh`) to
+`/etc/burrow/cloud.token` and the LIVE_KEY to `/etc/burrow/live.key`; the
+Burrow itself rejects any request arriving through its tunnel
+(`burrow<N>.whs.makerlabkids.com`) that lacks `X-Burrow-Key: <LIVE_KEY>`.
 
 Staff log in with `{"name": ..., "passphrase": <password>}` (or `team_id`);
 students pick a team and type the three-word passphrase plus a first name.

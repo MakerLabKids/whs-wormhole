@@ -21,16 +21,17 @@ LIVE_KEY=$LIVE_KEY
 ADMIN_BOOTSTRAP=$ADMIN_BOOTSTRAP
 EDGE_TOKENS=$EDGE_TOKENS
 
-# ---- Per-Burrow token files (the Burrow's cloud.token_file; one line, no newline needed) ----
-# burrow1: /data/burrow/cloud.token
+# ---- Per-Burrow token files (/etc/burrow/cloud.token on each Pi; one line) ----
+# burrow1: /etc/burrow/cloud.token
 $T1
-# burrow2: /data/burrow/cloud.token
+# burrow2: /etc/burrow/cloud.token
 $T2
-# burrow3: /data/burrow/cloud.token
+# burrow3: /etc/burrow/cloud.token
 $T3
 
-# ---- Each Burrow's cloudflared ingress must require this header on /live ----
-# X-Burrow-Key: $LIVE_KEY
+# ---- The same LIVE_KEY goes in /etc/burrow/live.key on every Pi; the Burrow ----
+# ---- rejects tunnel requests that do not carry X-Burrow-Key: <this value>  ----
+$LIVE_KEY
 EOF
 
 if [ "${1:-}" = "--put" ]; then

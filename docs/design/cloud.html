@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cloudflare · Telemetry Build</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../guide.css">
+<link rel="stylesheet" href="build.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="../index.html">🪱 Wormhole</a>
+  <div class="links">
+    <a class="nl" href="../index.html">Home</a>
+    <a class="nl" href="../start.html">Start Here</a>
+    <a class="nl" href="../sessions.html">Sessions</a>
+    <a class="nl" href="../stations.html">Sensors</a>
+    <a class="nl" href="../research.html">Ideas</a>
+    <a class="nl" href="../demos/mission-control.html">Demos</a>
+    <a class="nl" href="../glossary.html">Glossary</a>
+    <a class="nl" href="../cheatsheet.html">Code</a>
+    <a class="nl" href="../reset.html">Fix a Board</a><a class="nl" href="../tools.html">Board Tools</a>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<div class="subnav">
+  <a href="index.html">Design</a>
+  <a href="routers.html">Routers</a>
+  <a href="burrow.html">Pi 5 edge</a>
+  <a href="bins.html">Pico fleet</a>
+  <a class="on" href="cloud.html">Cloudflare</a>
+  <a href="dashboards.html">Dashboards</a>
+  <a href="runbook.html">Runbook</a>
+</div>
+
+<h1>Cloudflare: the Surface at whs.makerlabkids.com</h1>
+<hr class="rule">
+<p class="lead">One Worker, one D1 database, one R2 bucket, three tunnels, all on the free plan. About 30 minutes, most of it copying values from one place to another. The code is in <span class="file">cloud/surface/</span> and its <a class="ext" href="https://github.com/MakerLabKids/wormhole/blob/main/cloud/surface/README.md">README</a> has the same commands without the commentary.</p>
+
+<div class="card">
+  <h3>Before you start</h3>
+  <ul>
+    <li><code>makerlabkids.com</code> is a zone in your Cloudflare account (it is). The Worker's custom-domain route creates the <code>whs</code> DNS record itself; do not pre-create it.</li>
+    <li>Node 20+ on your laptop. <code>cd cloud/surface &amp;&amp; npm i</code> installs Wrangler 4 locally.</li>
+    <li>The free plan is enough for everything below. <a href="index.html#budget">The budget</a> shows where the numbers land.</li>
+    <li>What the Worker does, in one breath: accepts snapshots, castings and rollups from the Burrows (bearer tokens), verifies castings by reading them back from R2, serves the dashboard and its API to logged-in students (cookie sessions, team passphrases), logs who looked, and proxies live server-sent events from the Burrows' tunnels.</li>
+  </ul>
+</div>
+
+<h2 id="deploy">Step 1 · Database, bucket, secrets, deploy</h2>
+<hr class="rule g">
+<ol class="steps">
+  <li>Log Wrangler in: <pre><code>cd cloud/surface
+npm i
+npx wrangler login</code></pre></li>
+  <li>Create the database and load the schema. The create command prints a <code>database_id</code>; paste it into <code>wrangler.jsonc</code> where it says <code>REPLACE_ME</code>.
+<pre><code>npx wrangler d1 create wormhole
+#  edit wrangler.jsonc -> "database_id": "&lt;the id it printed&gt;"
+npx wrangler d1 execute wormhole --remote --file schema.sql</code></pre></li>
+  <li>Create the bucket: <pre><code>npx wrangler r2 bucket create wormhole-castings</code></pre></li>
+  <li>Generate and store the secrets. The helper prints everything once and, with <code>--put</code>, also pushes the four Worker secrets. <b>Keep the printed output</b> (a password manager entry): it has the three Burrow tokens and the live key you will type onto the Pis.
+<pre><code>tools/gen-secrets.sh --put</code></pre>
+    <div class="tablewrap"><table>
+      <tr><th>Secret</th><th>Used for</th></tr>
+      <tr><td><code>SESSION_SECRET</code></td><td>signs the <code>wh_session</code> cookie</td></tr>
+      <tr><td><code>EDGE_TOKENS</code></td><td>JSON map of Burrow name → bearer token; each Pi gets its own line in <code>/etc/burrow/cloud.token</code></td></tr>
+      <tr><td><code>LIVE_KEY</code></td><td>sent by the Worker on <code>/live</code> to the tunnels; the same value goes in <code>/etc/burrow/live.key</code> on every Pi</td></tr>
+      <tr><td><code>ADMIN_BOOTSTRAP</code></td><td>one-time password that lets you create the first admin account</td></tr>
+    </table></div></li>
+  <li>Deploy: <pre><code>npx wrangler deploy</code></pre> The first deploy creates <code>whs.makerlabkids.com</code>. Open it: you get the dashboard's login screen (nothing to log into yet).</li>
+</ol>
+<div class="check"><b>Check:</b> <code>curl -s https://whs.makerlabkids.com/v1/edge/ping -H 'authorization: Bearer &lt;the burrow1 token&gt;'</code> returns <code>{"ok":true,"ts":…}</code>. Without the header it returns 401.</div>
+
+<h2 id="admin">Step 2 · The first admin, teachers, and the teams</h2>
+<hr class="rule">
+<ol class="steps">
+  <li>Create your admin account (works only while no admin exists):
+<pre><code>curl -sS https://whs.makerlabkids.com/api/admin/bootstrap \
+  -H 'content-type: application/json' \
+  -d '{"name":"quincy","password":"&lt;a real password, 8+ chars&gt;","bootstrap":"&lt;ADMIN_BOOTSTRAP&gt;"}'</code></pre></li>
+  <li>Log in on the website with that name and password. The <b>Admin</b> link appears in the header.</li>
+  <li><b>Teachers:</b> Admin → Teams → create with role <i>teacher</i> and a real password. Teachers see everything and the visitor logs but cannot change teams.</li>
+  <li><b>Teams:</b> the roster you built on the <a href="bins.html">Pico fleet</a> page is already the right CSV: its first four columns are <code>team,period,bin,room</code>. Admin → Teams → Import CSV, paste:
+<pre><code>cut -d, -f1-4 tools/fleet/roster.csv</code></pre>
+    (60 rows per paste; do it in two batches.) The reply lists each team's three-word passphrase <b>once</b>. Use the "print cards" button right away: one card per team with name, period, bin, passphrase and the URL. Reset a passphrase any time from the same tab; it invalidates that team's sessions.</li>
+  <li>Students log in with: their team from the dropdown, the passphrase from the card, and their first name. The first name is what shows up in the visitor log. Sessions last the semester.</li>
+</ol>
+<div class="note">
+  <b>Why not Cloudflare Access or Google?</b> Access's free tier stops at 50 users, students have no school Google accounts, and 52 groups is too many shared passwords to manage by hand. Team passphrases plus a typed first name give per-visit attribution at zero cost, and a leaked passphrase is one reset away from fixed.
+</div>
+
+<h2 id="tunnels">Step 3 · Three tunnels (the live path)</h2>
+<hr class="rule">
+<p>Each Burrow runs <code>cloudflared</code> as an outbound-only HTTP/2 connection to Cloudflare; the Worker reaches a Burrow's live stream through it. Nothing is opened on the school network.</p>
+<ol class="steps">
+  <li>Cloudflare dashboard → <b>Zero Trust</b> (one.dash.cloudflare.com; the free Zero Trust plan is fine, you will not use any of its seats) → <b>Networks → Tunnels → Create a tunnel</b> → Cloudflared → name it <code>burrow1</code>.</li>
+  <li>On the install page, pick <b>Debian · arm64</b>. Do not run the commands it shows; copy only the long token that follows <code>service install</code>. Save it with your secrets as the burrow1 tunnel token.</li>
+  <li><b>Public Hostnames → Add:</b> subdomain <code>burrow1.whs</code>, domain <code>makerlabkids.com</code> (so the hostname is <code>burrow1.whs.makerlabkids.com</code>, which is what the Worker's <code>TUNNEL_DOMAIN</code> setting expects). Service type <code>HTTP</code>, URL <code>localhost:8080</code>. Save.</li>
+  <li>Repeat for <code>burrow2</code> and <code>burrow3</code>.</li>
+  <li>On each Pi (unlocked), from the <a href="burrow.html#cloud">Pi 5 page</a>: <pre><code>sudo /opt/burrow/install-cloudflared.sh '&lt;that Pi's tunnel token&gt;'</code></pre> The script pins <code>--protocol http2</code> so it only ever uses TCP 443.</li>
+</ol>
+<div class="check"><b>Check:</b> the Zero Trust tunnel list shows all three <i>Healthy</i> whenever the Portal has internet. <code>curl -s https://burrow1.whs.makerlabkids.com/health</code> returns <b>403</b> (the Burrow refuses tunnel requests without the live key: correct). Logged in on the dashboard, the Live page shows a green dot for each room whose Burrow is online.</div>
+
+<h2 id="pis">Step 4 · Tell the Pis</h2>
+<hr class="rule">
+<p>On each Burrow, with the values from <code>gen-secrets.sh</code>:</p>
+<pre><code>echo '&lt;burrowN token&gt;'  | sudo tee /etc/burrow/cloud.token
+echo '&lt;LIVE_KEY&gt;'       | sudo tee /etc/burrow/live.key
+sudo chgrp burrow /etc/burrow/cloud.token /etc/burrow/live.key
+sudo chmod 640   /etc/burrow/cloud.token /etc/burrow/live.key
+sudo systemctl restart burrow
+curl -s http://localhost:8080/api/status | python3 -c 'import json,sys; c=json.load(sys.stdin)["cloud"]; print(c["reachable"], c["error"])'</code></pre>
+<p>Within a minute the dashboard at whs.makerlabkids.com shows that room's bins, and within 20 minutes the first casting flips to verified (Admin → Castings, or <code>/api/status</code> → <code>store.unverified</code> going down on the Pi).</p>
+
+<h2 id="data">What ends up where</h2>
+<hr class="rule">
+<div class="tablewrap"><table>
+<tr><th>Thing</th><th>Where</th><th>Written by</th><th>Read by</th></tr>
+<tr><td>Current state of every bin</td><td>D1 <code>edges</code> (one row per Burrow, JSON snapshot)</td><td>snapshot every 60 s</td><td><code>/api/now</code>, cached 10 s</td></tr>
+<tr><td>Who is which team</td><td>D1 <code>bins</code></td><td>roster in the hourly snapshot</td><td><code>/api/bins</code></td></tr>
+<tr><td>History for graphs</td><td>D1 <code>rollups</code> (5-min and hourly, per bin)</td><td>with each casting</td><td><code>/api/history</code></td></tr>
+<tr><td>Raw readings, forever</td><td>R2 <code>castings/r1/2026/10/16/r1-20261016T1415.jsonl.gz</code></td><td>casting PUT</td><td>Admin → Castings (download), science exports</td></tr>
+<tr><td>Casting ledger</td><td>D1 <code>castings</code> (hash, size, uploaded_by, verified_at)</td><td>PUT, then verify read-back</td><td>the Pis' verify calls, Admin</td></tr>
+<tr><td>Accounts</td><td>D1 <code>teams</code> (PBKDF2 hashes), <code>sessions</code></td><td>Admin, login</td><td>every request</td></tr>
+<tr><td>Who looked</td><td>D1 <code>visits</code> (one row per page view)</td><td>the Worker</td><td>Admin → Who's looking / Visits</td></tr>
+</table></div>
+
+<h2 id="later">Updating and local development</h2>
+<hr class="rule">
+<ul>
+  <li>Code change → <code>npx vitest run</code> (23 tests inside a real local workerd with local D1 and R2) → <code>npx wrangler deploy</code>. Secrets and data survive deploys.</li>
+  <li>Schema change → add statements to <code>schema.sql</code> (keep them <code>IF NOT EXISTS</code> / additive) and re-run the <code>d1 execute</code> line.</li>
+  <li>Laptop: <code>npx wrangler dev -c wrangler.local.jsonc</code> runs the whole Worker locally with dummy tokens (<code>tok1</code>…) and a bootstrap password of <code>bootstrap-me</code>; point a laptop Burrow's <code>cloud.url</code> at it. Details in the README.</li>
+  <li>Costs to watch: Workers → Metrics shows requests/day (limit 100k) and D1 → the database → rows written/day (limit 100k). Both should sit well under half.</li>
+</ul>
+
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share. · This page is unlisted.</footer>
+</body>
+</html>
