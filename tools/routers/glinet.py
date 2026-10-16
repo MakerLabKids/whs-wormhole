@@ -42,8 +42,15 @@ class Router:
     def _http(self, payload):
         req = urllib.request.Request(self.url, data=json.dumps(payload).encode(),
                                      headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=self.timeout) as r:
-            return json.loads(r.read().decode())
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                return json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:          # 4.x returns JSON-RPC errors as HTTP 500 too
+            body = e.read().decode("utf-8", "replace")
+            try:
+                return json.loads(body)
+            except ValueError:
+                raise RpcError("HTTP %s: %s" % (e.code, body.strip()[:200]))
 
     def rpc(self, method, params):
         self._id += 1
@@ -123,7 +130,10 @@ def main():
         st = r.call("system", "get_status")
         print(json.dumps({"info": info, "status": st}, indent=1))
     elif a.cmd == "call":
-        print(json.dumps(r.call(a.object, a.method, json.loads(a.params)), indent=1))
+        try:
+            print(json.dumps(r.call(a.object, a.method, json.loads(a.params)), indent=1))
+        except RpcError as e:
+            sys.exit(str(e))
     return 0
 
 
