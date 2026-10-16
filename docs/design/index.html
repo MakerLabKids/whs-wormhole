@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Telemetry Design · Wormhole</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../guide.css">
+<style>
+  .subnav { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 4px 0; }
+  .subnav a { font-size: 13.5px; font-weight: 600; text-decoration: none; color: var(--navy);
+              background: var(--light); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+  .subnav a.on { background: var(--navy); color: #FFF; border-color: var(--navy); }
+  .subnav a.soon { color: var(--gray); border-style: dashed; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+          padding: 2px 9px; border-radius: 999px; color: #FFF; background: var(--blue); vertical-align: 2px; }
+  .pill.g { background: var(--green); } .pill.o { background: var(--orange); } .pill.r { background: var(--red); }
+  .pill.n { background: var(--navy); }
+  .fig { background: var(--light); border-radius: 10px; padding: 14px; margin: 14px 0 6px 0; overflow-x: auto; }
+  .fig svg { display: block; margin: 0 auto; max-width: 100%; height: auto; font-family: Arial, Helvetica, sans-serif; }
+  .caption { color: var(--gray); font-size: 13.5px; margin: 0 0 18px 0; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 18px; font-size: 14.5px; margin: 6px 0 14px 0; }
+  .kv b { color: var(--navy); }
+  .name { font-weight: 700; color: var(--navy); }
+  ul, ol { margin: 0 0 12px 0; padding-left: 22px; } li { margin-bottom: 5px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .ok { color: #2E7D32; font-weight: 700; } .no { color: var(--red); font-weight: 700; }
+  .toc { columns: 2; column-gap: 28px; font-size: 14.5px; } .toc li { break-inside: avoid; }
+  @media (max-width: 640px) { .toc { columns: 1; } }
+  pre { background: #1B3A5C; color: #E8F0F8; border-radius: 8px; padding: 12px 14px; overflow-x: auto;
+        font-size: 13px; line-height: 1.45; }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+  .mono { font-family: Consolas, Menlo, monospace; font-size: 13px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .budget td:nth-child(2), .budget td:nth-child(3) { white-space: nowrap; }
+  .fail td:first-child { font-weight: 700; color: var(--navy); white-space: nowrap; }
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="../index.html">🪱 Wormhole</a>
+  <div class="links">
+    <a class="nl" href="../index.html">Home</a>
+    <a class="nl" href="../start.html">Start Here</a>
+    <a class="nl" href="../sessions.html">Sessions</a>
+    <a class="nl" href="../stations.html">Sensors</a>
+    <a class="nl" href="../research.html">Ideas</a>
+    <a class="nl" href="../demos/mission-control.html">Demos</a>
+    <a class="nl" href="../glossary.html">Glossary</a>
+    <a class="nl" href="../cheatsheet.html">Code</a>
+    <a class="nl" href="../reset.html">Fix a Board</a><a class="nl" href="../tools.html">Board Tools</a>
+  </div>
+</div></nav>
+
+<div class="wrap">
+
+<div class="subnav">
+  <a class="on" href="index.html">Design</a>
+  <a class="soon" href="routers.html">Routers</a>
+  <a class="soon" href="burrow.html">Pi 5 edge</a>
+  <a class="soon" href="bins.html">Pico fleet</a>
+  <a class="soon" href="cloud.html">Cloudflare</a>
+  <a class="soon" href="dashboards.html">Dashboards</a>
+  <a class="soon" href="runbook.html">Runbook</a>
+</div>
+
+<h1>Wormhole Telemetry: System Design</h1>
+<hr class="rule">
+<p class="lead">Fifty worm bins, three classrooms, one hallway router that is the only thing the school
+network ever sees. Everything works with no internet for weeks; when a connection appears, even a
+teacher's phone walking past, the data climbs to the surface by itself. This page is the design.
+The pages in the strip above are the step-by-step build.</p>
+
+<div class="card" style="margin:14px 0 20px 0">
+  <h3>The cast, in worm terms</h3>
+  <div class="kv">
+    <b>Bins</b><span>the ~50 Pico 2 W sensor nodes, one per worm bin, each named for its team (<i>Dirt Vader</i>, <i>Compost Malone</i>…).</span>
+    <b>Tunnel 1, 2, 3</b><span>the GL-SFT1200 Opal in each classroom. Its 2.4 GHz radio is the room's <code>WormHole</code> Wi-Fi for Bins and phones.</span>
+    <b>Portal</b><span>the fourth Opal, in the hallway between the rooms. The only device that joins the school network or a hotspot. The three Tunnels hang off it.</span>
+    <b>Burrow 1, 2, 3</b><span>the Raspberry Pi 5 in each classroom. Ingests its room's Bins, stores everything, mirrors the other two Burrows, serves the local dashboards, and uploads when it can.</span>
+    <b>Castings</b><span>the sealed, immutable 15-minute data blocks every Burrow produces and mirrors. Nothing is ever edited; castings are only created, copied, verified, and (after 7 days and cloud confirmation) reclaimed.</span>
+    <b>Surface</b><span>the cloud: <code>whs.makerlabkids.com</code> on Cloudflare's free tier. Status, history, live view, and logins for 200 students.</span>
+    <b>wormmaster</b><span>the rescue hotspot name the Bins already know: bring up a phone called <code>wormmaster</code> and every Bin in range hops onto it (unchanged from today).</span>
+  </div>
+</div>
+
+<h2>Contents</h2>
+<ol class="toc">
+  <li><a href="#principles">Design principles</a></li>
+  <li><a href="#arch">1 · End-to-end architecture</a></li>
+  <li><a href="#addressing">Addressing plan</a></li>
+  <li><a href="#storage">2 · Local storage &amp; resiliency</a></li>
+  <li><a href="#model">3 · Cloud &amp; edge data model</a></li>
+  <li><a href="#live">4 · Live streaming &amp; ingress</a></li>
+  <li><a href="#failure">5 · Failure &amp; redundancy mechanics</a></li>
+  <li><a href="#access">Access control &amp; viewer tracking</a></li>
+  <li><a href="#bins">What changes on the Picos</a></li>
+  <li><a href="#budget">Free-tier budget</a></li>
+  <li><a href="#notbuying">Hardware you are not buying (and the $5 you might)</a></li>
+  <li><a href="#build">Build order</a></li>
+</ol>
+
+<h2 id="principles">Design principles</h2>
+<hr class="rule g">
+<ul>
+  <li><b>The school network is a hostile WAN, not our LAN.</b> Exactly one MAC address (the Portal's) ever talks to it. Nothing inside depends on it: not addressing, not DNS, not time, not storage.</li>
+  <li><b>Every layer works alone.</b> A Bin with no router still serves its page and graphs. A room with no Portal still ingests and displays. Burrows with no internet keep every byte for years. The cloud only ever adds; it is never required.</li>
+  <li><b>Write little, write once, write safely.</b> The volume is tiny (about 10 MB a day, uncompressed, for the whole fleet). Flash dies from churn and torn writes, not from bytes. The OS root is read-only; data is appended to one open file, fsync'd on a timer, and sealed into immutable castings with hashes.</li>
+  <li><b>Three copies before the cloud, and the cloud has to prove it.</b> Every casting ends up on all three Burrows within minutes. A casting is reclaimed only when it is 7+ days old <i>and</i> the cloud has answered a separate read-back check with the matching hash.</li>
+  <li><b>Push, not pull, across the hop.</b> Bins push to their Burrow every minute. Pushing works through NAT, needs no discovery, and lets a Bin fail over to another room's Burrow with the same code path.</li>
+  <li><b>Keep what works.</b> The Pico framework (<code>picolab</code>: truth light, hot-plug sensors, rescue ladder, <code>/data</code>, the dashboards) stays. It gains a Wi-Fi state machine, a push loop, and a RAM history ring.</li>
+</ul>
+
+<h2 id="arch">1 · End-to-end architecture</h2>
+<hr class="rule">
+<p>Four tiers. Each boundary is a place where the thing on the left keeps working when the thing on the right is gone.</p>
+
+<div class="fig">
+<svg viewBox="0 0 960 520" width="960" height="520" role="img" aria-label="Network topology: school network and hotspots at top, Portal router, three Tunnel routers, each with a Burrow Pi 5 and many Bins">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6B7280"/></marker>
+  </defs>
+  <!-- outside world -->
+  <rect x="30" y="18" width="900" height="78" rx="10" fill="#FFF" stroke="#E8762C" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="48" y="42" font-size="13" font-weight="700" fill="#E8762C">OUTSIDE (untrusted WAN candidates, any one of them, or none for weeks)</text>
+  <g font-size="13" fill="#222A35">
+    <rect x="60" y="54" width="200" height="30" rx="6" fill="#FDF3E7" stroke="#E8762C"/><text x="160" y="74" text-anchor="middle">School student Wi-Fi (captive portal)</text>
+    <rect x="290" y="54" width="170" height="30" rx="6" fill="#FDF3E7" stroke="#E8762C"/><text x="375" y="74" text-anchor="middle">Teacher hotspot</text>
+    <rect x="490" y="54" width="170" height="30" rx="6" fill="#FDF3E7" stroke="#E8762C"/><text x="575" y="74" text-anchor="middle">Admin hotspot</text>
+    <rect x="690" y="54" width="220" height="30" rx="6" fill="#E5EBF1" stroke="#1B3A5C"/><text x="800" y="74" text-anchor="middle" font-weight="700">Surface · whs.makerlabkids.com</text>
+  </g>
+  <!-- portal -->
+  <line x1="375" y1="96" x2="480" y2="150" stroke="#6B7280" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="330" y="130" font-size="12" fill="#6B7280">repeater uplink (one saved list, auto-reconnect)</text>
+  <line x1="800" y1="96" x2="800" y2="440" stroke="#1B3A5C" stroke-width="2" stroke-dasharray="4 4"/>
+  <text x="808" y="300" font-size="12" fill="#1B3A5C">HTTPS out only:</text>
+  <text x="808" y="316" font-size="12" fill="#1B3A5C">castings, snapshots,</text>
+  <text x="808" y="332" font-size="12" fill="#1B3A5C">cloudflared tunnel</text>
+  <rect x="400" y="150" width="160" height="56" rx="10" fill="#1B3A5C"/>
+  <text x="480" y="174" text-anchor="middle" font-size="15" font-weight="700" fill="#FFF">PORTAL</text>
+  <text x="480" y="193" text-anchor="middle" font-size="12" fill="#C7D8E6">Opal · 192.168.80.1 · hallway</text>
+  <text x="575" y="178" font-size="12" fill="#6B7280">WAN side: the only MAC the school sees</text>
+  <text x="575" y="194" font-size="12" fill="#6B7280">LAN side: 192.168.80.0/24 "core"</text>
+  <!-- backhaul -->
+  <g stroke="#2E7DBC" stroke-width="2.5">
+    <line x1="440" y1="206" x2="160" y2="262"/>
+    <line x1="480" y1="206" x2="480" y2="262"/>
+    <line x1="520" y1="206" x2="800" y2="262"/>
+  </g>
+  <text x="250" y="225" font-size="12" fill="#2E7DBC">5 GHz "WormHole-Core" backhaul, or an Ethernet cable if one can be run</text>
+  <!-- rooms -->
+  <g id="room1">
+    <rect x="30" y="262" width="300" height="240" rx="10" fill="#FFF" stroke="#E1E8EF" stroke-width="2"/>
+    <text x="48" y="286" font-size="13" font-weight="700" fill="#1B3A5C">ROOM 1 · 192.168.81.0/24</text>
+    <rect x="48" y="300" width="130" height="46" rx="8" fill="#2E7DBC"/>
+    <text x="113" y="320" text-anchor="middle" font-size="13" font-weight="700" fill="#FFF">TUNNEL 1</text>
+    <text x="113" y="336" text-anchor="middle" font-size="11" fill="#E5EBF1">.1 · WAN .80.21</text>
+    <rect x="196" y="300" width="118" height="46" rx="8" fill="#7CB342"/>
+    <text x="255" y="320" text-anchor="middle" font-size="13" font-weight="700" fill="#FFF">BURROW 1</text>
+    <text x="255" y="336" text-anchor="middle" font-size="11" fill="#F4F7FA">Pi 5 · .10 · :8080</text>
+    <line x1="178" y1="323" x2="196" y2="323" stroke="#1B3A5C" stroke-width="2"/>
+    <text x="48" y="372" font-size="12" fill="#6B7280">2.4 GHz "WormHole" → Bins (DHCP .100–.249)</text>
+    <g font-size="11" fill="#1B3A5C">
+      <rect x="48" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="75" y="401" text-anchor="middle">Bin</text>
+      <rect x="110" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="137" y="401" text-anchor="middle">Bin</text>
+      <rect x="172" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="199" y="401" text-anchor="middle">Bin</text>
+      <rect x="234" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="261" y="401" text-anchor="middle">×17</text>
+    </g>
+    <text x="48" y="440" font-size="12" fill="#222A35">Bins POST /ingest to .10 every 60 s</text>
+    <text x="48" y="458" font-size="12" fill="#222A35">Phones + projector: http://192.168.81.10:8080</text>
+    <text x="48" y="476" font-size="12" fill="#222A35">Tunnel forwards WAN :8080 → Burrow (peers reach it)</text>
+  </g>
+  <g transform="translate(320,0)">
+    <rect x="30" y="262" width="300" height="240" rx="10" fill="#FFF" stroke="#E1E8EF" stroke-width="2"/>
+    <text x="48" y="286" font-size="13" font-weight="700" fill="#1B3A5C">ROOM 2 · 192.168.82.0/24</text>
+    <rect x="48" y="300" width="130" height="46" rx="8" fill="#2E7DBC"/>
+    <text x="113" y="320" text-anchor="middle" font-size="13" font-weight="700" fill="#FFF">TUNNEL 2</text>
+    <text x="113" y="336" text-anchor="middle" font-size="11" fill="#E5EBF1">.1 · WAN .80.22</text>
+    <rect x="196" y="300" width="118" height="46" rx="8" fill="#7CB342"/>
+    <text x="255" y="320" text-anchor="middle" font-size="13" font-weight="700" fill="#FFF">BURROW 2</text>
+    <text x="255" y="336" text-anchor="middle" font-size="11" fill="#F4F7FA">Pi 5 · .10 · :8080</text>
+    <line x1="178" y1="323" x2="196" y2="323" stroke="#1B3A5C" stroke-width="2"/>
+    <text x="48" y="372" font-size="12" fill="#6B7280">same SSID + password as every room</text>
+    <g font-size="11" fill="#1B3A5C">
+      <rect x="48" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="75" y="401" text-anchor="middle">Bin</text>
+      <rect x="110" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="137" y="401" text-anchor="middle">Bin</text>
+      <rect x="172" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="199" y="401" text-anchor="middle">Bin</text>
+      <rect x="234" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="261" y="401" text-anchor="middle">×17</text>
+    </g>
+    <text x="48" y="440" font-size="12" fill="#222A35">Burrows mirror castings peer-to-peer</text>
+    <text x="48" y="458" font-size="12" fill="#222A35">via Tunnel WAN addresses .80.21/.22/.23</text>
+    <text x="48" y="476" font-size="12" fill="#222A35">(pull, hash-checked, every 2 min)</text>
+  </g>
+  <g transform="translate(640,0)">
+    <rect x="30" y="262" width="300" height="240" rx="10" fill="#FFF" stroke="#E1E8EF" stroke-width="2"/>
+    <text x="48" y="286" font-size="13" font-weight="700" fill="#1B3A5C">ROOM 3 · 192.168.83.0/24</text>
+    <rect x="48" y="300" width="130" height="46" rx="8" fill="#2E7DBC"/>
+    <text x="113" y="320" text-anchor="middle" font-size="13" font-weight="700" fill="#FFF">TUNNEL 3</text>
+    <text x="113" y="336" text-anchor="middle" font-size="11" fill="#E5EBF1">.1 · WAN .80.23</text>
+    <rect x="196" y="300" width="118" height="46" rx="8" fill="#7CB342"/>
+    <text x="255" y="320" text-anchor="middle" font-size="13" font-weight="700" fill="#FFF">BURROW 3</text>
+    <text x="255" y="336" text-anchor="middle" font-size="11" fill="#F4F7FA">Pi 5 · .10 · :8080</text>
+    <line x1="178" y1="323" x2="196" y2="323" stroke="#1B3A5C" stroke-width="2"/>
+    <text x="48" y="372" font-size="12" fill="#6B7280">a Bin that loses its Burrow tries the other two</text>
+    <g font-size="11" fill="#1B3A5C">
+      <rect x="48" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="75" y="401" text-anchor="middle">Bin</text>
+      <rect x="110" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="137" y="401" text-anchor="middle">Bin</text>
+      <rect x="172" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="199" y="401" text-anchor="middle">Bin</text>
+      <rect x="234" y="384" width="54" height="26" rx="5" fill="#FDF3E7" stroke="#E8762C"/><text x="261" y="401" text-anchor="middle">×16</text>
+    </g>
+    <text x="48" y="440" font-size="12" fill="#222A35">A Bin that can reach no Burrow opens its</text>
+    <text x="48" y="458" font-size="12" fill="#222A35">own hotspot and serves readings + graphs</text>
+    <text x="48" y="476" font-size="12" fill="#222A35">from RAM, exactly as the demos do today</text>
+  </g>
+</svg>
+</div>
+<p class="caption">Figure 1. Topology. Each room is its own routed subnet behind its Tunnel, so a room keeps full function if the hallway Portal is unplugged. The Portal is a double-NAT hop to the outside: nothing out there can initiate anything in here.</p>
+
+<h3>Why routed rooms instead of one flat network</h3>
+<p>The Opals could bridge all three rooms into one 192.168.8.x network (GL.iNet "Extender" mode). That is simpler on paper and fails worse in practice: the Portal becomes the single DHCP server and default gateway for 60 devices, so a kicked Portal power cord quietly breaks every room within a lease time. With each Tunnel in normal Router mode, a room is self-contained (its own DHCP, its own Wi-Fi, a fixed Burrow address) and the Portal only matters for cross-room mirroring and the internet, both of which are designed to tolerate absence. Cross-room traffic needs exactly one rule per Tunnel: forward WAN port 8080 to the Burrow.</p>
+
+<h3>Communication boundaries</h3>
+<div class="tablewrap"><table>
+<tr><th>Hop</th><th>Direction</th><th>Protocol</th><th>Who initiates</th><th>Survives</th></tr>
+<tr><td>Bin → Burrow</td><td>push, every 60 s</td><td>HTTP POST <code>/ingest</code>, JSON, ~400 B</td><td>Bin</td><td>loss of Portal, internet</td></tr>
+<tr><td>Burrow → Bin</td><td>pull, every 5 min</td><td>HTTP GET <code>/data</code> (health sweep of quiet Bins)</td><td>Burrow</td><td>same</td></tr>
+<tr><td>Phone/laptop → Bin</td><td>on demand</td><td>HTTP GET <code>/</code>, <code>/data</code>, <code>/history</code></td><td>human</td><td>loss of everything else (Bin hotspot)</td></tr>
+<tr><td>Burrow ↔ Burrow</td><td>pull, every 2 min</td><td>HTTP GET <code>/castings</code>, <code>/castings/&lt;id&gt;</code> via Tunnel WAN :8080</td><td>each Burrow</td><td>loss of internet</td></tr>
+<tr><td>Burrow → Surface</td><td>push, every 60 s when reachable</td><td>HTTPS to the Worker (snapshot, castings, rollups, verify)</td><td>Burrow</td><td>captive portals (after one login), port blocks (443 only)</td></tr>
+<tr><td>Burrow → Surface (live)</td><td>persistent, outbound</td><td><code>cloudflared</code> tunnel over 443, HTTP/2</td><td>Burrow</td><td>same; reconnects on its own</td></tr>
+<tr><td>Student at home → Surface</td><td>on demand</td><td>HTTPS, logged session</td><td>human</td><td>n/a (needs internet, by definition)</td></tr>
+</table></div>
+<p>Nothing inbound ever crosses a boundary from the outside in. The school network never carries Bin or Burrow traffic; it only carries the Portal's outbound HTTPS.</p>
+
+<h3>The life of a reading</h3>
+<div class="fig">
+<svg viewBox="0 0 960 300" width="960" height="300" role="img" aria-label="Data flow from Bin sensors through Burrow to castings, peers, and cloud">
+  <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1B3A5C"/></marker></defs>
+  <g font-size="12.5" fill="#222A35">
+    <rect x="20" y="40" width="150" height="70" rx="8" fill="#FDF3E7" stroke="#E8762C" stroke-width="2"/>
+    <text x="95" y="64" text-anchor="middle" font-weight="700" fill="#1B3A5C">BIN</text>
+    <text x="95" y="82" text-anchor="middle">sensors every 0.5 s</text>
+    <text x="95" y="98" text-anchor="middle">RAM ring: 24 h @ 5 min</text>
+    <line x1="170" y1="75" x2="230" y2="75" stroke="#1B3A5C" stroke-width="2" marker-end="url(#a2)"/>
+    <text x="200" y="66" text-anchor="middle" font-size="11" fill="#6B7280">POST /ingest</text>
+    <text x="200" y="92" text-anchor="middle" font-size="11" fill="#6B7280">every 60 s</text>
+
+    <rect x="230" y="20" width="250" height="110" rx="8" fill="#FFF" stroke="#7CB342" stroke-width="2"/>
+    <text x="355" y="42" text-anchor="middle" font-weight="700" fill="#1B3A5C">BURROW · ingest</text>
+    <text x="244" y="62">1. stamp ts + clock quality</text>
+    <text x="244" y="79">2. update RAM "now" table → /api/now, SSE</text>
+    <text x="244" y="96">3. append to open/&lt;room&gt;-current.jsonl</text>
+    <text x="244" y="113">4. fsync every 30 s (≤ 30 s at risk)</text>
+    <line x1="355" y1="130" x2="355" y2="170" stroke="#1B3A5C" stroke-width="2" marker-end="url(#a2)"/>
+    <text x="365" y="154" font-size="11" fill="#6B7280">at :00 :15 :30 :45</text>
+
+    <rect x="230" y="170" width="250" height="100" rx="8" fill="#FFF" stroke="#7CB342" stroke-width="2"/>
+    <text x="355" y="192" text-anchor="middle" font-weight="700" fill="#1B3A5C">BURROW · seal</text>
+    <text x="244" y="212">gzip → sha256 → write tmp → fsync → rename</text>
+    <text x="244" y="229">casting r1-20261016T1415.jsonl.gz</text>
+    <text x="244" y="246">+ .meta.json (rows, t0, t1, sha256, verified: null)</text>
+    <text x="244" y="263">+ 5-min and 1-h rollups → rollups.sqlite</text>
+
+    <line x1="480" y1="220" x2="560" y2="220" stroke="#1B3A5C" stroke-width="2" marker-end="url(#a2)"/>
+    <rect x="560" y="180" width="170" height="80" rx="8" fill="#F4F7FA" stroke="#7CB342" stroke-width="2"/>
+    <text x="645" y="204" text-anchor="middle" font-weight="700" fill="#1B3A5C">PEER BURROWS</text>
+    <text x="645" y="224" text-anchor="middle">pull missing castings</text>
+    <text x="645" y="241" text-anchor="middle">verify sha256, keep copy</text>
+
+    <line x1="480" y1="75" x2="560" y2="75" stroke="#1B3A5C" stroke-width="2" marker-end="url(#a2)"/>
+    <rect x="560" y="30" width="170" height="90" rx="8" fill="#F4F7FA" stroke="#2E7DBC" stroke-width="2"/>
+    <text x="645" y="54" text-anchor="middle" font-weight="700" fill="#1B3A5C">LOCAL VIEWERS</text>
+    <text x="645" y="74" text-anchor="middle">projector + phones in room</text>
+    <text x="645" y="91" text-anchor="middle">/api/now · /api/history</text>
+    <text x="645" y="108" text-anchor="middle">/live (SSE) · zero cloud cost</text>
+
+    <line x1="730" y1="75" x2="800" y2="75" stroke="#1B3A5C" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+    <line x1="730" y1="220" x2="800" y2="220" stroke="#1B3A5C" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+    <text x="765" y="66" text-anchor="middle" font-size="11" fill="#6B7280">if WAN</text>
+    <text x="765" y="211" text-anchor="middle" font-size="11" fill="#6B7280">if WAN</text>
+    <rect x="800" y="20" width="150" height="250" rx="8" fill="#E5EBF1" stroke="#1B3A5C" stroke-width="2"/>
+    <text x="875" y="44" text-anchor="middle" font-weight="700" fill="#1B3A5C">SURFACE</text>
+    <text x="875" y="68" text-anchor="middle">snapshot → D1</text>
+    <text x="875" y="84" text-anchor="middle">(1 row per Burrow)</text>
+    <text x="875" y="110" text-anchor="middle">live SSE via tunnel</text>
+    <text x="875" y="126" text-anchor="middle">(bypasses D1)</text>
+    <text x="875" y="160" text-anchor="middle">casting → R2 object</text>
+    <text x="875" y="176" text-anchor="middle">rollups → D1 rows</text>
+    <text x="875" y="192" text-anchor="middle">meta → D1 blocks</text>
+    <text x="875" y="222" text-anchor="middle" font-weight="700" fill="#2E7D32">verify: HEAD R2 +</text>
+    <text x="875" y="238" text-anchor="middle" font-weight="700" fill="#2E7D32">hash match → "verified"</text>
+    <text x="875" y="260" text-anchor="middle" font-size="11" fill="#6B7280">reclaim allowed after 7 d</text>
+  </g>
+</svg>
+</div>
+<p class="caption">Figure 2. A reading is in RAM on the Bin within half a second, on the Burrow's disk within 30 seconds, on two other Burrows within about 17 minutes, and in the cloud the first minute an uplink exists.</p>
+
+<h2 id="addressing">Addressing plan</h2>
+<hr class="rule">
+<p>Memorable on purpose: room <i>N</i> is <code>192.168.8N.0/24</code>, its router is <code>.1</code>, its Burrow is <code>.10</code>. These ranges avoid the GL.iNet default (192.168.8.x), iPhone hotspots (172.20.10.x), Android hotspots (192.168.43.x), and the common school 10.x ranges.</p>
+<div class="tablewrap"><table>
+<tr><th>Device</th><th>Mode</th><th>WAN / uplink</th><th>LAN</th><th>Wi-Fi</th><th>Extras</th></tr>
+<tr><td class="name">Portal</td><td>Router + Repeater</td><td>DHCP from school Wi-Fi or a saved hotspot (auto-reconnect list)</td><td>192.168.80.1/24, DHCP .100–.199, reservations .21/.22/.23 for the Tunnels</td><td>5 GHz <code>WormHole-Core</code> (backhaul only, hidden). 2.4 GHz off, or <code>WormHole</code> for the hallway.</td><td>Captive portal: log in once from a laptop behind it. Its WAN MAC is what the school authorises.</td></tr>
+<tr><td class="name">Tunnel N</td><td>Router + Repeater (or Router with Ethernet WAN)</td><td>joins <code>WormHole-Core</code> on 5 GHz; gets .80.2N by reservation</td><td>192.168.8N.1/24, DHCP .100–.249</td><td>2.4 GHz <code>WormHole</code> (Bins, phones). 5 GHz AP off so the radio is all backhaul.</td><td>Port forward WAN 8080 → 192.168.8N.10:8080. Optional 2222 → :22.</td></tr>
+<tr><td class="name">Burrow N</td><td>Pi 5, wired to Tunnel N LAN</td><td>static 192.168.8N.10, gateway .1</td><td colspan="2">serves :8080 (dashboards, API, ingest, peers, SSE)</td><td>Peers at 192.168.80.21/.22/.23:8080. Knows its own room from its address.</td></tr>
+<tr><td class="name">Bin</td><td>Pico 2 W, STA (+AP on failure)</td><td>DHCP from its Tunnel</td><td colspan="2">serves :80 on its DHCP address and, when it opens one, on its own hotspot at 192.168.4.1</td><td>Edge list: own-subnet <code>.10</code>, then 192.168.80.21/.22/.23. Overridable in <code>bin.json</code>.</td></tr>
+</table></div>
+<p>If an Ethernet cable can be run from the Portal to a Tunnel, plug it into the Tunnel's WAN port and the design is unchanged (same reservation by that port's MAC). Cable where you can, radio where you must.</p>
+
+<h2 id="storage">2 · Local storage &amp; resiliency</h2>
+<hr class="rule">
+<div class="two">
+<div class="card">
+  <h3>Flash safety on a 32/64 GB microSD</h3>
+  <ul>
+    <li><b>Read-only root.</b> Raspberry Pi OS Lite 64-bit with the stock overlay file system (<code>raspi-config</code> → Overlay FS). Root and the boot partition are mounted read-only; writes land in RAM and vanish at reboot. Pull the plug at any moment and the OS cannot be corrupted.</li>
+    <li><b>One small rw data partition</b> (<code>/data</code>, ext4, <code>data=journal,commit=5,noatime</code>) created from the space the root would otherwise expand into. Only the Burrow service writes there, and only in the patterns below.</li>
+    <li><b>No swap, logs in RAM</b> (journald volatile, 16 MB cap). The Pi 5 with 1–2 GB is comfortable: the whole stack is Python stdlib, cloudflared and chrony, about 150 MB.</li>
+    <li><b>Writes are append + fsync + rename.</b> The only hot file is the current 15-minute append log, synced every 30 s. Sealing writes a temp file, fsyncs it, and renames it into place; a torn trailing line in the open log is dropped at seal time. Daily write volume per Burrow is about 20 MB, which is noise to a microSD; what kills cards is journaling churn and half-written metadata, and both are designed out.</li>
+  </ul>
+</div>
+<div class="card">
+  <h3>Castings: immutable blocks</h3>
+  <ul>
+    <li>Every 15 minutes each Burrow seals its room's open log into one casting: <code>castings/r1/2026-10-16/r1-20261016T1415.jsonl.gz</code> plus a small sidecar <code>.meta.json</code> (rows, time range, sha256, size, replicas, cloud verification).</li>
+    <li>The gz is never rewritten. Only the sidecar changes (verification, replica list), and it is rewritten atomically.</li>
+    <li>Rows carry everything the Bin sent (sensors, part health, Wi-Fi mode, RSSI, uptime), plus the Burrow's timestamp and a clock-quality flag. Science data stays raw.</li>
+    <li>Derived indexes (<code>rollups.sqlite</code>: 5-minute and hourly min/avg/max per Bin per metric) are rebuildable from castings and treated as disposable. Corrupt index → rebuild on boot.</li>
+  </ul>
+</div>
+</div>
+
+<h3>Casting lifecycle</h3>
+<div class="fig">
+<svg viewBox="0 0 960 170" width="960" height="170" role="img" aria-label="State machine: open log, sealed, mirrored, uploaded, verified, reclaimable">
+  <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1B3A5C"/></marker></defs>
+  <g font-size="12.5" fill="#222A35">
+    <rect x="15" y="40" width="130" height="60" rx="30" fill="#FDF3E7" stroke="#E8762C" stroke-width="2"/>
+    <text x="80" y="65" text-anchor="middle" font-weight="700">OPEN</text><text x="80" y="83" text-anchor="middle" font-size="11">append log, fsync 30 s</text>
+    <line x1="145" y1="70" x2="185" y2="70" stroke="#1B3A5C" stroke-width="2" marker-end="url(#a3)"/>
+    <text x="165" y="60" text-anchor="middle" font-size="10.5" fill="#6B7280">15 min</text>
+    <rect x="185" y="40" width="130" height="60" rx="30" fill="#FFF" stroke="#7CB342" stroke-width="2"/>
+    <text x="250" y="65" text-anchor="middle" font-weight="700">SEALED</text><text x="250" y="83" text-anchor="middle" font-size="11">gz + sha256, immutable</text>
+    <line x1="315" y1="70" x2="355" y2="70" stroke="#1B3A5C" stroke-width="2" marker-end="url(#a3)"/>
+    <text x="335" y="60" text-anchor="middle" font-size="10.5" fill="#6B7280">≤ 2 min</text>
+    <rect x="355" y="40" width="130" height="60" rx="30" fill="#FFF" stroke="#7CB342" stroke-width="2"/>
+    <text x="420" y="65" text-anchor="middle" font-weight="700">MIRRORED</text><text x="420" y="83" text-anchor="middle" font-size="11">on 3 Burrows</text>
+    <line x1="485" y1="70" x2="525" y2="70" stroke="#1B3A5C" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a3)"/>
+    <text x="505" y="60" text-anchor="middle" font-size="10.5" fill="#6B7280">any WAN</text>
+    <rect x="525" y="40" width="130" height="60" rx="30" fill="#FFF" stroke="#2E7DBC" stroke-width="2"/>
+    <text x="590" y="65" text-anchor="middle" font-weight="700">UPLOADED</text><text x="590" y="83" text-anchor="middle" font-size="11">R2 PUT acknowledged</text>
+    <line x1="655" y1="70" x2="695" y2="70" stroke="#1B3A5C" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a3)"/>
+    <text x="675" y="60" text-anchor="middle" font-size="10.5" fill="#6B7280">next pass</text>
+    <rect x="695" y="40" width="130" height="60" rx="30" fill="#E5EBF1" stroke="#1B3A5C" stroke-width="2"/>
+    <text x="760" y="65" text-anchor="middle" font-weight="700">VERIFIED</text><text x="760" y="83" text-anchor="middle" font-size="11">read-back hash matches</text>
+    <line x1="825" y1="70" x2="865" y2="70" stroke="#1B3A5C" stroke-width="2" marker-end="url(#a3)"/>
+    <text x="845" y="60" text-anchor="middle" font-size="10.5" fill="#6B7280">+ 7 days</text>
+    <rect x="865" y="40" width="85" height="60" rx="30" fill="#F4F7FA" stroke="#6B7280" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="907" y="65" text-anchor="middle" font-weight="700" fill="#6B7280">RECLAIM</text><text x="907" y="83" text-anchor="middle" font-size="11" fill="#6B7280">nightly</text>
+    <text x="480" y="135" text-anchor="middle" font-size="12.5" fill="#1B3A5C">Reclaim rule, evaluated per casting per Burrow: <tspan font-weight="700">age ≥ 7 days AND verified_at is set</tspan>. Nothing else ever deletes a casting. Disk pressure only raises an alarm.</text>
+    <text x="480" y="155" text-anchor="middle" font-size="12" fill="#6B7280">Without any cloud at all, 3 rooms × 288 castings/day × ~20 KB ≈ 18 MB/day per Burrow: a 25 GB data partition holds about 3.8 years.</text>
+  </g>
+</svg>
+</div>
+
+<h3>Peer replication</h3>
+<ul>
+  <li>Each Burrow publishes its casting index at <code>GET /castings?since=&lt;ts&gt;</code> and the files at <code>GET /castings/&lt;id&gt;</code>. Every 2 minutes each Burrow asks the other two for anything it lacks, downloads it, checks the sha256 against the sidecar, and stores it under the same path. Pull-based, idempotent, no coordination, no leader.</li>
+  <li>Any Burrow uploads any casting it holds, so Room 1's data reaches the cloud through Room 3's Burrow if Room 1's Pi died first. The cloud deduplicates by casting id and hash.</li>
+  <li>Verification status spreads through the cloud, not through peers: on every upload pass a Burrow asks "which of these ids have you verified?" for every casting it holds, including mirrors. All three copies therefore converge on the same reclaim decision independently.</li>
+  <li>A replaced Burrow (new card, same address) is empty for about two minutes, then has everything its peers have. Its own room's open log of the last ≤ 15 minutes is the only thing a single-Burrow total failure can lose, and the Bins' 24-hour RAM rings still hold those readings for anyone who looks.</li>
+</ul>
+
+<h3>Power loss</h3>
+<ul>
+  <li>Root is read-only: no fsck roulette, no half-written package database. The Pi comes back in about 25 seconds.</li>
+  <li>The open log is replayed; a torn final line is discarded; the 15-minute window continues under the same casting id.</li>
+  <li>The Pi 5 has a real-time clock but no battery by default: after a power cut it boots with the last saved time (fake-hwclock), then chrony resyncs from the other Burrows (they peer with each other) and from the internet when there is one. Rows carry <code>clk</code> = <code>ntp</code>, <code>peer</code>, or <code>free</code> so a later reader knows how much to trust a timestamp. The $5 RTC battery removes this whole paragraph; see <a href="#notbuying">below</a>.</li>
+</ul>
+
+<h2 id="model">3 · Cloud &amp; edge data model</h2>
+<hr class="rule">
+<p>Two shapes for two questions. "What is every bin doing right now?" is answered from a tiny snapshot that is cached and costs nothing to read. "What did Dirt Vader's soil do last month?" is answered from pre-aggregated rollups in D1. The raw full-resolution castings sit in R2 for science export and never serve the hot path.</p>
+<div class="two">
+<div class="card">
+  <h3>Current state (instant view)</h3>
+  <ul>
+    <li><b>Edge:</b> an in-memory table, one entry per Bin, rewritten on every ingest. Served as <code>/api/now</code> (about 15 KB for 50 Bins, 3 KB gzipped).</li>
+    <li><b>Cloud:</b> D1 table <code>edges</code>, one row per Burrow holding its snapshot JSON, upserted every 60 s (3 writes/min fleet-wide). The Worker merges the three rows for <code>/api/now</code> and caches the result for 10 s at Cloudflare's edge, so 200 students polling costs ~6 D1 reads a minute, not 600.</li>
+    <li>Each Bin entry carries <code>seen</code> (last ingest) and each Burrow <code>seen</code> (last snapshot); the page greys tiles and banners rooms as they go stale.</li>
+  </ul>
+</div>
+<div class="card">
+  <h3>History (deep view)</h3>
+  <ul>
+    <li><b>Edge:</b> <code>rollups.sqlite</code>, one row per Bin per 5-minute bucket (and per hour), each a small JSON of <code>{metric: [min, avg, max, n]}</code>. Written once per bucket, 50 rows every 5 minutes. Rebuildable from castings.</li>
+    <li><b>Cloud:</b> the same rows in D1 <code>rollups</code>, uploaded with each casting. 14.4 k rows/day at 5-minute, 1.2 k/day hourly: about 1.5 MB a day, 0.5 GB a school year, against a 5 GB free limit.</li>
+    <li><b>Query:</b> <code>/api/history?bin=&lt;id&gt;&amp;from=&amp;to=&amp;step=5m|1h</code> picks the step from the span (≤ 3 days → 5m, else 1h). A week for one bin is 2,016 rows, under 100 KB.</li>
+    <li><b>Raw:</b> R2 objects <code>castings/r1/2026/10/16/r1-20261016T1415.jsonl.gz</code>; an admin export endpoint lists and streams them. Not touched by dashboards.</li>
+  </ul>
+</div>
+</div>
+
+<h3>D1 schema (summary)</h3>
+<div class="tablewrap"><table>
+<tr><th>Table</th><th>Key</th><th>Purpose</th><th>Writes/day (est.)</th></tr>
+<tr><td><code>edges</code></td><td>edge_id</td><td>last snapshot JSON per Burrow, last_seen, version</td><td>4,320</td></tr>
+<tr><td><code>bins</code></td><td>uid</td><td>team, period, bin number, room, first/last seen (upsert on change only)</td><td>&lt; 100</td></tr>
+<tr><td><code>castings</code></td><td>id</td><td>room, t0, t1, rows, sha256, size, r2_key, received_at, verified_at, uploaded_by</td><td>288</td></tr>
+<tr><td><code>rollups</code></td><td>(uid, step, ts)</td><td>JSON of per-metric [min, avg, max, n]</td><td>15,600</td></tr>
+<tr><td><code>teams</code></td><td>team_id</td><td>display name, period, bin, passphrase hash, role</td><td>~0</td></tr>
+<tr><td><code>sessions</code></td><td>token_hash</td><td>team_id, first name, created, last_seen (bumped at most every 5 min)</td><td>~5,000</td></tr>
+<tr><td><code>visits</code></td><td>rowid</td><td>ts, team_id, first name, path, hashed IP: one row per page load, not per poll</td><td>~4,000</td></tr>
+</table></div>
+<p>Total about 30 k row writes a day on a 100 k/day free allowance, with the biggest line item (rollups) tunable by moving to 10-minute buckets if it ever matters.</p>
+
+<h2 id="live">4 · Live streaming &amp; ingress</h2>
+<hr class="rule">
+<p>The school network is treated as something we can only send HTTPS out of, and only after a human has clicked through a captive portal once from behind the Portal. Both uplink paths below are outbound-only and use port 443, so they work anywhere a web browser works.</p>
+<div class="two">
+<div class="card">
+  <h3>Buffered path: the Worker</h3>
+  <p>Each Burrow talks to <code>whs.makerlabkids.com/v1/edge/*</code> with its own bearer token. Snapshot every minute; castings, metas and rollups as they seal; a verify query every pass. All idempotent, all retried forever with backoff. When the Portal catches a hotspot for ninety seconds, whatever fits in ninety seconds goes up; the rest waits. That is the "drive-by sync".</p>
+</div>
+<div class="card">
+  <h3>Live path: the tunnel</h3>
+  <p>Each Burrow runs <code>cloudflared</code> (HTTP/2 on 443 only) exposing its <code>/live</code> SSE endpoint as <code>burrow1.whs.makerlabkids.com</code> and so on. The Worker proxies <code>/live/&lt;room&gt;</code> to that hostname with a shared secret header the Burrow insists on. A browser at home receives each ingest as a server-sent event within a second of the Bin posting it, and D1 is never touched. If the tunnel is down the page falls back to polling <code>/api/now</code>.</p>
+</div>
+</div>
+<p>Security posture: the Worker is the only public face; tunnel hostnames reject anything without the secret header; edge tokens are per Burrow and revocable; nothing listens on the school network. Inside each room the dashboards are open on purpose (a projector cannot log in), reachable only by someone standing on that Wi-Fi.</p>
+
+<h2 id="failure">5 · Failure &amp; redundancy mechanics</h2>
+<hr class="rule">
+<div class="tablewrap"><table class="fail">
+<tr><th>What breaks</th><th>What happens</th><th>Who notices and how</th><th>Recovery</th></tr>
+<tr><td>School Wi-Fi gone / blocked</td><td>Portal loses WAN. Everything local continues. Burrows queue castings.</td><td>Cloud status page shows "last heard" ageing; Burrow dashboards show a WAN badge.</td><td>Portal's saved-network list reconnects to school Wi-Fi or any listed hotspot in range, automatically. Burrows resume on the first successful HEAD.</td></tr>
+<tr><td>Captive portal re-arms</td><td>Portal is "connected" but blind. Same as above.</td><td>Burrow's uplink check sees a non-Worker reply and reports "captive".</td><td>Teacher opens any page from a laptop on <code>WormHole</code>; the login applies to the Portal's MAC for everyone behind it.</td></tr>
+<tr><td>Portal unplugged</td><td>Rooms keep ingesting, displaying, and storing. Cross-room mirroring and uplink pause.</td><td>Burrow dashboards: "peers unreachable". Local stays green.</td><td>Plug it back in. Mirrors catch up within 2 minutes.</td></tr>
+<tr><td>Tunnel N unplugged</td><td>Room N's Bins lose Wi-Fi. After 60 s each opens its own hotspot and keeps its 24-hour RAM graph; a phone can inspect any bin directly. The Burrow sits idle.</td><td>Bins' OLEDs show hotspot mode; Burrow N tiles grey out on peers and the cloud.</td><td>Power returns; Bins rescan every 2 minutes, rejoin, and resume posting (ring data is not back-filled, by design; see note).</td></tr>
+<tr><td>Burrow N dies (card, PSU, theft)</td><td>Its Bins fail over to Burrow N+1 then N+2 through the Tunnel WAN forwards within ~2 minutes. Sealed castings already live on the other two Burrows and reach the cloud through them.</td><td>Peers and cloud: "Burrow N silent". Bins report which edge they are using.</td><td>Image a new card (20 min), same address. It pulls all castings from peers and resumes. Loss bounded to the un-sealed ≤ 15 minutes of that room.</td></tr>
+<tr><td>Power cut to a room</td><td>Everything in it stops. Nothing is corrupted (read-only root, atomic castings).</td><td>Everyone.</td><td>Bins boot in 5 s, Burrow in 25 s, Tunnel in 60 s. Bins wait for the Tunnel, join, push. Burrow replays its open log.</td></tr>
+<tr><td>A Bin cannot reach any Burrow</td><td>It stays joined to Wi-Fi (if that works) and also opens its hotspot; it keeps posting attempts every 60 s round-robin over the edge list.</td><td>Its OLED shows "edge: none"; the Burrow's 5-minute sweep finds it via <code>/data</code> if it is on the network and ingests from the pull side.</td><td>Automatic on next successful POST.</td></tr>
+<tr><td>Bin Wi-Fi flaps</td><td>State machine: joined → lost (wait 60 s) → hotspot + rescan every 120 s → rejoin → close hotspot after 10 stable minutes. Sensors and page never stop.</td><td>OLED mode line, LED locator blink.</td><td>Automatic.</td></tr>
+<tr><td>Clock wrong after power loss</td><td>Rows stamped with <code>clk=free</code> until chrony agrees with a peer or NTP.</td><td>Dashboard shows the clock badge; cloud flags the range.</td><td>Automatic; or the RTC battery.</td></tr>
+<tr><td>Cloud quota or outage</td><td>Uploads fail; castings keep accumulating locally (years of room).</td><td>Burrow dashboard: "cloud: unverified N castings".</td><td>Nothing is ever reclaimed until verification resumes.</td></tr>
+</table></div>
+<p><b>Note on back-fill.</b> A Bin that was offline for an hour holds that hour in its RAM ring. The design deliberately does not have Bins upload rings on reconnect: the Pico has no clock, so the rows could only be timestamped relative to "now", and merging them would make castings mutable. Instead the Burrow's sweep records the gap, and anyone who needs those readings can see them on the Bin's own graph for 24 hours. If back-fill ever matters, the hook is there: the Bin already serves <code>/history</code>.</p>
+
+<h2 id="access">Access control &amp; viewer visibility</h2>
+<hr class="rule">
+<p>Students have no school Google accounts to lean on, Cloudflare Access stops at 50 seats, and "one shared password per class" is three passwords for 52 groups. So the Surface rolls its own, kept deliberately small:</p>
+<ul>
+  <li><b>Team passphrases.</b> Each of the ~52 teams gets a three-word passphrase (worm-themed word lists, printed on the team's bin card). Logging in means: pick your team name from the list, type the passphrase, type your first name. The Worker issues a signed, HttpOnly cookie good for the semester.</li>
+  <li><b>Everything is attributed.</b> Each page load writes one <code>visits</code> row (team, first name, path, hashed IP). API polls do not; the session's <code>last_seen</code> is bumped at most every five minutes. The admin page shows who is looking right now, views per team per week, and a leaderboard the kids will care about.</li>
+  <li><b>Teachers and you</b> have individual accounts with real passwords and an <code>admin</code> role: team management, passphrase resets, visit logs, raw casting export, Burrow health.</li>
+  <li><b>Rate limits and no open endpoints.</b> Every viewer API requires the cookie; login is rate-limited per IP by the Worker; Turnstile can be switched on at the login form if a bot ever finds it.</li>
+  <li><b>In the room, no login.</b> The Burrow dashboards (projector, phones on <code>WormHole</code>) are open; physical presence is the credential, and they never touch the cloud.</li>
+</ul>
+
+<h2 id="bins">What changes on the Picos</h2>
+<hr class="rule">
+<p>Nothing is removed. The worm-bin capstone keeps its sensors, hot-plug, POST codes, OLED pages, servos and relay, the calibration engine, and the dashboard. Four things are added to <code>picolab.WebApp</code>, all opt-in through files the flash script writes:</p>
+<div class="grid3">
+  <div class="card"><h3>Wi-Fi state machine</h3><p>The join ladder (<code>wormmaster&lt;n&gt;</code> → <code>wormmaster</code> → <code>WormHole</code>) is kept, but it now runs <i>continuously</i> instead of once at boot: lost link → 60 s grace → hotspot opens while rescans continue every 2 min → rejoin → hotspot closes after 10 stable minutes. Station and hotspot can be up at the same time.</p></div>
+  <div class="card"><h3>Push loop</h3><p>Every 60 s: POST the same dict <code>/data</code> serves to the first reachable edge in the list (own-subnet <code>.10</code>, then the three Tunnel WAN addresses). Non-blocking, 3 s timeout, round-robin on failure. The reply carries the Burrow's time, which the Bin uses to label its graph axis.</p></div>
+  <div class="card"><h3>RAM history ring</h3><p>Every 5 minutes the current readings are appended to a 288-slot ring (24 h) of the numeric fields, about 20 KB. Served at <code>/history</code>; the dashboard draws sparklines from it. This is the "walk up to a dead-network bin and still see graphs" requirement.</p></div>
+  <div class="card"><h3>Identity file</h3><p><code>bin.json</code>: <code>{"team": "Dirt Vader", "period": 3, "bin": 7, "room": 1}</code>, written by the flash script from the roster; <code>name.txt</code> gets the team name so it is the hotspot SSID and the wall label too. The roster is the demo page's name pool, assigned once per board uid and committed.</p></div>
+</div>
+<p>The flash script is a loop you run at a desk: plug in a board, it waits for BOOTSEL mode, copies the firmware <code>.uf2</code>, waits for MicroPython, pushes the project files, writes the identity files from the next free roster line, records the uid, prints "Dirt Vader ready", and waits for the next board. Fifty boards is about an hour.</p>
+
+<h2 id="budget">Free-tier budget</h2>
+<hr class="rule">
+<div class="tablewrap"><table class="budget">
+<tr><th>Resource</th><th>Free allowance</th><th>Design usage</th><th>Headroom</th></tr>
+<tr><td>Workers requests</td><td>100,000 / day</td><td>~5k edge + ~25k viewers (cached) + ~200 live streams</td><td>3×</td></tr>
+<tr><td>Workers CPU</td><td>10 ms / request</td><td>JSON merge, HMAC check, D1 batch: 1–3 ms</td><td>fine</td></tr>
+<tr><td>D1 rows written</td><td>100,000 / day</td><td>~30,000</td><td>3×</td></tr>
+<tr><td>D1 rows read</td><td>5,000,000 / day</td><td>~50,000 (cache absorbs polling)</td><td>100×</td></tr>
+<tr><td>D1 storage</td><td>5 GB</td><td>~0.5 GB / school year</td><td>years</td></tr>
+<tr><td>R2 storage</td><td>10 GB</td><td>~6 MB / day → ~1.1 GB / school year</td><td>years</td></tr>
+<tr><td>R2 class A ops (writes)</td><td>1,000,000 / month</td><td>~9,000</td><td>100×</td></tr>
+<tr><td>R2 class B ops (reads)</td><td>10,000,000 / month</td><td>~9,000 HEADs for verification + exports</td><td>large</td></tr>
+<tr><td>Workers KV</td><td>1,000 writes / day</td><td><b>not used</b> (would be exceeded by snapshots)</td><td>n/a</td></tr>
+<tr><td>Durable Objects</td><td>paid plan only</td><td><b>not used</b>; live streaming goes through the tunnel instead</td><td>n/a</td></tr>
+<tr><td>Cloudflare Tunnel</td><td>free, unlimited tunnels</td><td>3 tunnels, one per Burrow</td><td>fine</td></tr>
+<tr><td>Static assets</td><td>free with Workers</td><td>dashboard HTML/JS/CSS</td><td>fine</td></tr>
+</table></div>
+
+<h2 id="notbuying">Hardware you are not buying (and the $5 you might)</h2>
+<hr class="rule">
+<ul>
+  <li><span class="no">No SSDs or NVMe hats.</span> The read-only root plus atomic castings make the microSD safe; the volume is tiny.</li>
+  <li><span class="no">No UPS.</span> Power loss is designed to be boring.</li>
+  <li><span class="no">No extra routers.</span> Four Opals, four roles.</li>
+  <li><span class="ok">Maybe: three RTC batteries</span> (the official Raspberry Pi 5 battery, about $5 each). They let the Pi keep correct time through weeks of no internet and power cuts, which turns the clock-quality machinery into a safety net instead of a daily event. Optional; the design works without them.</li>
+  <li><span class="ok">Maybe: one Ethernet cable</span> per Tunnel that can be cabled to the Portal. Radio backhaul is the baseline; copper is just better.</li>
+</ul>
+
+<h2 id="build">Build order</h2>
+<hr class="rule">
+<p>Each guide below stands alone and ends with a check you can see pass. Do them in this order; every step is tested before the next depends on it.</p>
+<ol>
+  <li><a href="routers.html">Routers</a>: Portal first (uplink list, core LAN, reservations), then each Tunnel (LAN, backhaul, port forward). Check: a laptop on <code>WormHole</code> in room 2 can ping 192.168.80.1 and open the internet.</li>
+  <li><a href="burrow.html">Pi 5 edge</a>: image, data partition, overlay root, install the Burrow service, chrony peers, cloudflared (dormant until the cloud exists). Check: <code>http://192.168.81.10:8080</code> shows an empty dashboard and <code>/health</code> is green.</li>
+  <li><a href="bins.html">Pico fleet</a>: the roster, the flash loop, one board end to end. Check: the board appears on the Burrow dashboard named for its team within 60 s, and its own page shows a graph after 10 minutes.</li>
+  <li><a href="cloud.html">Cloudflare</a>: DNS, Worker, D1, R2, secrets, tunnels, the first teacher account. Check: <code>whs.makerlabkids.com</code> shows the same bin, and a casting flips to verified.</li>
+  <li><a href="dashboards.html">Dashboards</a>: the status wall, the deep view, the live view, the login and admin pages, the Bin's own page. Check: a phone at home sees a live tick.</li>
+  <li><a href="runbook.html">Runbook</a>: first-day checklist, the failure table above as "do this when", and the recovery procedures.</li>
+</ol>
+
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share. · This page is unlisted.</footer>
+</body>
+</html>
