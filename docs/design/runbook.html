@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Runbook · Telemetry Build</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../guide.css">
+<link rel="stylesheet" href="build.css">
+<style>
+  .sym td:first-child { font-weight: 700; color: var(--navy); }
+  .day li { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="../index.html">🪱 Wormhole</a>
+  <div class="links">
+    <a class="nl" href="../index.html">Home</a>
+    <a class="nl" href="../start.html">Start Here</a>
+    <a class="nl" href="../sessions.html">Sessions</a>
+    <a class="nl" href="../stations.html">Sensors</a>
+    <a class="nl" href="../research.html">Ideas</a>
+    <a class="nl" href="../demos/mission-control.html">Demos</a>
+    <a class="nl" href="../glossary.html">Glossary</a>
+    <a class="nl" href="../cheatsheet.html">Code</a>
+    <a class="nl" href="../reset.html">Fix a Board</a><a class="nl" href="../tools.html">Board Tools</a>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<div class="subnav">
+  <a href="index.html">Design</a>
+  <a href="routers.html">Routers</a>
+  <a href="burrow.html">Pi 5 edge</a>
+  <a href="bins.html">Pico fleet</a>
+  <a href="cloud.html">Cloudflare</a>
+  <a href="dashboards.html">Dashboards</a>
+  <a class="on" href="runbook.html">Runbook</a>
+</div>
+
+<h1>Runbook: install day, every day, and when something is off</h1>
+<hr class="rule">
+<p class="lead">The order to do things in, what "working" looks like at each step, and the five-minute fixes for everything the <a href="index.html#failure">failure table</a> predicts. Written for the person who set it all up; the teacher-facing part is the one short list in the middle.</p>
+
+<h2 id="order">Install day, in order</h2>
+<hr class="rule g">
+<p>Each step ends with a check that only passes if the previous steps are right. Do not skip a check to save five minutes; it costs an hour later.</p>
+<ol class="steps">
+  <li><b>Routers at home first</b> (<a href="routers.html">Routers</a>). Configure all four on your kitchen table with your own Wi-Fi as the Portal's upstream. Check: a laptop on <code>WormHole</code> in "room 2" reaches the internet, <code>http://192.168.80.1</code>, and <code>http://192.168.82.1</code>.</li>
+  <li><b>Pis at home too</b> (<a href="burrow.html">Pi 5 edge</a>). Image, cmdline edit, setup script, one at a time, each wired to its Tunnel. Check: <code>curl http://192.168.8N.10:8080/health</code> for all three, and <code>/api/status</code> on any one shows the other two under <code>peers</code> with <code>ok: true</code>.</li>
+  <li><b>Cloud</b> (<a href="cloud.html">Cloudflare</a>). Deploy, bootstrap, tunnels, tokens on the Pis. Check: all three tunnels Healthy; a <code>simbins.py --once</code> against burrow1 shows up at whs.makerlabkids.com within a minute; 20 minutes later Admin → Castings shows the casting verified.</li>
+  <li><b>Lock the Pis</b> (<code>burrow-lock.sh</code>). Check: <code>findmnt /</code> says overlay; pull a Pi's power, plug it back, it is serving again within 30 s and its castings are intact.</li>
+  <li><b>Flash the fleet</b> (<a href="bins.html">Pico fleet</a>). Check: every board shows its team name on the OLED and a tile on the Burrow dashboard; the roster has 50 uids; commit it.</li>
+  <li><b>Teams on the Surface.</b> Import the roster CSV, print the cards. Check: log in as one team on your phone over mobile data; the status wall loads in under a second and the Live page ticks.</li>
+  <li><b>Move in.</b> Portal in the hallway, Tunnels and Burrows in the rooms, log the Portal into the school's captive portal once from a laptop on <code>WormHole</code>. Check: Tunnel signal to the Portal better than −70 dBm on each; <code>/api/status</code> → <code>cloud.reachable: true</code> on every Burrow.</li>
+  <li><b>Hotspot rehearsal.</b> Turn the school uplink off (unplug the Portal's upstream by forgetting it for a moment, or just stand far away), walk a phone with the <code>wormsurface</code> hotspot to the hallway. Within two minutes <code>cloud.reachable</code> flips back to true. Forget nothing: that is the drive-by sync.</li>
+</ol>
+
+<h2 id="teacher">For the teacher: the whole thing on one card</h2>
+<hr class="rule">
+<div class="card">
+  <ul class="day">
+    <li><b>Normal day:</b> nothing to do. The wall display is <code>http://192.168.8N.10:8080/</code> (N = your room) on the projector; it needs no login. Students at home use <b>whs.makerlabkids.com</b> with their team card.</li>
+    <li><b>A tile is grey:</b> that bin's board is not reporting. Check its OLED. If the header shows the team name as a hotspot, it lost Wi-Fi; it will come back by itself, and you can join its hotspot from a phone and open <code>192.168.4.1</code> to see it meanwhile. If the screen is dark, check the USB power.</li>
+    <li><b>Every tile in the room is grey:</b> the room's router (the small white box) lost power, or the Pi did. Check both have lights. Things recover on their own when power returns.</li>
+    <li><b>The internet badge says "captive":</b> the school Wi-Fi wants a login again. On any laptop or phone connected to <code>WormHole</code>, open a web page, log in to the school portal. Done for everyone.</li>
+    <li><b>No internet for days:</b> fine. Everything local keeps working and nothing is lost. If someone is passing by the hallway, their <code>wormsurface</code> hotspot uploads the backlog.</li>
+    <li><b>A student forgot the team passphrase:</b> an admin resets it on the website (Admin → Teams → Reset).</li>
+    <li><b>Never:</b> unplug the Pi to "fix" something, or factory reset a router. Ask first.</li>
+  </ul>
+</div>
+
+<h2 id="symptoms">Symptom → cause → fix</h2>
+<hr class="rule o">
+<div class="tablewrap"><table class="sym">
+<tr><th>Symptom</th><th>Likely cause</th><th>Confirm</th><th>Fix</th></tr>
+<tr><td>Burrow dashboard: "cloud: captive"</td><td>school captive portal re-armed</td><td>a laptop on <code>WormHole</code> gets a login page when opening any site</td><td>log in once; the Portal's MAC is authorised for everyone</td></tr>
+<tr><td>"cloud: unreachable", peers ok</td><td>Portal has no upstream</td><td>Portal admin → INTERNET shows no connection</td><td>wait for the saved networks to come back, or bring a <code>wormsurface</code> hotspot to the hallway</td></tr>
+<tr><td>"peers unreachable" on all Burrows</td><td>Portal off, or Tunnel backhaul down</td><td>Tunnel admin → INTERNET → Repeater status</td><td>power the Portal; on the Tunnel toggle the repeater; check 5 GHz channel is fixed and non-DFS</td></tr>
+<tr><td>One Burrow's peers see it as down, its own room is fine</td><td>its Tunnel lost the backhaul or the port forward is missing</td><td>from another room: <code>curl http://192.168.80.2N:8080/health</code></td><td>Tunnel: NETWORK → Port Forwarding has TCP 8080 → .8N.10; INTERNET → repeater joined</td></tr>
+<tr><td>Bins in one room all show "no Burrow reachable" yet are joined</td><td>Burrow service down or Pi off</td><td><code>ssh worm@192.168.8N.10</code>, <code>systemctl status burrow</code></td><td><code>sudo systemctl restart burrow</code>; if the Pi is dead, swap the card to a spare Pi</td></tr>
+<tr><td>Bins fall back to another room's Burrow</td><td>same as above; it is working as designed</td><td>tiles carry the edge name</td><td>fix the home Burrow; bins return on their own within 2 min</td></tr>
+<tr><td>A Bin's OLED shows its team hotspot though Wi-Fi is up</td><td>wrong password or SSID on that board, or it is out of range</td><td>join its hotspot, open <code>192.168.4.1</code>, status line shows the SSID it is looking for</td><td>re-flash that one board (<code>flash.py --once</code>), or move it closer</td></tr>
+<tr><td>Clock badge "free" for a long time</td><td>no internet and the Burrows disagree, or chrony not peering</td><td><code>chronyc sources</code> shows no <code>^*</code> or <code>=*</code> line</td><td>check peers reachable (above); once one has internet all follow; add the RTC battery</td></tr>
+<tr><td>Timestamps jump by hours after a power cut</td><td>RTC without battery booted stale, then chrony stepped</td><td>rows just after boot carry <code>clk: free</code></td><td>RTC battery; the data is still correct relative to itself and flagged</td></tr>
+<tr><td>Data partition above 85 % (orange)</td><td>cloud unverified for weeks</td><td><code>/api/status</code> → <code>store.unverified</code></td><td>get any uplink for a few hours; reclaim runs nightly after verification</td></tr>
+<tr><td>Dashboard at whs.makerlabkids.com shows "last heard 3 days ago"</td><td>no uplink</td><td>Burrow <code>cloud.last_ok</code></td><td>hotspot drive-by; nothing is lost meanwhile</td></tr>
+<tr><td>Students cannot log in</td><td>passphrase typo or reset; or the team was disabled</td><td>Admin → Teams</td><td>reset the passphrase, print a new card</td></tr>
+<tr><td>Workers quota warning e-mail</td><td>something polling too fast</td><td>Cloudflare → Workers → Metrics by path</td><td>the status page polls every 15 s per viewer; ask the kids to use the room display in class</td></tr>
+</table></div>
+
+<h2 id="procedures">Procedures</h2>
+<hr class="rule">
+<h3>Update the Burrow code on a Pi</h3>
+<pre><code>ssh worm@192.168.81.10
+sudo /opt/burrow/burrow-unlock.sh          # reboots writable
+ssh worm@192.168.81.10
+cd ~/wormhole &amp;&amp; git pull &amp;&amp; sudo edge/burrow/install.sh
+sudo /opt/burrow/burrow-lock.sh            # reboots read-only</code></pre>
+<h3>Replace a dead Pi or card</h3>
+<p>Image a new card per the <a href="burrow.html">Pi 5 page</a> with the same room number. Put the cloud token and live key back (from your secrets note). It pulls the mirrored history from the other two Burrows within minutes. Lock it.</p>
+<h3>Re-flash the whole fleet with new firmware</h3>
+<p>Bump <code>VERSION</code> in <code>lib/picolab.py</code>, run <code>tools/picotest/run.sh</code>, test one board, then <code>tools/fleet/flash.py</code> and plug boards in one by one. Teams are kept by uid.</p>
+<h3>Rotate a leaked passphrase or token</h3>
+<ul>
+  <li>Team passphrase: Admin → Teams → Reset. Takes effect immediately; that team's sessions end.</li>
+  <li>A Burrow token: run <code>tools/gen-secrets.sh</code> for fresh values, <code>npx wrangler secret put EDGE_TOKENS</code> with the new map, write the new token on the Pi (unlock/lock).</li>
+  <li>Live key: new <code>LIVE_KEY</code> secret plus <code>/etc/burrow/live.key</code> on all three Pis.</li>
+</ul>
+<h3>Export raw data for a science project</h3>
+<p>Admin → Castings → pick a room and day → download the <code>.jsonl.gz</code> files. One JSON object per line, one line per reading, every field the Bin sent plus the Burrow's timestamp and clock quality. <code>zcat *.gz | python3 -c 'import sys,json; ...'</code> and you are in pandas in two lines. Or, on a Burrow, the same files live under <code>/data/burrow/castings/</code>.</p>
+<h3>End of semester</h3>
+<p>Nothing needs deleting; the free tier holds years. If you want a clean slate: Admin → Teams → disable all, and reset the roster's period/bin columns for the new groups (names can carry on or rotate).</p>
+
+<h2 id="daily">What runs when</h2>
+<hr class="rule">
+<div class="tablewrap"><table>
+<tr><th>Every</th><th>Who</th><th>What</th></tr>
+<tr><td>0.5 s</td><td>Bin</td><td>sensor sweep, OLED, truth light, web server poll</td></tr>
+<tr><td>60 s</td><td>Bin → Burrow</td><td>POST /ingest</td></tr>
+<tr><td>5 min</td><td>Bin</td><td>history ring sample</td></tr>
+<tr><td>30 s</td><td>Burrow</td><td>fsync the open log</td></tr>
+<tr><td>15 min (+20 s)</td><td>Burrow</td><td>seal a casting, compute rollups</td></tr>
+<tr><td>2 min</td><td>Burrow ↔ Burrow</td><td>pull missing castings, learn verification</td></tr>
+<tr><td>60 s</td><td>Burrow → Surface</td><td>ping, snapshot, upload pending castings/rollups, verify (when reachable)</td></tr>
+<tr><td>5 min</td><td>Burrow</td><td>sweep quiet Bins at /data</td></tr>
+<tr><td>1 h</td><td>Burrow</td><td>reclaim castings ≥ 7 days old and verified</td></tr>
+<tr><td>on loss + 60 s</td><td>Bin</td><td>open hotspot; rescan every 2 min; close 10 min after rejoin</td></tr>
+</table></div>
+
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share. · This page is unlisted.</footer>
+</body>
+</html>

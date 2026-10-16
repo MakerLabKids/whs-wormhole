@@ -60,8 +60,8 @@
   <a href="burrow.html">Pi 5 edge</a>
   <a href="bins.html">Pico fleet</a>
   <a href="cloud.html">Cloudflare</a>
-  <a class="soon" href="dashboards.html">Dashboards</a>
-  <a class="soon" href="runbook.html">Runbook</a>
+  <a href="dashboards.html">Dashboards</a>
+  <a href="runbook.html">Runbook</a>
 </div>
 
 <h1>Wormhole Telemetry: System Design</h1>
@@ -98,6 +98,7 @@ The pages in the strip above are the step-by-step build.</p>
   <li><a href="#budget">Free-tier budget</a></li>
   <li><a href="#notbuying">Hardware you are not buying (and the $5 you might)</a></li>
   <li><a href="#build">Build order</a></li>
+  <li><a href="#code">Where the code lives</a></li>
 </ol>
 
 <h2 id="principles">Design principles</h2>
@@ -396,7 +397,7 @@ The pages in the strip above are the step-by-step build.</p>
   <ul>
     <li><b>Edge:</b> <code>rollups.sqlite</code>, one row per Bin per 5-minute bucket (and per hour), each a small JSON of <code>{metric: [min, avg, max, n]}</code>. Written once per bucket, 50 rows every 5 minutes. Rebuildable from castings.</li>
     <li><b>Cloud:</b> the same rows in D1 <code>rollups</code>, uploaded with each casting. 14.4 k rows/day at 5-minute, 1.2 k/day hourly: about 1.5 MB a day, 0.5 GB a school year, against a 5 GB free limit.</li>
-    <li><b>Query:</b> <code>/api/history?bin=&lt;id&gt;&amp;from=&amp;to=&amp;step=5m|1h</code> picks the step from the span (≤ 3 days → 5m, else 1h). A week for one bin is 2,016 rows, under 100 KB.</li>
+    <li><b>Query:</b> <code>/api/history?uid=&lt;id&gt;&amp;from=&amp;to=&amp;step=5m|1h</code> picks the step from the span (≤ 3 days → 5m, else 1h). A week for one bin is 2,016 rows, under 100 KB.</li>
     <li><b>Raw:</b> R2 objects <code>castings/r1/2026/10/16/r1-20261016T1415.jsonl.gz</code>; an admin export endpoint lists and streams them. Not touched by dashboards.</li>
   </ul>
 </div>
@@ -508,6 +509,19 @@ The pages in the strip above are the step-by-step build.</p>
   <li><a href="dashboards.html">Dashboards</a>: the status wall, the deep view, the live view, the login and admin pages, the Bin's own page. Check: a phone at home sees a live tick.</li>
   <li><a href="runbook.html">Runbook</a>: first-day checklist, the failure table above as "do this when", and the recovery procedures.</li>
 </ol>
+
+<h2 id="code">Where the code lives</h2>
+<hr class="rule">
+<div class="tablewrap"><table>
+<tr><th>Piece</th><th>Path in the repo</th><th>Tests</th></tr>
+<tr><td>Wire protocol (the one page every piece agrees on)</td><td><span class="mono">edge/burrow/PROTOCOL.md</span></td><td></td></tr>
+<tr><td>Burrow service + Pi setup scripts</td><td><span class="mono">edge/burrow/</span></td><td><span class="mono">python3 -m unittest discover -s tests -t .</span> (18)</td></tr>
+<tr><td>Pico firmware changes</td><td><span class="mono">lib/picolab.py</span>, <span class="mono">projects/worm-bin/index.html</span></td><td><span class="mono">tools/picotest/run.sh</span> (17, MicroPython unix port)</td></tr>
+<tr><td>Fleet flashing + roster</td><td><span class="mono">tools/fleet/</span></td><td><span class="mono">python3 -m unittest test_flash</span> (4)</td></tr>
+<tr><td>Cloudflare Worker (Surface)</td><td><span class="mono">cloud/surface/</span></td><td><span class="mono">npx vitest run</span> (23, real workerd)</td></tr>
+<tr><td>Dashboard (served by Burrows and the Surface)</td><td><span class="mono">web/dash/</span></td><td><span class="mono">tools/e2e/run.sh</span> (26, whole chain in a browser)</td></tr>
+<tr><td>These pages</td><td><span class="mono">docs/design/</span> (unlisted: not in the site nav, <span class="mono">noindex</span>)</td><td></td></tr>
+</table></div>
 
 </div>
 <footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share. · This page is unlisted.</footer>

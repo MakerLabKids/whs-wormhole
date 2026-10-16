@@ -93,7 +93,7 @@ plus `"team","period","bin","room"` lifted out of `d.bin` for convenience.
 | `GET /api/now` | `{"ts", "edges": {edge: status}, "bins": {uid: entry}}` |
 | `GET /api/bins` | roster: `{uid: {"name","team","period","bin","room","seen"}}` |
 | `GET /api/history?uid=&from=&to=&step=5m\|1h` | `{"uid","step","points":[[ts, {metric:[min,avg,max,n]}], ...]}` |
-| `GET /live` (Burrow) / `GET /live/<room>` (Surface) | SSE; `event: row` with a row JSON per ingest, `event: hello` on connect |
+| `GET /live` (Burrow) / `GET /live/<room>` (Surface) | SSE. `event: hello` on connect with `{edge, room, ts, bins}` (the now-table); then `event: row` per ingest with `{"uid", "entry"}` where `entry` is that Bin's now-table entry (`ts, clk, src, edge, room, name, team, period, bin, home_room, d`). Surface replies 503 when the room's tunnel is down; the page falls back to polling |
 | `GET /api/status` (Burrow) | peers, cloud, disk, clock, counts |
 
 ## Rollups

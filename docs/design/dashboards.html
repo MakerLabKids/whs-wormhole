@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dashboards · Telemetry Build</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="../guide.css">
+<link rel="stylesheet" href="build.css">
+<style>
+  .shot { border: 1px solid var(--line); border-radius: 8px; max-width: 100%; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="../index.html">🪱 Wormhole</a>
+  <div class="links">
+    <a class="nl" href="../index.html">Home</a>
+    <a class="nl" href="../start.html">Start Here</a>
+    <a class="nl" href="../sessions.html">Sessions</a>
+    <a class="nl" href="../stations.html">Sensors</a>
+    <a class="nl" href="../research.html">Ideas</a>
+    <a class="nl" href="../demos/mission-control.html">Demos</a>
+    <a class="nl" href="../glossary.html">Glossary</a>
+    <a class="nl" href="../cheatsheet.html">Code</a>
+    <a class="nl" href="../reset.html">Fix a Board</a><a class="nl" href="../tools.html">Board Tools</a>
+  </div>
+</div></nav>
+
+<div class="wrap">
+<div class="subnav">
+  <a href="index.html">Design</a>
+  <a href="routers.html">Routers</a>
+  <a href="burrow.html">Pi 5 edge</a>
+  <a href="bins.html">Pico fleet</a>
+  <a href="cloud.html">Cloudflare</a>
+  <a class="on" href="dashboards.html">Dashboards</a>
+  <a href="runbook.html">Runbook</a>
+</div>
+
+<h1>Dashboards: one page, three places</h1>
+<hr class="rule">
+<p class="lead">The same files (<span class="file">web/dash/</span>: one HTML, one CSS, two JS, no build step, no external resources) are served by each classroom Burrow with no login and by the Surface behind the team login. A fourth, smaller page lives on every Pico. Nothing to install: the Pi setup script and the Worker deploy both pick the files up from the repo.</p>
+
+<div class="card">
+  <h3>Where to look</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Who</th><th>Where</th><th>Login</th><th>Works when</th></tr>
+    <tr><td>Projector, phones in the room</td><td><code>http://192.168.8N.10:8080/</code> (N = room)</td><td>none</td><td>always, no internet needed</td></tr>
+    <tr><td>Students at home, teachers anywhere</td><td><a class="ext" href="https://whs.makerlabkids.com">whs.makerlabkids.com</a></td><td>team + passphrase + first name; staff by name</td><td>shows the last state the cloud heard, live when the Portal has internet</td></tr>
+    <tr><td>Someone standing at a bin</td><td>the Bin's own page: its IP on <code>WormHole</code>, or <code>http://192.168.4.1</code> on its hotspot</td><td>none</td><td>always, even with every router off</td></tr>
+  </table></div>
+</div>
+
+<h2 id="wall">The Wall (<code>/</code>): instant status</h2>
+<hr class="rule g">
+<p>One tile per bin, grouped by room then period, sorted by bin number. Fifty tiles render in about a tenth of a second from a 15–40 KB JSON (<code>/api/now</code>), refreshed every 15 s and nudged instantly by the live stream. A filter box and room/period selectors; <b>Projector</b> mode (remembered per browser) hides the filters and enlarges everything for the back of the room. Click a tile for its history.</p>
+<p><img class="shot" src="img/dash-wall.png" alt="The status wall: tiles grouped by room and period, each with inside temperature, humidity, moisture, probe temperatures, surface, a status pill, and the Burrow it reported to"></p>
+<h3>What the colours mean</h3>
+<div class="tablewrap"><table>
+<tr><th>Status</th><th>Rule (any one is enough)</th></tr>
+<tr><td><span class="sw" style="background:#7CB342"></span><b>NOMINAL</b></td><td>none of the below</td></tr>
+<tr><td><span class="sw" style="background:#E8762C"></span><b>WARN</b></td><td>inside air above 27 °C or below 15 °C; any moisture below 25 %; a part reporting not-ok</td></tr>
+<tr><td><span class="sw" style="background:#C62828"></span><b>ALARM</b></td><td>inside air above 30 °C or below 10 °C; any moisture below 15 %</td></tr>
+<tr><td><span class="sw" style="background:#6B7280"></span><b>STALE</b></td><td>no reading for 3 minutes (the bin has lost its Burrow, or power)</td></tr>
+</table></div>
+<p>The thresholds live at the top of <code>web/dash/app.js</code> (one small object) if the biology says otherwise. The header shows the counts, one badge per Burrow (room, clock quality <code>ntp</code>/<code>peer</code>/<code>free</code>, cloud ok, castings waiting), the live dot, and the last-update clock.</p>
+
+<h2 id="bin">Bin history (<code>/bin/&lt;uid&gt;</code>): the deep view</h2>
+<hr class="rule">
+<p>Range buttons 6 h / 24 h / 3 d / 7 d / 30 d. Up to three days of 5-minute buckets, hourly beyond that (the server picks; the page says which). One chart per metric family: temperature (inside, room, each soil probe), humidity, soil moisture, light, pressure, and a small chart for anything else numeric the bin sends. Each line is the bucket average with a shaded min–max band; hover for values and time; min/avg/max for the range in the legend. Gaps stay gaps. All drawn on <code>&lt;canvas&gt;</code> by <code>charts.js</code>, about 300 lines.</p>
+<p><img class="shot" src="img/dash-bin.png" alt="A bin's history page: identity header with current readings, range buttons, and charts with min-max bands"></p>
+<p>Before the first casting seals (15 minutes after a bin's first report) the page says so instead of drawing an empty chart.</p>
+
+<h2 id="live">Live (<code>/feed</code>): the stream</h2>
+<hr class="rule">
+<p>A ticker of readings as they arrive (team, what changed, by how much) and a sparkline per bin of the last 60 values held in the tab. On a Burrow this is the room's <code>/live</code> server-sent events; on the Surface it is <code>/live/1</code>, <code>/live/2</code>, <code>/live/3</code> through the three tunnels, each optional. A room whose tunnel is down shows as such and the page keeps polling <code>/api/now</code> instead; it retries the stream with backoff. (The route is <code>/feed</code> because on a Burrow <code>/live</code> <i>is</i> the stream.)</p>
+
+<h2 id="login">Login and the admin pages (Surface only)</h2>
+<hr class="rule">
+<ul>
+  <li><b>Sign in</b>: team from a dropdown grouped by period, the three-word passphrase from the team card, a first name. Staff click "Teacher or admin? Sign in by name" and use name + password. Any page can be bookmarked: a signed-out visitor sees the login form on the same URL and lands back on it afterwards.</li>
+  <li><b>Admin</b> (link appears for teacher/admin roles): <i>Edges</i> (the three Burrows as the cloud sees them), <i>Who's looking</i> (sessions active in the last 10 minutes, first names and teams), <i>Visits</i> (per-team counts and the recent list), <i>Teams</i> (admin only: list, create, reset passphrase, disable, CSV import; passphrases shown once in a copyable block, and <b>Print cards</b> lays out one card per team), <i>Castings</i> (by room and day, download links), <i>Stats</i> (row counts).</li>
+  <li>On a Burrow none of this exists: <code>/login</code> explains that the room is the credential, and the Admin link is not shown.</li>
+</ul>
+<p><img class="shot" src="img/dash-admin-teams.png" alt="Admin, Teams tab: the team table with reset and disable buttons, an add form, and a CSV import box"></p>
+
+<h2 id="pico">The Bin's own page</h2>
+<hr class="rule">
+<p>Unchanged from the worm-bin dashboard everyone already knows (readings, part chips, probes, servo sliders, relay, calibration), plus two things: the status line now reads <i>Dirt Vader (P3 bin 7) live on WormHole · reporting to 192.168.81.10:8080</i> (or <i>own hotspot</i>, or <i>no Burrow reachable</i>), and a <b>LAST 24 HOURS</b> card draws sparklines from the board's RAM ring (<code>/history</code>, 288 five-minute samples): inside and room air, humidity, both moisture probes, soil probes, light, surface, Wi-Fi signal. It works on the hotspot with no network in the building. The Pico has no clock, so the axis is relative ("6 h") unless a Burrow has told it the time.</p>
+
+<h2 id="dev">Changing the dashboard</h2>
+<hr class="rule">
+<ul>
+  <li>Edit the files in <span class="file">web/dash/</span>. No build. <code>node --check app.js</code> catches typos.</li>
+  <li>Try it against a real backend on your laptop: the <a class="ext" href="https://github.com/MakerLabKids/wormhole/blob/main/edge/burrow/README.md">Burrow README</a> "Run it on a laptop" (a Burrow on :8080 serving <code>web/dash</code>, fake bins from <code>simbins.py</code>), or the whole chain with the real Worker: <code>tools/e2e/run.sh</code> starts a local Worker (wrangler, local D1/R2), a Burrow uploading to it, 12 fake bins, and drives the pages in a headless browser: 26 checks, admin flows included.</li>
+  <li>Ship it: on the Surface, <code>npx wrangler deploy</code> (assets go with the Worker); on each Burrow, the unlock → <code>git pull</code> → <code>install.sh</code> → lock dance from the <a href="burrow.html#lock">Pi 5 page</a>. The Burrow copy and the cloud copy may differ for a while; nothing breaks.</li>
+  <li>The page detects which host it is on from <code>/api/me</code> (<code>local: true</code> means a Burrow); everything else is the same code.</li>
+</ul>
+
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share. · This page is unlisted.</footer>
+</body>
+</html>

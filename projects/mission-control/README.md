@@ -1,5 +1,12 @@
 # Mission Control
 
+> **2026-10 update:** the classroom network grew into the full telemetry
+> system (three rooms, a Pi 5 "Burrow" per room, cloud sync). The Burrow's
+> dashboard replaces this aggregator for the worm bins, and `picolab.WebApp`
+> now pushes to the Burrow and keeps rejoining Wi-Fi by itself. Design and
+> build guides: https://makerlabkids.github.io/wormhole/design/ . Everything
+> below still works for a one-room demo wall.
+
 **[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/mission-control/package.json)**: one click puts a connected Pico on the classroom network.
 
 One wall display for every station in the room. Stations keep running

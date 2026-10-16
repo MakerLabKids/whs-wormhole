@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worm Mission Control</title>
+<meta name="description" content="Live status, history and a live feed for the school's worm bins.">
+<meta name="color-scheme" content="light dark">
+<!-- absolute paths: the same index.html is served for /bin/<uid>, /live, ... -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2212%22%20fill%3D%22%231B3A5C%22%2F%3E%3Cpath%20d%3D%22M10%2040c6-14%2014-14%2020%200s14%2014%2020%200%22%20fill%3D%22none%22%20stroke%3D%22%23E8762C%22%20stroke-width%3D%228%22%20stroke-linecap%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2238%22%20r%3D%225%22%20fill%3D%22%237CB342%22%2F%3E%3C%2Fsvg%3E">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="row">
+    <a class="brand" href="/" aria-label="Worm Mission Control, home"><span class="worm" aria-hidden="true">~</span> WORM MISSION CONTROL</a>
+    <nav class="nav" aria-label="pages">
+      <a href="/">Wall</a><a href="/feed">Live</a><a id="nav-admin" href="/admin" hidden>Admin</a><a href="/about">About</a>
+    </nav>
+    <span class="spacer"></span>
+    <div id="counts" class="counts" aria-label="bin status counts"></div>
+    <div id="edges" class="edges" aria-label="edges"></div>
+    <span id="live" class="live" aria-live="off"><i></i><span>polling</span></span>
+    <span id="clock" class="clock" title="last update">loading…</span>
+    <span id="whoami" class="whoami" hidden></span>
+    <button id="proj" class="iconbtn" type="button" title="Projector mode: bigger tiles, no filters" aria-pressed="false">Projector</button>
+  </div>
+</header>
+<main id="view" aria-live="polite">
+  <noscript><div class="notice err">This dashboard needs JavaScript.</div></noscript>
+</main>
+<footer>Wormhole · <a href="/about">what the colors mean</a></footer>
+<script src="/charts.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
