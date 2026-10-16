@@ -108,3 +108,12 @@ keep_config keeps admin password, Wi-Fi, repeater and LAN. Panel view names on 4
 
 On 4.8.3 `repeater scan` entries carry `encryption: {"enabled":true,"description":"PSK"}` (no `uci`);
 pass `"encryption":"psk2"` to `repeater connect`. Status key is `state_s` ("connected").
+
+Joining an **open** network (a school captive-portal net such as `BYLD`, verified on the hub, 4.8.3):
+omit `key` entirely and pass `"encryption":"none"`; sending `"key":""` returns Invalid params (-32602).
+
+    call repeater connect {"ssid":"BYLD","bssid":"<from scan>","device":"radio0","band":"2g","encryption":"none"}
+
+Use `radio0`/`2g` on the hub so its 5 GHz radio stays the WormHole-Core backhaul AP. After ~25 s
+`repeater get_status` shows `state_s` connected with the school lease (seen 10.28.46.221/20) and
+`system get_status` network[] has wwan `online: true`.
