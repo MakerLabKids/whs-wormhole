@@ -114,6 +114,17 @@ omit `key` entirely and pass `"encryption":"none"`; sending `"key":""` returns I
 
     call repeater connect {"ssid":"BYLD","bssid":"<from scan>","device":"radio0","band":"2g","encryption":"none"}
 
-Use `radio0`/`2g` on the hub so its 5 GHz radio stays the WormHole-Core backhaul AP. After ~25 s
+Use `radio0`/`2g` on the hub so its 5 GHz radio stays the WormHole-Core backhaul AP.
+
+**Order matters:** joining the hub to its upstream restarts BOTH of the hub's radios. A Tunnel that
+was already repeating WormHole-Core drops to `state_s: idle, running: false` and does **not** retry
+(seen at school 2026-10-16; `smart_reconnect` did not bring it back). Join the hub to the school
+network first, then join the Tunnels; if the hub's upstream changes later, re-send `repeater connect`
+on every Tunnel. No RPC lists the saved repeater profiles (get_saved_list, get_list, get_history...
+are all -32601), so `repeater get_status` is the only check.
+
+Per the design a Tunnel must never wander onto the school network on its own:
+
+    call repeater set_config {"auto":false,"smart_reconnect":true}     # auto = "Allow Switching to Other Saved Networks" After ~25 s
 `repeater get_status` shows `state_s` connected with the school lease (seen 10.28.46.221/20) and
 `system get_status` network[] has wwan `online: true`.
