@@ -101,6 +101,13 @@ keep_config keeps admin password, Wi-Fi, repeater and LAN. Panel view names on 4
     call lan get_config_list            # interfaces[]: lan {ip,netmask,start,end,leasetime,enable,ap_isolate}, guest
     call lan set_config {"interface":"lan","ip":"192.168.81.1","netmask":"255.255.255.0","ap_isolate":0}
         # DHCP range follows the new subnet automatically (.100-.249); the box moves to the new IP at once
+        # start/end/leasetime may be passed too (hub: ip 192.168.80.1, start .100, end .199, leasetime 12h, verified)
+        # WARNING: on a box that is itself a repeater (the hub on the school net) the LAN restart drops
+        # its repeater join to idle and it does NOT retry -> re-send `repeater connect` right after.
+        # Clients with a stale lease (your laptop) lose the box until they renew; Tunnels re-join by RPC.
+    call lan get_static_bind_list       # {"static_bind_list":[{mac,ip,name}]}
+    call lan add_static_bind {"mac":"92:83:C4:85:34:33","ip":"192.168.80.21","name":"Tunnel1"}
+        # DHCP reservation (verified on the hub); takes effect at the client's next lease/re-join
     call firewall get_port_forward_list
     call firewall add_port_forward {"name":"Burrow","proto":"tcp","src":"wan","src_dport":"8080",
                                     "dest":"lan","dest_ip":"192.168.81.10","dest_port":"8080","enabled":true}
@@ -122,6 +129,9 @@ was already repeating WormHole-Core drops to `state_s: idle, running: false` and
 network first, then join the Tunnels; if the hub's upstream changes later, re-send `repeater connect`
 on every Tunnel. No RPC lists the saved repeater profiles (get_saved_list, get_list, get_history...
 are all -32601), so `repeater get_status` is the only check.
+
+**LED (Opal, single white LED):** flashing = no upstream (repeater idle or WAN down, also while booting);
+solid = upstream connected. Two flashing boxes after a hub change = re-send both `repeater connect`s.
 
 Per the design a Tunnel must never wander onto the school network on its own:
 
