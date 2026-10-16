@@ -95,3 +95,16 @@ Files: https://dl.gl-inet.com/router/sft1200 → "DOWNLOAD FOR COMMON UPGRADE" (
 keep_config keeps admin password, Wi-Fi, repeater and LAN. Panel view names on 4.x (hash routes
 `#/<view>`): upgrade, lanip, wireless, internet, firewallview, clients, adminpw, timezone, reset …
 (from `call ui get_menu_list`).
+
+## LAN, DHCP and port-forward (4.8.3; captured on a real box)
+
+    call lan get_config_list            # interfaces[]: lan {ip,netmask,start,end,leasetime,enable,ap_isolate}, guest
+    call lan set_config {"interface":"lan","ip":"192.168.81.1","netmask":"255.255.255.0","ap_isolate":0}
+        # DHCP range follows the new subnet automatically (.100-.249); the box moves to the new IP at once
+    call firewall get_port_forward_list
+    call firewall add_port_forward {"name":"Burrow","proto":"tcp","src":"wan","src_dport":"8080",
+                                    "dest":"lan","dest_ip":"192.168.81.10","dest_port":"8080","enabled":true}
+        # -> {"id":"cfgXXXX"}
+
+On 4.8.3 `repeater scan` entries carry `encryption: {"enabled":true,"description":"PSK"}` (no `uci`);
+pass `"encryption":"psk2"` to `repeater connect`. Status key is `state_s` ("connected").
