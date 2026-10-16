@@ -15,6 +15,12 @@ the roster keeps its team (re-flash of a test unit).
 
 Needs: python3, mpremote on PATH (pipx install mpremote). The Wi-Fi password
 is NOT in the repo: it is asked once and kept in ~/.config/wormhole/.
+
+A BOOTSEL board is normally a mounted drive (RP2350 / RPI-RP2) and gets the
+.uf2 copied. Where nothing auto-mounts (a container, a headless box) and
+picotool is on PATH, the .uf2 is loaded over USB with picotool instead.
+Serial ports are found with "mpremote connect list" plus the globs in
+SERIAL_GLOBS (set WORMHOLE_SERIAL_GLOB for an odd layout, e.g. /dev/host/ttyACM*).
 """
 import argparse
 import csv
@@ -32,6 +38,10 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 ROSTER = os.path.join(HERE, "roster.csv")
+# extra places a Pico's serial port may live that pyserial's list does not look at
+# (/dev/host is a bind-mounted host /dev inside a container)
+SERIAL_GLOBS = [g for g in os.environ.get("WORMHOLE_SERIAL_GLOB", "/dev/host/ttyACM*").split(":") if g]
+BOOTSEL_IDS = {("2e8a", "0003"), ("2e8a", "000f")}      # RP2040 Boot, RP2350 Boot
 FIELDS = ["team", "period", "bin", "room", "uid", "flashed_at", "version", "notes"]
 
 
@@ -148,6 +158,10 @@ class Runner:
             parts = line.split()
             if parts and ("2e8a" in line.lower() or "micropython" in line.lower()):
                 ports.append(parts[0])
+        for pat in SERIAL_GLOBS:
+            for dev in sorted(glob.glob(pat)):
+                if dev not in ports and os.access(dev, os.R_OK | os.W_OK):
+                    ports.append(dev)
         return ports
 
 
@@ -161,6 +175,34 @@ def bootsel_mounts():
         for letter in "DEFGHIJKLMNOPQRSTUVWXYZ":
             cands.append(letter + ":\\")
     return [c for c in cands if os.path.exists(os.path.join(c, "INFO_UF2.TXT"))]
+
+
+def bootsel_usb_devices(sysfs="/sys/bus/usb/devices"):
+    """USB devices sitting in the RP2 bootloader (no drive needed): from sysfs."""
+    found = []
+    for d in sorted(glob.glob(os.path.join(sysfs, "*"))):
+        try:
+            with open(os.path.join(d, "idVendor")) as f:
+                vid = f.read().strip().lower()
+            with open(os.path.join(d, "idProduct")) as f:
+                pid = f.read().strip().lower()
+        except OSError:
+            continue
+        if (vid, pid) in BOOTSEL_IDS:
+            found.append(os.path.basename(d))
+    return found
+
+
+def picotool_load(uf2, picotool=None, run=subprocess.run):
+    """Flash a .uf2 over USB with picotool and reboot the board into it.
+    Returns False when picotool is not installed."""
+    exe = picotool or shutil.which("picotool")
+    if not exe:
+        return False
+    p = run([exe, "load", "-x", uf2], capture_output=True, text=True, timeout=300)
+    if p.returncode != 0:
+        raise RuntimeError("picotool load failed: %s" % (p.stderr or p.stdout).strip()[-300:])
+    return True
 
 
 def project_files(fleet):
@@ -272,6 +314,14 @@ def wait_for_board(rn, fleet, seen_ports, dry=False):
                 shutil.copy(uf2, os.path.join(m, os.path.basename(uf2)))
             print("  waiting for MicroPython to come up...")
             time.sleep(4)
+        if bootsel_usb_devices() and not bootsel_mounts():
+            print("\n  BOOTSEL board on USB (no drive mounted): loading %s with picotool" % os.path.basename(uf2))
+            if dry or picotool_load(uf2):
+                print("  waiting for MicroPython to come up...")
+                time.sleep(4)
+            else:
+                print("  !! picotool not on PATH and the drive is not mounted; mount it or install picotool")
+                time.sleep(5)
         ports = [p for p in rn.ports() if p not in seen_ports]
         if ports:
             return ports[0]

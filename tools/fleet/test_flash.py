@@ -71,6 +71,58 @@ class FlashTest(unittest.TestCase):
         self.assertIn(":lib/picolab.py", remotes)
         self.assertTrue(any("wipe.py" in " ".join(c) for c in rn.calls))
 
+    def test_bootsel_from_sysfs(self):
+        sysfs = os.path.join(self.tmp, "usb")
+        for name, vid, pid in (("3-10", "2e8a", "000f"), ("3-11", "30c9", "00f8"), ("1-2", "2e8a", "0003"),
+                               ("3-12", "2e8a", "0005")):
+            os.makedirs(os.path.join(sysfs, name))
+            with open(os.path.join(sysfs, name, "idVendor"), "w") as f:
+                f.write(vid + "\n")
+            with open(os.path.join(sysfs, name, "idProduct"), "w") as f:
+                f.write(pid + "\n")
+        os.makedirs(os.path.join(sysfs, "usb1"))          # a hub dir with no ids
+        self.assertEqual(flash.bootsel_usb_devices(sysfs), ["1-2", "3-10"])
+        self.assertEqual(flash.bootsel_usb_devices(os.path.join(self.tmp, "nope")), [])
+
+    def test_picotool_load(self):
+        calls = []
+
+        class P:
+            returncode = 0
+            stdout = stderr = ""
+
+        def fake_run(cmd, **kw):
+            calls.append(cmd)
+            return P()
+        self.assertTrue(flash.picotool_load("/x/fw.uf2", picotool="/opt/picotool", run=fake_run))
+        self.assertEqual(calls, [["/opt/picotool", "load", "-x", "/x/fw.uf2"]])
+        # not installed -> False, nothing run
+        path = os.environ.get("PATH")
+        os.environ["PATH"] = self.tmp
+        try:
+            self.assertFalse(flash.picotool_load("/x/fw.uf2", run=fake_run))
+        finally:
+            os.environ["PATH"] = path
+        self.assertEqual(len(calls), 1)
+        P.returncode = 1
+        P.stderr = "No accessible RP-series devices in BOOTSEL mode were found."
+        with self.assertRaises(RuntimeError):
+            flash.picotool_load("/x/fw.uf2", picotool="/opt/picotool", run=fake_run)
+
+    def test_ports_include_serial_globs(self):
+        dev = os.path.join(self.tmp, "ttyACM0")
+        open(dev, "w").close()
+        orig = flash.SERIAL_GLOBS
+        flash.SERIAL_GLOBS = [os.path.join(self.tmp, "ttyACM*")]
+        try:
+            rn = flash.Runner("mpremote")
+            rn.run = lambda *a, **k: "/dev/ttyACM1 2e8a:0005 MicroPython Board in FS mode\n"
+            self.assertEqual(rn.ports(), ["/dev/ttyACM1", dev])
+            os.chmod(dev, 0o444)                           # unreadable for writing -> skipped
+            self.assertEqual(rn.ports(), ["/dev/ttyACM1"])
+        finally:
+            flash.SERIAL_GLOBS = orig
+
 
 if __name__ == "__main__":
     unittest.main()
