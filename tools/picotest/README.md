@@ -12,7 +12,7 @@ sudo apt-get install micropython        # the unix port, any recent version
 tools/picotest/run.sh
 ```
 
-Expected: 17 PASS lines and `17 checks, 0 failed`. The stubs are tiny on
+Expected: 18 PASS lines and `18 checks, 0 failed`. The stubs are tiny on
 purpose; they model exactly what the firmware touches (scan, connect,
 isconnected, ifconfig, status('rssi'), AP config). Real radios are, of
 course, the real test; this catches logic errors before you walk to a bin.

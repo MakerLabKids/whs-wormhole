@@ -72,7 +72,12 @@
 <ol class="steps">
   <li>Eject and re-insert the card. A small FAT volume called <code>bootfs</code> appears.</li>
   <li>Open <code>cmdline.txt</code> on it in a plain-text editor. It is one long line.</li>
-  <li>Delete this token (and the space before it), leaving everything else exactly as it is: <pre><code>init=/usr/lib/raspberrypi-sys-mods/firstboot</code></pre> Save. The file must stay a single line with no trailing newline weirdness; Notepad, TextEdit (plain text) and nano are all fine.</li>
+  <li>Find the word <code>resize</code> on that line (current Trixie images; it is the token that tells the initramfs to grow the root) and delete it, with the space before it. Older images carry <code>init=/usr/lib/raspberrypi-sys-mods/firstboot</code> instead; delete that if that is what you see. Leave everything else exactly as it is and keep the file one line; Notepad, TextEdit (plain text) and nano are all fine.</li>
+  <li>Open <code>user-data</code> on the same volume (Imager wrote your user and SSH settings into it). Add these lines at the end so cloud-init's own growpart module, which some Trixie images also run, leaves the root alone too:
+<pre><code>growpart:
+  mode: "off"
+resize_rootfs: false</code></pre>
+  Save. Both edits together cover whichever mechanism the image has.</li>
   <li>Eject.</li>
 </ol>
 <div class="note">
@@ -90,7 +95,7 @@ git clone https://github.com/MakerLabKids/wormhole.git
 cd wormhole/edge/burrow
 sudo ./setup-pi.sh 1</code></pre>
     It takes about five minutes with an internet uplink through the Portal. (No internet yet? It needs apt for <code>chrony</code> and <code>parted</code>; everything else is offline. Do this step somewhere with Wi-Fi, or tether the Portal to a phone.)</li>
-  <li>Near the end the script moves the Pi to its fixed address, so your SSH session may freeze. Reconnect: <pre><code>ssh worm@192.168.81.10</code></pre> (82 or 83 for the other rooms).</li>
+  <li>Near the end the script moves the Pi to its fixed address, so your SSH session freezes. Reconnect: <pre><code>ssh worm@192.168.81.10</code></pre> (82 or 83 for the other rooms). If the script stopped with "the kernel has not picked up the new partition yet", reboot and run it again; the second pass finds and formats the partition and carries on.</li>
 </ol>
 
 <h3>What the script did, so you can check it</h3>
@@ -99,7 +104,7 @@ sudo ./setup-pi.sh 1</code></pre>
 <tr><td>Hostname <code>burrowN</code>; cloud-init disabled after its first run</td><td>cloud-init re-applies its config every boot on Trixie and would undo changes</td><td><code>hostnamectl</code></td></tr>
 <tr><td>Installed <code>chrony</code>, <code>parted</code>; removed <code>fake-hwclock</code></td><td>fake-hwclock on Trixie can revert the clock to a stale time; chrony + the RTC do its job</td><td><code>chronyc sources</code></td></tr>
 <tr><td>New partition labelled <code>burrowdata</code> on <code>/data</code>, ext4, <code>noatime,data=journal,commit=5</code></td><td>the only place that is ever written; journaled data so a power cut leaves whole files</td><td><code>findmnt /data</code></td></tr>
-<tr><td>journald in RAM (16 MB cap), swap off and masked, apt timers and man-db timer masked, root <code>noatime</code></td><td>no background write churn on the card</td><td><code>swapon --show</code> is empty; <code>systemctl is-enabled rpi-swap</code> says masked</td></tr>
+<tr><td>journald in RAM (16 MB cap), swap off (<code>/etc/rpi/swap.conf.d/90-burrow-no-swap.conf</code>, <code>Mechanism=none</code>), apt timers and man-db timer masked, root <code>noatime</code></td><td>no background write churn on the card</td><td><code>swapon --show</code> is empty after the next reboot</td></tr>
 <tr><td>Static <code>192.168.8N.10/24</code>, gateway <code>.1</code>, Wi-Fi and Bluetooth disabled (<code>dtoverlay=disable-wifi</code>, <code>disable-bt</code>)</td><td>a fixed address the Picos and peers can rely on; nothing extra radiating</td><td><code>ip -4 a show eth0</code>; <code>ls /etc/NetworkManager/system-connections/</code> has <code>burrow-lan.nmconnection</code></td></tr>
 <tr><td><code>/etc/chrony/chrony.conf</code>: internet pool, the other two Burrows as peers, <code>local stratum 10 orphan</code></td><td>with no internet, the three Burrows agree on one clock among themselves</td><td><code>chronyc tracking</code></td></tr>
 <tr><td>User <code>burrow</code>, <code>/etc/burrow/burrow.json</code>, sudoers rule for <code>/bin/date</code> only</td><td>the service runs unprivileged; it may step the clock when the cloud proves it wrong</td><td><code>cat /etc/burrow/burrow.json</code></td></tr>
@@ -138,7 +143,7 @@ sudo /opt/burrow/install-cloudflared.sh 'eyJ...the tunnel token for burrow1...'<
 sudo touch /etc/x    # Read-only file system
 touch /data/x &amp;&amp; rm /data/x   # works
 systemctl status burrow</code></pre>
-<div class="note g"><b>Changing anything later</b> (code update, new token, apt): <code>sudo /opt/burrow/burrow-unlock.sh</code> (reboots writable) → make the change (for code: <code>cd ~/wormhole &amp;&amp; git pull &amp;&amp; sudo edge/burrow/install.sh</code>) → <code>sudo /opt/burrow/burrow-lock.sh</code>. The data partition is untouched by lock and unlock.</div>
+<div class="note g"><b>Changing anything later</b> (code update, new token, apt): <code>sudo /opt/burrow/burrow-unlock.sh</code> (reboots with a writable root) → make the change (for code: <code>cd ~/wormhole &amp;&amp; git pull &amp;&amp; sudo edge/burrow/install.sh</code>) → <code>sudo /opt/burrow/burrow-lock.sh</code>. The data partition is untouched by lock and unlock. The boot partition stays read-only even while unlocked; if you need to edit <code>config.txt</code>, first <code>sudo mount -o remount,rw /boot/firmware</code>.</div>
 
 <h2 id="replace">Replacing a dead Burrow</h2>
 <hr class="rule o">
@@ -151,7 +156,7 @@ systemctl status burrow</code></pre>
   <li>The Pi 5 has a real-time clock. Without the battery it keeps time only while powered; after a power cut it boots with the time it last saved, which could be hours or days behind.</li>
   <li>chrony fixes it from the internet when there is any (the Portal's uplink), or agrees with the other Burrows (orphan mode elects one as the reference). The Burrow service also steps the clock itself if the cloud answers with a time more than 60 s away while chrony has no source.</li>
   <li>Every row records <code>clk</code> = <code>ntp</code>, <code>peer</code> or <code>free</code>, so a later reader knows how much to trust a timestamp. The dashboard shows it as a badge.</li>
-  <li>With the battery fitted, also add <code>dtparam=rtc_bbat_vchg=3000000</code> to <code>/boot/firmware/config.txt</code> (while unlocked) so the Pi trickle-charges it, and check with <code>sudo hwclock -r</code>.</li>
+  <li>With the battery fitted, also add <code>dtparam=rtc_bbat_vchg=3000000</code> to <code>/boot/firmware/config.txt</code> (unlocked, after <code>sudo mount -o remount,rw /boot/firmware</code>) so the Pi trickle-charges it, and check with <code>sudo hwclock -r</code>.</li>
 </ul>
 
 <h2 id="disk">How much disk, how long</h2>

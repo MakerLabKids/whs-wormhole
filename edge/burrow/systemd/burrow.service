@@ -15,7 +15,7 @@ ExecStart=/usr/bin/python3 -m burrow
 Restart=always
 RestartSec=3
 # the data partition is the only thing it may write
-ReadWritePaths=/data
+ReadWritePaths=/data -/run/sudo
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true

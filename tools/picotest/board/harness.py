@@ -57,19 +57,34 @@ network.WORLD["present"] = set()
 step(2)
 check("loss noticed", app.joined is None and app.ap is None)
 step(65)
-check("hotspot opened 60 s after loss", app.ap is not None and app.ip == "192.168.4.1")
+check("hotspot opened 60 s after loss (station off)", app.ap is not None and app.ip == "192.168.4.1"
+      and not network.WLAN.instances[network.STA_IF].active())
 check("mode is ap", app.identity()["mode"] == "ap")
-step(130)                                         # one rescan with nothing around
-check("still looking, still ap", app.joined is None and app.ap is not None)
+scans = network.WORLD["scans"]
+step(130)                                         # one rescan with nothing around: hotspot comes back
+check("rescanned and put the hotspot back", network.WORLD["scans"] > scans and app.joined is None and app.ap is not None)
+# a phone is on the hotspot: do not yank it
+network.WORLD["stations"] = ["phone"]
+scans = network.WORLD["scans"]
+step(130)
+check("no rescan while a phone is on the hotspot", network.WORLD["scans"] == scans and app.ap is not None)
+network.WORLD["stations"] = []
 network.WORLD["present"] = set(["WormHole"])
-step(130)                                         # next rescan finds it and joins (2 ticks)
+step(130)                                         # next rescan finds it and joins
 check("rejoined after network returned", app.joined == "WormHole" and app.ip == "192.168.81.120")
-check("hotspot kept during grace", app.ap is not None and app.identity()["mode"] == "joined+ap")
+check("hotspot closed on rejoin (rp2: one interface at a time)", app.ap is None and app.identity()["mode"] == "joined")
 step(10)
 check("push resumed after rejoin", app.edge_ok)
-step(620)
-check("hotspot closed after 10 stable min", app.ap is None and app.identity()["mode"] == "joined")
+# hotspot hold has a limit: a phone on the hotspot for 10 min still gets a rescan
+network.WORLD["present"] = set()
+step(70)
+network.WORLD["stations"] = ["phone"]
+network.WORLD["present"] = set(["WormHole"])
+scans = network.WORLD["scans"]
+step(790)                                         # hold starts at the first deferred rescan (+120), lasts 600
+check("rescan happens anyway after 10 min of hotspot use", network.WORLD["scans"] > scans and app.joined == "WormHole")
 # rescue ladder: wormmaster beats WormHole when present
+network.WORLD["stations"] = []
 network.WORLD["present"] = set()
 step(70)
 network.WORLD["present"] = set(["WormHole", "wormmaster"])

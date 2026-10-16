@@ -348,7 +348,7 @@ class FakeRunner(Runner):
         if "unique_id" in joined:
             return self.uid + "\n"
         if "picolab.VERSION" in joined:
-            return "0.1.2\n"
+            return "0.2.0\n"
         if "os.listdir" in joined:
             return json.dumps({"files": ["main.py", "lib"], "name": "Dirt Vader", "bin": "{}", "wifi": "present"}) + "\n"
         if args[:1] == ("connect",) and args[1:2] == ("list",):

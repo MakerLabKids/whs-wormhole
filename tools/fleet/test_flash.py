@@ -61,7 +61,7 @@ class FlashTest(unittest.TestCase):
         rn = flash.FakeRunner()
         row = flash.flash_one(rn, "/dev/ttyFAKE0", self.fleet, rows, "pw", dry=True)
         self.assertEqual(row["uid"], rn.uid)
-        self.assertEqual(row["version"], "0.1.2")
+        self.assertEqual(row["version"], "0.2.0")
         saved = flash.read_roster()
         self.assertEqual(saved[0]["uid"], rn.uid)
         # the three identity files were pushed, after the wipe and the project files

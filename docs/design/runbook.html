@@ -41,7 +41,56 @@
 
 <h1>Runbook: install day, every day, and when something is off</h1>
 <hr class="rule">
-<p class="lead">The order to do things in, what "working" looks like at each step, and the five-minute fixes for everything the <a href="index.html#failure">failure table</a> predicts. Written for the person who set it all up; the teacher-facing part is the one short list in the middle.</p>
+<p class="lead">Start with <a href="#pilot">the first school visit</a> if that is where you are. Then the order to do things in, what "working" looks like at each step, and the five-minute fixes for everything the <a href="index.html#failure">failure table</a> predicts. Written for the person who set it all up; the teacher-facing part is the one short list in the middle.</p>
+
+
+<h2 id="pilot">The first school visit: a one-room pilot in under three hours</h2>
+<hr class="rule r">
+<p>Two Opals, one Pi 5, three Picos. The only things that <i>must</i> happen at the school are the ones that involve the school: its Wi-Fi, its captive portal, its walls. Everything else is done at home the night before, so the visit is spent testing, not typing.</p>
+
+<h3>The night before (about two hours, at home)</h3>
+<ol class="steps">
+  <li><b>Routers</b> (<a href="routers.html">guide</a>): configure the Portal and Tunnel 1 completely, using your home Wi-Fi as the Portal's upstream, and add your phone's <code>wormsurface</code> hotspot to the Portal's saved list. Check: laptop on <code>WormHole</code> reaches the internet, <code>192.168.80.1</code> and <code>192.168.81.1</code>. Then <b>forget your home network on the Portal</b> (Repeater → Known Networks → trash it) so it will not look for it at school.</li>
+  <li><b>Cloud</b> (<a href="cloud.html">guide</a>): deploy the Surface, bootstrap your admin, import the first three roster lines as teams. Keep <code>gen-secrets.sh</code>'s output; you will type the burrow1 token and the live key onto the Pi at school. Create the burrow1 tunnel in Zero Trust and keep its token too. Check: <code>/v1/edge/ping</code> answers with your token. Doing this first turns the visit into the real test: data from a school classroom reaching the cloud through the school network.</li>
+  <li><b>Picos</b> (<a href="bins.html">guide</a>): flash all three with <code>tools/fleet/flash.py</code>. They become the first three roster lines (room 1, period 1, bins 1–3). Check each on a phone: its own page, then join your home <code>WormHole</code> (the Tunnel) and watch them appear on… nothing yet (no Burrow): the terminal should say it is trying <code>192.168.81.10:8080</code> and moving on. That is correct.</li>
+  <li><b>SD cards</b> (<a href="burrow.html">guide</a>, steps 1–2): image two cards (one spare) with hostname <code>burrow1</code>, user <code>worm</code>, SSH on. Make the two edits (<code>cmdline.txt</code> token, <code>user-data</code> growpart lines). Do not boot them.</li>
+  <li><b>Laptop:</b> repo cloned and pulled, <code>mpremote</code> installed, <code>wrangler</code> logged in, this page open offline (print it or save it). Phone: hotspot named <code>wormsurface</code>, 2.4 GHz compatibility on, charged.</li>
+  <li><b>Pack:</b> Portal + Tunnel 1 with their 5 V/3 A supplies; a 27 W Pi 5 supply (the Pis arriving at school may not include one); two imaged microSD cards and the card reader; one Ethernet cable; a USB-C data cable; the three Picos; a power strip; labels; a notebook for the numbers below.</li>
+</ol>
+
+<h3>At the school, in order (checks in bold are the reason you came)</h3>
+<ol class="steps">
+  <li><b>Ask or find out: how does the student Wi-Fi authenticate?</b> Open network with a web login (captive portal), a shared password (WPA2-PSK), or username + password per person (WPA2-Enterprise / 802.1X). The Opal joins the first two from the Repeater page. For 802.1X the Repeater join dialog must offer an Enterprise/EAP option; if it does not, the Portal's upstream at this school is a phone hotspot or a wired drop, and that is a design fact to record today, not a failure.</li>
+  <li><b>Portal first, in the hallway spot</b> (or where you plan to put it). Power it, join its <code>WormHole-Core</code> from the laptop (or plug the laptop into its LAN port), open <code>192.168.80.1</code> → INTERNET → Repeater → join the student network. Open a new browser tab to a plain http site; log into the captive portal if one appears. <b>Check A: the laptop behind the Portal reaches the internet.</b> Then: <pre><code>curl -sS https://whs.makerlabkids.com/v1/edge/ping -H 'authorization: Bearer &lt;burrow1 token&gt;'
+curl -sS -o /dev/null -w '%{http_code}\n' https://api.cloudflare.com/
+nslookup whs.makerlabkids.com</code></pre> <b>Check B: HTTPS to the Worker works and DNS is not rewritten.</b> Note how long the portal session lasts if the school says (a day? a week?).</li>
+  <li><b>Tunnel 1 in the classroom.</b> Power it where the Burrow will live. Its repeater should find <code>WormHole-Core</code> by itself. Open <code>192.168.81.1</code> → INTERNET: WAN address <code>192.168.80.21</code>; the Repeater page shows the signal. <b>Check C: signal better than −70 dBm. Write it down.</b> Walk the Tunnel to the far corner and read it again; that is your placement envelope. A phone on <code>WormHole</code> in the room reaches the internet.</li>
+  <li><b>Pi 5.</b> Card in, Ethernet to the Tunnel's LAN port, power. Two minutes. Find it in the Tunnel's Clients list, <code>ssh worm@&lt;that address&gt;</code>, then: <pre><code>sudo apt-get update &amp;&amp; sudo apt-get install -y git
+git clone https://github.com/MakerLabKids/wormhole.git
+cd wormhole/edge/burrow &amp;&amp; sudo ./setup-pi.sh 1</code></pre> (apt goes out through Tunnel → Portal → school: that is Check A again, from a Pi.) Reconnect at <code>192.168.81.10</code>. <b>Check D:</b> <code>curl -s localhost:8080/health</code> answers and <code>findmnt /data</code> shows the data partition (if it says single-partition mode, note it; it still works for today).</li>
+  <li><b>Cloud link from the Pi:</b> write the token and live key (<a href="burrow.html#cloud">Pi 5 page, step 5</a>), restart the service, then: <pre><code>curl -s localhost:8080/api/status | python3 -c 'import json,sys; c=json.load(sys.stdin)["cloud"]; print(c["reachable"], c["error"])'</code></pre> <b>Check E: <code>True None</code>.</b> This is the school network carrying a Burrow upload. Skip cloudflared today unless everything else is done early.</li>
+  <li><b>Picos.</b> Power the three (USB from the power strip or the laptop). Within a minute each OLED shows its team name and the Burrow dashboard at <code>http://192.168.81.10:8080/</code> on your phone shows three tiles. <b>Check F: three tiles, each saying it reports to burrow1.</b></li>
+  <li><b>The failure drills</b> (ten minutes, the most valuable ten of the day):
+    <ul>
+      <li>Pull the Tunnel's power. Within about 90 s each Pico's OLED switches to its team hotspot; join one from your phone, open <code>192.168.4.1</code>, see readings and the 24-hour card. Power the Tunnel, <i>disconnect your phone from the hotspot</i>. Within about three minutes the tiles are back (a board whose hotspot still has a phone on it waits up to ten minutes before looking). <b>Check G.</b></li>
+      <li>Pull the Pi's power mid-run, plug it back. Thirty seconds later <code>/health</code> answers and the tiles return. <b>Check H.</b></li>
+      <li>Walk away from the school Wi-Fi with the Portal? You cannot, so do the inverse: on the Portal, Repeater → Switch Network → forget the school network, turn on your phone's <code>wormsurface</code> hotspot next to the Portal. Within two minutes the Pi's <code>cloud.reachable</code> is true again. Re-join the school network afterwards. <b>Check I: the drive-by works.</b></li>
+    </ul></li>
+  <li><b>Twenty minutes after the Picos started:</b> on the website, logged in, the three tiles are on the wall and Admin → Castings lists a verified casting from room 1. <b>Check J: the whole chain, end to end, from a real classroom.</b></li>
+  <li><b>Before leaving:</b> write down the school SSID and auth type, the portal's lifetime, the RSSI numbers at the planned Tunnel spots, which outlets stay on at night, and where the Portal can live. Take the Pi home unlocked; do <code>burrow-lock.sh</code> and cloudflared at home with the other two.</li>
+</ol>
+
+<h3>If a check fails</h3>
+<div class="tablewrap"><table class="sym">
+<tr><th>Check</th><th>Most likely</th><th>Do</th></tr>
+<tr><td>A</td><td>802.1X network, MAC filtering, or the portal page never appears</td><td>Use the <code>wormsurface</code> hotspot as the Portal's upstream for the rest of the visit; everything else still gets tested. Record what the school needs (a MAC allow-list entry for the Portal is the usual ask).</td></tr>
+<tr><td>B</td><td>HTTPS blocked or DNS hijacked</td><td>Try the hotspot path; if the Worker is reachable there but not through the school, the school needs to allow <code>*.makerlabkids.com</code> on 443. Castings keep for years meanwhile.</td></tr>
+<tr><td>C</td><td>Weak backhaul</td><td>Move the Portal higher or nearer; or run a cable Portal LAN → Tunnel WAN for this room.</td></tr>
+<tr><td>D</td><td>setup script stopped</td><td>Read its last lines; the partition step tells you to reboot and rerun; apt failures mean Check A did not really pass. Single-partition mode is acceptable for a pilot.</td></tr>
+<tr><td>E</td><td>token typo, captive portal re-armed, clock far off</td><td><code>cat /etc/burrow/cloud.token</code>; log into the portal again; <code>date</code> (a clock years off makes TLS fail: <code>sudo date -s "$(curl -sI https://cloudflare.com | grep -i ^date: | cut -d' ' -f2-)"</code>).</td></tr>
+<tr><td>F</td><td>Picos on the wrong network or wrong password</td><td>Their terminal (Viper or <code>mpremote connect PORT repl</code>) says which SSID they tried; re-flash one with <code>flash.py --once</code> after fixing the saved Wi-Fi password.</td></tr>
+<tr><td>G</td><td>hotspot never appears</td><td>Note it (this is the one behaviour that could only be proven on real radios); the boards still rejoin and keep posting, and the Burrow's history covers the gap.</td></tr>
+</table></div>
 
 <h2 id="order">Install day, in order</h2>
 <hr class="rule g">
@@ -126,7 +175,7 @@ sudo /opt/burrow/burrow-lock.sh            # reboots read-only</code></pre>
 <tr><td>60 s</td><td>Burrow → Surface</td><td>ping, snapshot, upload pending castings/rollups, verify (when reachable)</td></tr>
 <tr><td>5 min</td><td>Burrow</td><td>sweep quiet Bins at /data</td></tr>
 <tr><td>1 h</td><td>Burrow</td><td>reclaim castings ≥ 7 days old and verified</td></tr>
-<tr><td>on loss + 60 s</td><td>Bin</td><td>open hotspot; rescan every 2 min; close 10 min after rejoin</td></tr>
+<tr><td>on loss + 60 s</td><td>Bin</td><td>open hotspot; every 2 min a few seconds in station mode looking for the ladder (deferred while a phone is on the hotspot, max 10 min)</td></tr>
 </table></div>
 
 </div>

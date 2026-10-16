@@ -1,5 +1,5 @@
 STA_IF = 0; AP_IF = 1
-WORLD = {"present": set(["WormHole"]), "ip": "192.168.81.120", "connect_ticks": 2}
+WORLD = {"present": set(["WormHole"]), "ip": "192.168.81.120", "connect_ticks": 2, "stations": [], "scans": 0}
 class WLAN:
     instances = {}
     def __init__(self, kind):
@@ -8,9 +8,16 @@ class WLAN:
         WLAN.instances[kind] = self
     def active(self, v=None):
         if v is None: return self._active
+        if v:
+            # the rp2 port cannot run AP and STA together; make the test fail loudly if the firmware tries
+            other = WLAN.instances.get(1 - self.kind)
+            if other is not None and other is not self and other._active:
+                raise OSError("rp2: AP and STA cannot both be active")
         self._active = bool(v)
         if not v: self._ssid = None
     def scan(self):
+        if not self._active: raise OSError("scan on inactive interface")
+        WORLD["scans"] += 1
         return [(n.encode(), b"\x00"*6, 6, -60, 3, False) for n in WORLD["present"]]
     def connect(self, ssid, pw):
         self._ssid = ssid; self._pending = WORLD["connect_ticks"]
@@ -28,4 +35,6 @@ class WLAN:
     def config(self, *a, **k):
         if "essid" in k: self._essid = k["essid"]
     def status(self, what=None):
-        return -61 if what == "rssi" else 3
+        if what == "rssi": return -61
+        if what == "stations": return list(WORLD["stations"]) if (self.kind == AP_IF and self._active) else []
+        return 3

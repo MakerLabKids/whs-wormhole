@@ -39,6 +39,14 @@ apt-get purge -y -qq fake-hwclock >/dev/null 2>&1 || true
 say "data partition"
 DEV="$(findmnt -n -o SOURCE / | sed 's/p[0-9]*$//')"       # /dev/mmcblk0
 ROOTP="$(findmnt -n -o SOURCE /)"
+# A previous run may have created the partition but been unable to see it
+# until a reboot (the kernel sometimes refuses to re-read a busy table).
+LASTP="$(lsblk -nlo NAME,TYPE "$DEV" | awk '$2=="part"{print $1}' | tail -1)"
+NPARTS="$(lsblk -nlo NAME,TYPE "$DEV" | awk '$2=="part"' | wc -l)"
+if [ "$NOPART" = 0 ] && ! blkid -L burrowdata >/dev/null 2>&1 && [ "$NPARTS" -ge 3 ] && [ -z "$(blkid -s TYPE -o value "/dev/$LASTP")" ]; then
+  echo "found an unformatted third partition /dev/$LASTP from an earlier run: formatting it"
+  mkfs.ext4 -q -L burrowdata "/dev/$LASTP"
+fi
 if [ "$NOPART" = 0 ] && ! blkid -L burrowdata >/dev/null 2>&1; then
   FREE_START="$(parted -ms "$DEV" unit s print free | awk -F: '/free/ {s=$2} END {print s}')"
   FREE_END="$(parted -ms "$DEV" unit s print free | awk -F: '/free/ {e=$3} END {print e}')"
@@ -46,8 +54,13 @@ if [ "$NOPART" = 0 ] && ! blkid -L burrowdata >/dev/null 2>&1; then
   if [ "$FREE_S" -gt $((4*1024*1024*2)) ]; then      # > 4 GiB of free sectors
     echo "creating data partition in free space ($((FREE_S/2048)) MiB)"
     parted -s "$DEV" mkpart primary ext4 "$FREE_START" 100%
-    partprobe "$DEV"; sleep 2
+    partprobe "$DEV" 2>/dev/null || true; sleep 2
     NEWP="$(lsblk -nlo NAME,TYPE "$DEV" | awk '$2=="part"{print $1}' | tail -1)"
+    if [ "$NEWP" = "$LASTP" ] || [ ! -b "/dev/$NEWP" ]; then
+      echo "!! the kernel has not picked up the new partition yet. Reboot and run this script again;"
+      echo "!! it will find and format the partition on the second pass."
+      exit 3
+    fi
     mkfs.ext4 -q -L burrowdata "/dev/$NEWP"
   else
     echo "!! no free space after root ($FREE_S sectors). Root was auto-expanded."
@@ -70,26 +83,34 @@ say "quiet the SD card: journald in RAM, no swap, no apt timers"
 install -D -m 644 "$HERE/etc/journald-volatile.conf" /etc/systemd/journald.conf.d/volatile.conf
 systemctl restart systemd-journald
 swapoff -a || true
-for u in rpi-swap.service dphys-swapfile.service apt-daily.timer apt-daily-upgrade.timer man-db.timer; do
+# Trixie's rpi-swap is a systemd generator configured by drop-ins (takes effect at reboot)
+if [ -d /etc/rpi ] || command -v rpi-swap >/dev/null 2>&1; then
+  mkdir -p /etc/rpi/swap.conf.d
+  printf '[Main]\nMechanism=none\n' > /etc/rpi/swap.conf.d/90-burrow-no-swap.conf
+fi
+for u in dphys-swapfile.service apt-daily.timer apt-daily-upgrade.timer man-db.timer; do
   systemctl disable --now "$u" >/dev/null 2>&1 || true
   systemctl mask "$u" >/dev/null 2>&1 || true
 done
-# the root stays rw until burrow-lock.sh; still, no atime churn
-sed -i 's#\(\s/\s\+ext4\s\+\)defaults#\1defaults,noatime#' /etc/fstab || true
+# the root stays rw until burrow-lock.sh; still, no atime churn (Pi OS
+# already mounts / noatime; only add it if a line lacks it)
+awk '$2=="/" && $3=="ext4" && $4 !~ /noatime/ { $4 = $4 ",noatime" } { print }' /etc/fstab > /etc/fstab.new && mv /etc/fstab.new /etc/fstab
 
 say "network: static $LAN_IP on eth0, Wi-Fi and Bluetooth off"
-CON="$(nmcli -t -f NAME,DEVICE connection show | awk -F: '$2=="eth0"{print $1}' | head -1)"
-[ -n "$CON" ] || CON="$(nmcli -t -f NAME,TYPE connection show | awk -F: '$2=="802-3-ethernet"{print $1}' | head -1)"
-[ -n "$CON" ] || { nmcli connection add type ethernet ifname eth0 con-name burrow-lan >/dev/null; CON=burrow-lan; }
-nmcli connection modify "$CON" connection.id burrow-lan ipv4.method manual \
-  ipv4.addresses "$LAN_IP/24" ipv4.gateway "$LAN_GW" ipv4.dns "$LAN_GW" ipv6.method disabled \
-  connection.autoconnect yes
-# Trixie sometimes files nmcli profiles in /run; make sure it is persistent
-if [ ! -f /etc/NetworkManager/system-connections/burrow-lan.nmconnection ] && \
-   ls /run/NetworkManager/system-connections/burrow-lan* >/dev/null 2>&1; then
-  cp /run/NetworkManager/system-connections/burrow-lan* /etc/NetworkManager/system-connections/
-  chmod 600 /etc/NetworkManager/system-connections/*
+# A fresh, explicitly saved profile (the auto-generated "Wired connection 1"
+# lives in /run on Trixie and is not persistent). Idempotent.
+if nmcli -t -f NAME connection show | grep -qx burrow-lan; then
+  nmcli connection modify burrow-lan ipv4.method manual ipv4.addresses "$LAN_IP/24" \
+    ipv4.gateway "$LAN_GW" ipv4.dns "$LAN_GW" ipv6.method disabled connection.autoconnect yes \
+    connection.autoconnect-priority 10
+else
+  nmcli connection add type ethernet ifname eth0 con-name burrow-lan ipv4.method manual \
+    ipv4.addresses "$LAN_IP/24" ipv4.gateway "$LAN_GW" ipv4.dns "$LAN_GW" ipv6.method disabled \
+    connection.autoconnect yes connection.autoconnect-priority 10 >/dev/null
 fi
+ls /etc/NetworkManager/system-connections/ | grep -q burrow-lan || echo "!! burrow-lan profile is not under /etc; check nmcli"
+echo "switching eth0 to $LAN_IP now (an SSH session on the old address will drop; reconnect to $LAN_IP)"
+nmcli connection up burrow-lan >/dev/null 2>&1 || true
 nmcli radio wifi off || true
 CFG=/boot/firmware/config.txt
 grep -q '^dtoverlay=disable-wifi' $CFG || echo 'dtoverlay=disable-wifi' >> $CFG

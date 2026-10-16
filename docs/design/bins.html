@@ -44,11 +44,11 @@
   <div class="two">
     <div>
       <p><b>Unchanged.</b> <code>projects/worm-bin/main.py</code> is untouched: parts list, hot-plug sensors, POST codes, OLED pages, servos, relay, calibration, <code>/data</code>, <code>/set</code>, <code>/cal</code>. Every other demo project is unchanged too.</p>
-      <p><b>Changed: <code>lib/picolab.py</code></b> (shared by all projects), version <b>0.1.2</b>. All of it is opt-in through files on the board, so a demo without <code>wifi.json</code> behaves exactly as before.</p>
+      <p><b>Changed: <code>lib/picolab.py</code></b> (shared by all projects), version <b>0.2.0</b>. All of it is opt-in through files on the board, so a demo without <code>wifi.json</code> behaves exactly as before.</p>
     </div>
     <div>
       <ul>
-        <li><b>Wi-Fi state machine.</b> The join ladder (<code>wormmaster&lt;n&gt;</code> → <code>wormmaster</code> → <code>WormHole</code>) now runs continuously: lost link → 60 s → own hotspot opens while it keeps scanning every 2 min → rejoin → hotspot closes after 10 stable minutes. Never blocks the sensor loop.</li>
+        <li><b>Wi-Fi state machine.</b> The join ladder (<code>wormmaster&lt;n&gt;</code> → <code>wormmaster</code> → <code>WormHole</code>) now runs continuously: lost link → 60 s of quiet retries → own hotspot opens → every 2 min it switches to station mode for a few seconds to look for the ladder (not while a phone is on the hotspot, for up to 10 min) → rejoin, hotspot gone. The Pico cannot run both radios' roles at once, so it alternates; the sensor loop only pauses during those few seconds.</li>
         <li><b>Push loop.</b> Every 60 s, a joined board POSTs its <code>/data</code> dict to its Burrow (own subnet <code>.10</code>, then the three Tunnel addresses). <code>"push": false</code> in <code>wifi.json</code> turns it off.</li>
         <li><b>History ring.</b> 288 five-minute samples of every numeric reading in RAM, served at <code>/history</code>; the board's own page draws 24-hour graphs from it, hotspot or not.</li>
         <li><b>Team card.</b> <code>bin.json</code> gives the board its team, period, bin number and room; <code>name.txt</code> gets the team name, so the hotspot SSID and the wall label are the team.</li>
@@ -112,7 +112,7 @@ cd tools/fleet &amp;&amp; python3 -m unittest test_flash   # the roster logic, n
   <li>On the Burrow dashboard (<code>http://192.168.81.10:8080/</code>) a tile called <b>Dirt Vader</b> appears within 60 s.</li>
   <li>On the board's own page (its IP, printed in the terminal and shown on the OLED), the status line reads <i>Dirt Vader (P3 bin 7) live on WormHole · reporting to 192.168.81.10:8080</i>, and after ten minutes the "LAST 24 HOURS" card has its first two points.</li>
 </ul>
-<div class="check"><b>Check:</b> unplug the Tunnel in that room (or walk the board out of range). Within about a minute the OLED header switches to the team-name hotspot; join it from a phone and open <code>http://192.168.4.1</code>: the page and the 24-hour graphs are there. Plug the Tunnel back in: within about two minutes the board rejoins, the push resumes, and ten minutes later the hotspot goes away by itself.</div>
+<div class="check"><b>Check:</b> unplug the Tunnel in that room (or walk the board out of range). Within about a minute the OLED header switches to the team-name hotspot; join it from a phone and open <code>http://192.168.4.1</code>: the page and the 24-hour graphs are there. Plug the Tunnel back in and disconnect your phone from the hotspot: within about two to three minutes the board rejoins and the push resumes (while your phone stays on the hotspot the board politely waits, up to ten minutes).</div>
 
 <h2 id="ladder">The ladder, for the record</h2>
 <hr class="rule">
@@ -129,7 +129,7 @@ cd tools/fleet &amp;&amp; python3 -m unittest test_flash   # the roster logic, n
 <hr class="rule">
 <ul>
   <li>Edit <code>lib/picolab.py</code> or the project; bump <code>VERSION</code> in <code>picolab.py</code> (the OLED and the self-test show it, the roster records it).</li>
-  <li>Run the laptop test first: <code>tools/picotest/run.sh</code> runs the real firmware under the MicroPython unix port with stub radios and a fake clock against a real Burrow, and walks the whole join/lose/hotspot/rejoin story (17 checks). It needs <code>apt install micropython</code>.</li>
+  <li>Run the laptop test first: <code>tools/picotest/run.sh</code> runs the real firmware under the MicroPython unix port with stub radios and a fake clock against a real Burrow, and walks the whole join/lose/hotspot/rejoin story (18 checks). It needs <code>apt install micropython</code>.</li>
   <li>Then one real board on the bench, then the loop for the fleet. Boards keep their teams.</li>
 </ul>
 

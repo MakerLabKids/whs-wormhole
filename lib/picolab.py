@@ -28,7 +28,7 @@ from machine import I2C, Pin, unique_id
 #   1.0.0  go-live: after this, no breaking changes.
 # Shown by the self-test (header + healthy message + OLED) and the worm-bin
 # startup screen, so a board tells you what it runs with no computer attached.
-VERSION = "0.1.2"
+VERSION = "0.2.0"
 
 _i2c = None
 
@@ -595,8 +595,12 @@ PORT = 80                  # web port (tests override)
 PUSH_EVERY_S = 60          # how often a joined station POSTs /ingest to its Burrow
 PUSH_TIMEOUT_S = 3         # per attempt; the loop stalls at most this long
 AP_AFTER_LOST_S = 60       # open our own hotspot this long after losing the network
-RESCAN_EVERY_S = 120       # while lost: look for the ladder networks this often
-AP_CLOSE_AFTER_S = 600     # close the hotspot after this long back on the network
+RESCAN_EVERY_S = 120       # while on the hotspot: look for the ladder networks this often
+AP_HOLD_MAX_S = 600        # ...unless a phone is on the hotspot: then wait up to this long
+# NOTE: the Pico W cannot run the hotspot and the station at the same time
+# (MicroPython's rp2 port does not route between two active interfaces), so
+# the board ALTERNATES: hotspot while lost, a ~15 s switch to station mode
+# every RESCAN_EVERY_S to look for the ladder, back to the hotspot if nothing.
 HIST_STEP_S = 300          # history ring: one sample every 5 min...
 HIST_SLOTS = 288           # ...for 24 hours
 HIST_MAX_METRICS = 24
@@ -771,6 +775,7 @@ class WebApp:
     self._net_next = 0            # uptime of the next rescan while lost
     self._lost_at = None          # uptime when the link went away
     self._joined_at = None        # uptime when the link came (back)
+    self._ap_hold_since = None    # uptime when we first deferred a rescan for a hotspot user
     self.edges = []
     self._edge_i = 0
     self.edge = None              # "host:port" that last accepted a push
@@ -834,13 +839,17 @@ class WebApp:
             break
           log("could not join", name, "- next in the ladder...")
         if not self.joined:
-          # Keep the station radio ON: _net_tick keeps looking for the
-          # ladder every RESCAN_EVERY_S while we serve from our own AP.
-          log("no network joined - opening own AP; will keep looking.")
+          log("no network joined - opening own AP; will keep looking every %ds." % RESCAN_EVERY_S)
+          sta.active(False)
           self._lost_at = uptime_s() - AP_AFTER_LOST_S
           self._net_next = uptime_s() + RESCAN_EVERY_S
       except Exception as e:
         log("Wi-Fi join errored (" + str(e) + ") - opening own AP instead.")
+        try:
+          self.sta.active(False)
+        except Exception:
+          pass
+        self._net_next = uptime_s() + RESCAN_EVERY_S
 
     if not self.joined:
       self._open_ap(network)
@@ -850,11 +859,17 @@ class WebApp:
 
   # ---- Wi-Fi state machine ------------------------------------------
   def _open_ap(self, network=None):
+    """Open our hotspot. The station must be off first (rp2 cannot run both)."""
     if self.ap:
       return
     if network is None:
       import network
     try:
+      if self.sta:
+        try:
+          self.sta.active(False)
+        except Exception:
+          pass
       self.ap = network.WLAN(network.AP_IF)
       self.ap.active(True)
       self.ap.ifconfig(("192.168.4.1", "255.255.255.0", "192.168.4.1", "192.168.4.1"))
@@ -863,8 +878,8 @@ class WebApp:
         if self.ap.active():
           break
         time.sleep(0.1)
-      if not self.joined:
-        self.ip = "192.168.4.1"
+      self.ip = "192.168.4.1"
+      self._ap_hold_since = None
       log("hotspot '" + self.ssid + "' open at http://192.168.4.1")
     except Exception as e:
       log("could not open hotspot:", e)
@@ -878,7 +893,13 @@ class WebApp:
     except Exception:
       pass
     self.ap = None
-    log("hotspot closed (back on", self.joined, "for %ds)" % AP_CLOSE_AFTER_S)
+
+  def _ap_in_use(self):
+    """Is a phone or laptop on our hotspot right now?"""
+    try:
+      return bool(self.ap and self.ap.status("stations"))
+    except Exception:
+      return False
 
   def _on_joined(self, name):
     self.joined = name
@@ -892,9 +913,12 @@ class WebApp:
     log("Joined", name, "as", self.ip, "- browse http://" + self.ip)
 
   def _net_tick(self):
-    """Keep the station on the ladder: notice a lost link, open the hotspot
-    after a grace period, rescan every couple of minutes, rejoin without
-    blocking the sensor loop, close the hotspot once stable again."""
+    """Keep the station on the ladder, without ever blocking for long while
+    joined. Joined -> lost: quick non-blocking retries for AP_AFTER_LOST_S,
+    then the hotspot opens (station off). On the hotspot: every
+    RESCAN_EVERY_S switch to the station for a few seconds to look for the
+    ladder (deferred while someone is using the hotspot, at most
+    AP_HOLD_MAX_S), rejoin if found, else back to the hotspot."""
     if not self.sta:
       return
     up = uptime_s()
@@ -904,21 +928,33 @@ class WebApp:
       except Exception:
         ok = False
       if ok:
-        if self.ap and self._joined_at is not None and up - self._joined_at >= AP_CLOSE_AFTER_S:
-          self._close_ap()
         return
-      log("network", self.joined, "lost - will keep trying; hotspot opens in %ds" % AP_AFTER_LOST_S)
+      log("network", self.joined, "lost - retrying; hotspot opens in %ds" % AP_AFTER_LOST_S)
       self.joined = None
       self.edge_ok = False
       self._lost_at = up
-      self._net_next = up + 5           # a quick first retry, then every RESCAN_EVERY_S
+      self._net_next = up + 5           # a quick first retry
       self._net_state = "idle"
-      if self.ap:
-        self.ip = "192.168.4.1"      # the hotspot is where to find us now
       return
-    # not joined
-    if self._lost_at is not None and not self.ap and up - self._lost_at >= AP_AFTER_LOST_S:
+    if self.ap:
+      # hotspot mode: periodically go looking, unless a phone is on us
+      if up < self._net_next:
+        return
+      if self._ap_in_use():
+        if self._ap_hold_since is None:
+          self._ap_hold_since = up
+        if up - self._ap_hold_since < AP_HOLD_MAX_S:
+          self._net_next = up + 30      # check again soon
+          return
+      self._net_next = up + RESCAN_EVERY_S
+      self._try_ladder_blocking()
+      return
+    # station only, not joined: the grace period after a loss
+    if self._lost_at is not None and up - self._lost_at >= AP_AFTER_LOST_S:
+      self._net_state = "idle"
+      self._net_next = up + RESCAN_EVERY_S
       self._open_ap()
+      return
     if self._net_state == "idle":
       if up < self._net_next:
         return
@@ -962,6 +998,36 @@ class WebApp:
       log("connect to", name, "failed:", e)
       self._net_state = "idle"
 
+  def _try_ladder_blocking(self):
+    """From hotspot mode: drop the hotspot, bring the station up, try the
+    ladder once (a few seconds per network present), and either stay joined
+    or put the hotspot back. Blocks the loop for up to ~15 s per present
+    network; the sensors and screen pause, the hotspot is briefly gone."""
+    log("hotspot pausing to look for", "/".join(self.ladder))
+    self._close_ap()
+    try:
+      self.sta.active(True)
+      time.sleep_ms(300)
+      try:
+        seen = set(x[0].decode() for x in self.sta.scan() if x[0])
+        present = [n for n in self.ladder if n in seen]
+      except Exception:
+        present = []
+      for name in present:
+        if _try_join(self.sta, name, (self.creds or {}).get("password", ""), attempts=1, wait_s=12):
+          self._on_joined(name)
+          return True
+      if present:
+        log("could not join", ", ".join(present), "- hotspot back on")
+    except Exception as e:
+      log("rescan failed:", e)
+    try:
+      self.sta.active(False)
+    except Exception:
+      pass
+    self._open_ap()
+    return False
+
   # ---- push loop -----------------------------------------------------
   def _uplink_tick(self, data_fn):
     if not (self.push and self.joined and self.edges):
@@ -985,28 +1051,30 @@ class WebApp:
     except Exception as e:
       log("push: could not build payload:", e)
       return
-    tried = 0
-    while tried < len(self.edges):
-      target = self.edges[self._edge_i % len(self.edges)]
-      host, _, port = target.partition(":")
-      try:
-        status, reply = _http_post_json(host, int(port or 8080), "/ingest", body)
-        if status == 200 and reply and reply.get("ok"):
-          if not self.edge_ok or self.edge != target:
-            log("push: Burrow", reply.get("edge", "?"), "at", target, "accepted us")
-          self.edge = target
-          self.edge_ok = True
-          self.last_push = up
-          if reply.get("ts"):
-            self.edge_ts = (int(reply["ts"]), up)
-          return
-        log("push:", target, "answered", status)
-      except Exception as e:
-        if self.edge_ok:
-          log("push:", target, "unreachable (" + str(e) + "), trying the next Burrow")
-      self._edge_i += 1
-      tried += 1
+    # ONE candidate per tick: a dead Burrow costs at most PUSH_TIMEOUT_S of
+    # stall per minute, never a stacked 4 x 3 s freeze of the sensor loop.
+    # On failure the next tick tries the next Burrow in the list.
+    target = self.edges[self._edge_i % len(self.edges)]
+    host, _, port = target.partition(":")
+    try:
+      status, reply = _http_post_json(host, int(port or 8080), "/ingest", body)
+      if status == 200 and reply and reply.get("ok"):
+        if not self.edge_ok or self.edge != target:
+          log("push: Burrow", reply.get("edge", "?"), "at", target, "accepted us")
+        self.edge = target
+        self.edge_ok = True
+        self.last_push = up
+        if reply.get("ts"):
+          self.edge_ts = (int(reply["ts"]), up)
+        return
+      log("push:", target, "answered", status)
+    except Exception as e:
+      if self.edge_ok:
+        log("push:", target, "unreachable (" + str(e) + "), trying the next Burrow next minute")
     self.edge_ok = False
+    self._edge_i += 1
+    # retry sooner than a full minute while hunting for a Burrow
+    self._push_due = up + (15 if len(self.edges) > 1 else PUSH_EVERY_S)
 
   def now_ts(self):
     """Unix time, if a Burrow ever told us; else None (the Pico has no clock)."""
@@ -1090,8 +1158,6 @@ class WebApp:
   def identity(self):
     """Who this board is, for the dashboard and the wall to label by."""
     mode = "joined" if self.joined else "ap"
-    if self.joined and self.ap:
-      mode = "joined+ap"
     d = {
         "id": self.uid,                       # permanent hardware serial
         "name": self.name,                    # stable friendly name
@@ -1102,8 +1168,6 @@ class WebApp:
     }
     if self.bin:
       d["bin"] = self.bin                     # team card: team/period/bin/room
-    if self.ap and self.joined:
-      d["ap"] = "192.168.4.1"
     if self.sta and self.push:
       d["edge"] = self.edge if self.edge_ok else None
     return d
