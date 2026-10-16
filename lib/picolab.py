@@ -28,7 +28,7 @@ from machine import I2C, Pin, unique_id
 #   1.0.0  go-live: after this, no breaking changes.
 # Shown by the self-test (header + healthy message + OLED) and the worm-bin
 # startup screen, so a board tells you what it runs with no computer attached.
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 
 _i2c = None
 
@@ -76,8 +76,20 @@ def i2c():
   return _i2c
 
 
+_UP = [time.ticks_ms(), 0]   # last ticks sample, accumulated ms (wrap-safe)
+
+
+def uptime_s():
+  """Seconds since boot. ticks_ms() wraps every ~12 days; this accumulates
+  across the wrap as long as it is called at least that often (poll() does)."""
+  now = time.ticks_ms()
+  _UP[1] += time.ticks_diff(now, _UP[0])
+  _UP[0] = now
+  return _UP[1] // 1000
+
+
 def _uptime():
-  return time.ticks_ms() // 1000
+  return uptime_s()
 
 
 def log(*args):
@@ -573,6 +585,152 @@ def query_int(req, key, default=None):
     return default
 
 
+
+# ---------------------------------------------------------------------
+# Fleet plumbing: identity file, the push loop, and the RAM history ring.
+# All opt-in through files on the board; demos without them behave as before.
+# ---------------------------------------------------------------------
+BIN_FILE = "bin.json"      # {"team": "Dirt Vader", "period": 3, "bin": 7, "room": 1}
+PORT = 80                  # web port (tests override)
+PUSH_EVERY_S = 60          # how often a joined station POSTs /ingest to its Burrow
+PUSH_TIMEOUT_S = 3         # per attempt; the loop stalls at most this long
+AP_AFTER_LOST_S = 60       # open our own hotspot this long after losing the network
+RESCAN_EVERY_S = 120       # while lost: look for the ladder networks this often
+AP_CLOSE_AFTER_S = 600     # close the hotspot after this long back on the network
+HIST_STEP_S = 300          # history ring: one sample every 5 min...
+HIST_SLOTS = 288           # ...for 24 hours
+HIST_MAX_METRICS = 24
+HIST_SKIP = ("big", "small", "relay", "probes", "probe_count", "up")
+
+
+def _flatten_numeric(d, out):
+  """Numeric top-level fields of a /data dict, lists of numbers as name_i.
+  Booleans, strings, dicts and the actuator fields are skipped."""
+  for k in d:
+    if k in HIST_SKIP:
+      continue
+    v = d[k]
+    if isinstance(v, bool):
+      continue
+    if isinstance(v, (int, float)):
+      out[k] = v
+    elif isinstance(v, list):
+      for i in range(len(v)):
+        x = v[i]
+        if isinstance(x, (int, float)) and not isinstance(x, bool):
+          out["%s_%d" % (k, i)] = x
+  return out
+
+
+class History:
+  """A 24-hour ring of 5-minute samples kept in RAM, served at /history so a
+  bin that cannot reach anything still shows graphs to a phone on its hotspot.
+  array('f') per metric: 288 slots x 24 metrics ~ 28 KB."""
+
+  def __init__(self, step_s=HIST_STEP_S, slots=HIST_SLOTS):
+    from array import array
+    self._array = array
+    self.step = step_s
+    self.n = slots
+    self.t = array("I", [0] * slots)     # uptime seconds at each sample
+    self.m = {}                          # metric -> array('f')
+    self.i = 0                           # next slot to write
+    self.count = 0
+    self._due = 0                        # uptime of the next capture
+
+  def tick(self, data, up):
+    if up < self._due:
+      return False
+    self._due = up - (up % self.step) + self.step
+    vals = _flatten_numeric(data, {})
+    nan = float("nan")
+    for k in vals:
+      if k not in self.m:
+        if len(self.m) >= HIST_MAX_METRICS:
+          continue
+        self.m[k] = self._array("f", [nan] * self.n)
+      self.m[k][self.i] = vals[k]
+    for k in self.m:
+      if k not in vals:
+        self.m[k][self.i] = nan
+    self.t[self.i] = up
+    self.i = (self.i + 1) % self.n
+    if self.count < self.n:
+      self.count += 1
+    return True
+
+  def _order(self):
+    if self.count < self.n:
+      return range(0, self.count)
+    return [(self.i + j) % self.n for j in range(self.n)]
+
+  def send(self, cl, up, ts):
+    """Stream the ring as JSON without building one big string."""
+    order = self._order()
+    cl.sendall(HEADER_JSON)
+    cl.sendall(('{"step":%d,"n":%d,"up":%d,"ts":%s,"t":[' % (
+        self.step, self.count, up, "null" if ts is None else str(ts))).encode())
+    cl.sendall(",".join(str(self.t[j]) for j in order).encode())
+    cl.sendall(b'],"m":{')
+    first = True
+    for k in self.m:
+      arr = self.m[k]
+      cl.sendall(('%s"%s":[' % ("" if first else ",", k)).encode())
+      first = False
+      parts = []
+      for j in order:
+        v = arr[j]
+        parts.append("null" if v != v else ("%.4g" % v))
+      cl.sendall(",".join(parts).encode())
+      cl.sendall(b"]")
+    cl.sendall(b"}}")
+
+
+def _http_post_json(host, port, path, body, timeout=PUSH_TIMEOUT_S):
+  """Tiny blocking POST. Returns (status, parsed-json-or-None). Raises on
+  network trouble; the caller decides what that means."""
+  addr = socket.getaddrinfo(host, port)[0][-1]
+  s = socket.socket()
+  s.settimeout(timeout)
+  try:
+    s.connect(addr)
+    head = ("POST %s HTTP/1.0\r\nHost: %s\r\nContent-Type: application/json\r\n"
+            "Content-Length: %d\r\nConnection: close\r\n\r\n" % (path, host, len(body)))
+    s.send(head.encode())
+    s.send(body)
+    resp = b""
+    while len(resp) < 2048:
+      chunk = s.recv(512)
+      if not chunk:
+        break
+      resp += chunk
+  finally:
+    s.close()
+  sep = resp.find(b"\r\n\r\n")
+  if sep < 0:
+    raise OSError("bad reply")
+  status = int(resp[:sep].split(b" ")[1])
+  payload = resp[sep + 4:]
+  try:
+    return status, (json.loads(payload) if payload else None)
+  except ValueError:
+    return status, None
+
+
+def _edge_candidates(ip, override=None):
+  """Where to push: the Burrow on our own subnet (.10), then the three
+  Tunnels' WAN addresses (each forwards 8080 to its Burrow)."""
+  if override:
+    return list(override)
+  out = []
+  try:
+    out.append(ip.rsplit(".", 1)[0] + ".10:8080")
+  except Exception:
+    pass
+  for n in (21, 22, 23):
+    out.append("192.168.80.%d:8080" % n)
+  return out
+
 class WebApp:
   def __init__(self, import_network=True, index="index.html"):
     import network
@@ -592,6 +750,37 @@ class WebApp:
     self.joined = None
     self.rescue_target = None
 
+    # Fleet identity (team card), written by the flash script. Optional.
+    self.bin = None
+    try:
+      with open(BIN_FILE) as f:
+        b = json.load(f)
+        if isinstance(b, dict):
+          self.bin = b
+    except Exception:
+      pass
+
+    # Wi-Fi state machine + push loop + history ring (see _net_tick).
+    self.sta = None
+    self.creds = None
+    self.ladder = []
+    self._net_state = "idle"      # idle | connecting
+    self._net_try_i = 0
+    self._net_candidates = []
+    self._net_deadline = 0
+    self._net_next = 0            # uptime of the next rescan while lost
+    self._lost_at = None          # uptime when the link went away
+    self._joined_at = None        # uptime when the link came (back)
+    self.edges = []
+    self._edge_i = 0
+    self.edge = None              # "host:port" that last accepted a push
+    self.edge_ok = False
+    self.last_push = None         # uptime of the last accepted push
+    self.edge_ts = None           # (unix ts from the Burrow, uptime when received)
+    self._push_due = 0
+    self.push = True
+    self.history = None
+
     # Mission-control mode: if wifi.json exists on the board
     # ({"ssid": "WormHole", "password": "supersecret"}), JOIN that
     # network so every station lives on one router and an aggregator
@@ -605,9 +794,14 @@ class WebApp:
     except Exception:
       pass
     if creds and creds.get("ssid"):
+      self.creds = creds
+      self.push = creds.get("push", True) is not False
+      if creds.get("history", True) is not False:
+        self.history = History()
       try:
         sta = network.WLAN(network.STA_IF)
         sta.active(True)
+        self.sta = sta
         password = creds.get("password", "")
 
         # The join ladder, highest priority first. rescue nets share the
@@ -623,6 +817,7 @@ class WebApp:
           ladder.append(rescue)         # 2: all boards (phone hotspot)
         ladder.append(creds["ssid"])    # 3: the real network
         self.rescue_target = (rescue + tag) if rescue else None
+        self.ladder = ladder
 
         # Scan so we only dial networks that actually exist (blind-
         # dialing dead SSIDs would waste ~30 s each before the fallback).
@@ -635,28 +830,190 @@ class WebApp:
 
         for name in present:
           if _try_join(sta, name, password):
-            self.joined = name
-            self.ip = sta.ifconfig()[0]
-            log("Joined", name, "as", self.ip, "- browse http://" + self.ip)
+            self._on_joined(name)
             break
           log("could not join", name, "- next in the ladder...")
         if not self.joined:
-          log("no network joined - opening own AP instead.")
-          sta.active(False)
+          # Keep the station radio ON: _net_tick keeps looking for the
+          # ladder every RESCAN_EVERY_S while we serve from our own AP.
+          log("no network joined - opening own AP; will keep looking.")
+          self._lost_at = uptime_s() - AP_AFTER_LOST_S
+          self._net_next = uptime_s() + RESCAN_EVERY_S
       except Exception as e:
         log("Wi-Fi join errored (" + str(e) + ") - opening own AP instead.")
 
     if not self.joined:
+      self._open_ap(network)
+
+    self.server = None
+    self._init_server()
+
+  # ---- Wi-Fi state machine ------------------------------------------
+  def _open_ap(self, network=None):
+    if self.ap:
+      return
+    if network is None:
+      import network
+    try:
       self.ap = network.WLAN(network.AP_IF)
       self.ap.active(True)
       self.ap.ifconfig(("192.168.4.1", "255.255.255.0", "192.168.4.1", "192.168.4.1"))
       self.ap.config(essid=self.ssid, security=0)
-      while not self.ap.active():
+      for _ in range(50):
+        if self.ap.active():
+          break
         time.sleep(0.1)
-      self.ip = "192.168.4.1"
+      if not self.joined:
+        self.ip = "192.168.4.1"
+      log("hotspot '" + self.ssid + "' open at http://192.168.4.1")
+    except Exception as e:
+      log("could not open hotspot:", e)
+      self.ap = None
 
-    self.server = None
-    self._init_server()
+  def _close_ap(self):
+    if not self.ap:
+      return
+    try:
+      self.ap.active(False)
+    except Exception:
+      pass
+    self.ap = None
+    log("hotspot closed (back on", self.joined, "for %ds)" % AP_CLOSE_AFTER_S)
+
+  def _on_joined(self, name):
+    self.joined = name
+    self.ip = self.sta.ifconfig()[0]
+    self._joined_at = uptime_s()
+    self._lost_at = None
+    self._net_state = "idle"
+    self.edges = _edge_candidates(self.ip, (self.bin or {}).get("edges") or (self.creds or {}).get("edges"))
+    self._edge_i = 0
+    self._push_due = uptime_s() + 5        # first push soon after joining
+    log("Joined", name, "as", self.ip, "- browse http://" + self.ip)
+
+  def _net_tick(self):
+    """Keep the station on the ladder: notice a lost link, open the hotspot
+    after a grace period, rescan every couple of minutes, rejoin without
+    blocking the sensor loop, close the hotspot once stable again."""
+    if not self.sta:
+      return
+    up = uptime_s()
+    if self.joined:
+      try:
+        ok = self.sta.isconnected()
+      except Exception:
+        ok = False
+      if ok:
+        if self.ap and self._joined_at is not None and up - self._joined_at >= AP_CLOSE_AFTER_S:
+          self._close_ap()
+        return
+      log("network", self.joined, "lost - will keep trying; hotspot opens in %ds" % AP_AFTER_LOST_S)
+      self.joined = None
+      self.edge_ok = False
+      self._lost_at = up
+      self._net_next = up + 5           # a quick first retry, then every RESCAN_EVERY_S
+      self._net_state = "idle"
+      if self.ap:
+        self.ip = "192.168.4.1"      # the hotspot is where to find us now
+      return
+    # not joined
+    if self._lost_at is not None and not self.ap and up - self._lost_at >= AP_AFTER_LOST_S:
+      self._open_ap()
+    if self._net_state == "idle":
+      if up < self._net_next:
+        return
+      self._net_next = up + RESCAN_EVERY_S
+      try:
+        seen = set(x[0].decode() for x in self.sta.scan() if x[0])
+        present = [n for n in self.ladder if n in seen]
+      except Exception:
+        present = list(self.ladder)
+      if not present:
+        return
+      self._net_candidates = present
+      self._net_try_i = 0
+      self._start_connect()
+    elif self._net_state == "connecting":
+      try:
+        if self.sta.isconnected():
+          self._on_joined(self._net_candidates[self._net_try_i])
+          return
+      except Exception:
+        pass
+      if up >= self._net_deadline:
+        self._net_try_i += 1
+        if self._net_try_i < len(self._net_candidates):
+          self._start_connect()
+        else:
+          self._net_state = "idle"
+
+  def _start_connect(self):
+    name = self._net_candidates[self._net_try_i]
+    try:
+      try:
+        self.sta.disconnect()
+      except Exception:
+        pass
+      self.sta.connect(name, (self.creds or {}).get("password", ""))
+      self._net_state = "connecting"
+      self._net_deadline = uptime_s() + 15
+      log("trying to join", name, "...")
+    except Exception as e:
+      log("connect to", name, "failed:", e)
+      self._net_state = "idle"
+
+  # ---- push loop -----------------------------------------------------
+  def _uplink_tick(self, data_fn):
+    if not (self.push and self.joined and self.edges):
+      return
+    up = uptime_s()
+    if up < self._push_due:
+      return
+    self._push_due = up + PUSH_EVERY_S
+    try:
+      d = data_fn()
+      ident = self.identity()
+      for k in ident:
+        if k not in d:
+          d[k] = ident[k]
+      d["up"] = up
+      try:
+        d["rssi"] = self.sta.status("rssi")
+      except Exception:
+        pass
+      body = json.dumps(d).encode("utf-8")
+    except Exception as e:
+      log("push: could not build payload:", e)
+      return
+    tried = 0
+    while tried < len(self.edges):
+      target = self.edges[self._edge_i % len(self.edges)]
+      host, _, port = target.partition(":")
+      try:
+        status, reply = _http_post_json(host, int(port or 8080), "/ingest", body)
+        if status == 200 and reply and reply.get("ok"):
+          if not self.edge_ok or self.edge != target:
+            log("push: Burrow", reply.get("edge", "?"), "at", target, "accepted us")
+          self.edge = target
+          self.edge_ok = True
+          self.last_push = up
+          if reply.get("ts"):
+            self.edge_ts = (int(reply["ts"]), up)
+          return
+        log("push:", target, "answered", status)
+      except Exception as e:
+        if self.edge_ok:
+          log("push:", target, "unreachable (" + str(e) + "), trying the next Burrow")
+      self._edge_i += 1
+      tried += 1
+    self.edge_ok = False
+
+  def now_ts(self):
+    """Unix time, if a Burrow ever told us; else None (the Pico has no clock)."""
+    if not self.edge_ts:
+      return None
+    ts, at = self.edge_ts
+    return ts + (uptime_s() - at)
 
   def _init_server(self):
     # Re-running a program (Viper: Stop then Run) can leave the OLD web
@@ -666,7 +1023,7 @@ class WebApp:
     # sensors, and light -- only the web page is missing. A dead screen
     # is never worth an unbindable port.
     import gc
-    addr = socket.getaddrinfo("0.0.0.0", 80)[0][-1]
+    addr = socket.getaddrinfo("0.0.0.0", PORT)[0][-1]
     for attempt in range(6):
       try:
         self.server = socket.socket()
@@ -732,14 +1089,24 @@ class WebApp:
 
   def identity(self):
     """Who this board is, for the dashboard and the wall to label by."""
-    return {
+    mode = "joined" if self.joined else "ap"
+    if self.joined and self.ap:
+      mode = "joined+ap"
+    d = {
         "id": self.uid,                       # permanent hardware serial
         "name": self.name,                    # stable friendly name
         "ip": self.ip,                        # where to browse right now
         "ssid": self.ssid,
-        "mode": "joined" if self.joined else "ap",
+        "mode": mode,
         "net": self.joined or self.ssid,
     }
+    if self.bin:
+      d["bin"] = self.bin                     # team card: team/period/bin/room
+    if self.ap and self.joined:
+      d["ap"] = "192.168.4.1"
+    if self.sta and self.push:
+      d["edge"] = self.edge if self.edge_ok else None
+    return d
 
   def announce(self, title):
     if self.joined:
@@ -751,6 +1118,11 @@ class WebApp:
       ]
       if self.rescue_target:
         lines.append("Rescue: " + self.rescue_target)
+      if self.bin:
+        lines.append("Team:   %s (P%s bin %s, room %s)" % (self.bin.get("team"), self.bin.get("period"),
+                                                           self.bin.get("bin"), self.bin.get("room")))
+      if self.push:
+        lines.append("Pushes: to " + ", ".join(self.edges[:2]) + ("..." if len(self.edges) > 2 else ""))
       banner(title, lines)
     else:
       lines = [
@@ -770,6 +1142,23 @@ class WebApp:
     routes: optional list of (prefix, handler); handler(req) -> dict,
     also served as JSON. Use for actions like /set?angle=90.
     """
+    # Housekeeping first, every call, all cheap unless something changed:
+    # the Wi-Fi ladder, the push to the Burrow, the history sample.
+    try:
+      self._net_tick()
+    except Exception as e:
+      log("net tick:", e)
+    try:
+      self._uplink_tick(data_fn)
+    except Exception as e:
+      log("push tick:", e)
+    if self.history:
+      try:
+        up = uptime_s()
+        if up >= self.history._due:
+          self.history.tick(data_fn(), up)
+      except Exception as e:
+        log("history tick:", e)
     if not self.server:      # port 80 never opened; run without the web page
       return
     try:
@@ -795,6 +1184,16 @@ class WebApp:
             cl.sendall(HEADER_JSON + payload)
             handled = True
             break
+
+      if not handled and b"GET /history" in req:
+        try:
+          if self.history:
+            self.history.send(cl, uptime_s(), self.now_ts())
+          else:
+            cl.sendall(HEADER_JSON + b'{"step":0,"n":0,"t":[],"m":{}}')
+        except Exception as e:
+          log("history send:", e)
+        handled = True
 
       if not handled and b"/data" in req:
         try:

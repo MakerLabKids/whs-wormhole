@@ -11,7 +11,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.23.0",
+    "@cloudflare/vitest-plugin": "^1.4.3",
     "vitest": "^5.0.5",
     "wrangler": "^4.151.0"
   }

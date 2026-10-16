@@ -129,6 +129,11 @@
       <button id="relay">OFF</button></div>
   </div>
 
+  <div class="grid">
+    <div class="card wide" id="histcard"><h3>LAST 24 HOURS <span id="histnote" style="font-weight:normal;font-size:12px;color:#94a3b8"></span></h3>
+      <div id="hist" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px"></div></div>
+  </div>
+
   <div id="status">connecting...</div>
 <script src="/cal.js"></script>
 <script>
@@ -226,7 +231,11 @@ function tick() {
         $('big').value = j.big; $('bigv').textContent = j.big;
         $('small').value = j.small; $('smallv').textContent = j.small;
       }
-      setStatus('live on ' + j.ssid, false);
+      var who = j.bin && j.bin.team ? j.bin.team + ' (P' + j.bin.period + ' bin ' + j.bin.bin + ') ' : '';
+      var where = j.mode === 'ap' ? 'own hotspot ' + j.ssid
+                : (j.net || j.ssid) + (j.mode === 'joined+ap' ? ' + hotspot' : '');
+      var edge = j.edge ? ' · reporting to ' + j.edge : (j.mode !== 'ap' && 'edge' in j ? ' · no Burrow reachable' : '');
+      setStatus(who + 'live on ' + where + edge, false);
     })
     .catch(function () {
       misses++;
@@ -252,6 +261,72 @@ paintUnits();
 
 setInterval(tick, 1000);
 tick();
+
+// ---- 24-hour graphs from the board's own RAM ring (/history) ----
+// The Pico keeps 288 five-minute samples per metric. This draws the ones
+// worth a glance; it works on the hotspot with no network at all.
+var HIST_SHOW = [
+  ['in_temp_c', 'bin air', '#f97316'], ['out_temp_c', 'room air', '#fdba74'],
+  ['in_hum_pct', 'humidity %', '#38bdf8'], ['moist1_pct', 'moisture 1 %', '#22c55e'],
+  ['moist2_pct', 'moisture 2 %', '#86efac'], ['probe_temps_c_0', 'soil probe 1', '#a78bfa'],
+  ['probe_temps_c_1', 'soil probe 2', '#c4b5fd'], ['light_pct', 'light %', '#eab308'],
+  ['surface_mm', 'surface mm', '#f472b6'], ['rssi', 'wi-fi dBm', '#94a3b8']
+];
+function drawSpark(cv, xs, ys, color, isTemp) {
+  var W = cv.width = cv.clientWidth * 2, H = cv.height = 120;
+  var c = cv.getContext('2d');
+  c.clearRect(0, 0, W, H);
+  var vals = ys.filter(function (v) { return v != null; });
+  if (vals.length < 2) { c.fillStyle = '#64748b'; c.font = '22px sans-serif'; c.fillText('collecting...', 10, 70); return; }
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+  if (hi - lo < 1) { hi += 0.5; lo -= 0.5; }
+  var x0 = xs[0], x1 = xs[xs.length - 1] || x0 + 1;
+  function X(t) { return 6 + (W - 12) * (t - x0) / Math.max(1, x1 - x0); }
+  function Y(v) { return 8 + (H - 30) * (1 - (v - lo) / (hi - lo)); }
+  c.strokeStyle = color; c.lineWidth = 3; c.lineJoin = 'round'; c.beginPath();
+  var pen = false;
+  for (var i = 0; i < ys.length; i++) {
+    if (ys[i] == null) { pen = false; continue; }
+    var x = X(xs[i]), y = Y(ys[i]);
+    if (pen) c.lineTo(x, y); else c.moveTo(x, y);
+    pen = true;
+  }
+  c.stroke();
+  var last = vals[vals.length - 1];
+  c.fillStyle = '#e2e8f0'; c.font = 'bold 26px sans-serif'; c.textAlign = 'right';
+  c.fillText((isTemp ? dispT(last) : last) + '', W - 8, 32);
+  c.fillStyle = '#94a3b8'; c.font = '18px sans-serif'; c.textAlign = 'left';
+  c.fillText('min ' + (isTemp ? dispT(lo) : lo) + '  max ' + (isTemp ? dispT(hi) : hi), 8, H - 6);
+  var span = x1 - x0;
+  c.textAlign = 'right'; c.fillText(span >= 3600 ? Math.round(span / 3600) + ' h' : Math.round(span / 60) + ' min', W - 8, H - 6);
+}
+function histTick() {
+  fetch('/history', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (h) {
+      var box = $('hist');
+      if (!h.n) { $('histnote').textContent = 'first sample in a few minutes'; return; }
+      $('histnote').textContent = h.n + ' samples, one every ' + Math.round(h.step / 60) + ' min' +
+        (h.ts ? '' : ' (board has no clock: times are relative)');
+      HIST_SHOW.forEach(function (m) {
+        var ys = h.m[m[0]];
+        if (!ys) return;
+        var id = 'sp_' + m[0];
+        var cv = document.getElementById(id);
+        if (!cv) {
+          var wrap = document.createElement('div');
+          wrap.innerHTML = '<div style="font-size:12px;color:#94a3b8;text-align:left">' + m[1] + '</div>' +
+            '<canvas id="' + id + '" style="width:100%;height:60px"></canvas>';
+          box.appendChild(wrap);
+          cv = document.getElementById(id);
+        }
+        drawSpark(cv, h.t, ys, m[2], /temp|probe/.test(m[0]));
+      });
+    })
+    .catch(function () {});
+}
+setInterval(histTick, 60000);
+setTimeout(histTick, 1500);
 </script>
 </body>
 </html>

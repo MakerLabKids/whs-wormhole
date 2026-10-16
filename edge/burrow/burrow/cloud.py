@@ -188,8 +188,8 @@ class Cloud:
             except Exception as e:
                 self.state["error"] = "%s: %s" % (m["id"], str(e)[:100])
                 log("cloud: %s: %s" % (m["id"], e))
-                if isinstance(e, urllib.error.URLError):
-                    break               # link went away; stop the pass
+                if isinstance(e, urllib.error.URLError) and not isinstance(e, urllib.error.HTTPError):
+                    break               # link went away; stop the pass (an HTTP error is per-casting)
         # Verify everything not yet verified (cheap; the Worker reads R2 back).
         unverified = [m["id"] for m in self.store.list_metas() if not m["cloud"].get("verified_at")
                       and m["cloud"].get("uploaded_at")]
