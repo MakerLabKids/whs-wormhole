@@ -81,3 +81,17 @@ Boxes ship on mixed firmware (seen: 4.3.28 and 4.8.3). The login handshake, `wif
 `ui init` and `repeater scan/connect` are the same across both. The admin-panel RPC method names
 for LAN/DHCP/port-forward differ between versions, so upgrade a router to the fleet's target
 (4.8.3) before scripting those. `repeater scan`/`connect` need a longer RPC timeout (~35 s).
+
+## Firmware upgrade (local file, no internet needed) — captured from the 4.3.28 panel
+
+Files: https://dl.gl-inet.com/router/sft1200 → "DOWNLOAD FOR COMMON UPGRADE" (the `.tar`), e.g.
+`https://fw.gl-inet.com/firmware/sft1200/release4/sft1200-4.8.3_release4-1006-0609-1780999327.tar`
+(sha256 f84630b6…ff5e1f). Keep a copy in `firmware/routers/` (gitignored).
+
+    1. POST http://<router>/upload      multipart/form-data (the panel's uploader; carries the sid)
+    2. call upgrade check_firmware_local {}      -> {"version":"4.8.3", "release_note":..., verification}
+    3. call upgrade upgrade_local {"keep_config":true,"keep_package":true}   -> []  then ~4 min reboot
+
+keep_config keeps admin password, Wi-Fi, repeater and LAN. Panel view names on 4.x (hash routes
+`#/<view>`): upgrade, lanip, wireless, internet, firewallview, clients, adminpw, timezone, reset …
+(from `call ui get_menu_list`).
