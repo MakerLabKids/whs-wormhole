@@ -45,7 +45,15 @@ Useful read methods (object, method):
       "random_bssid": false
     }
 
-Result `[]` means success. The 5 GHz main radio is `default_radio1` / `radio1`.
+Result `[]` means success. The 5 GHz main radio is `default_radio1` / `radio1`; its
+`hwmode` is `11a/n/ac`, `htmode` is `80` (80 MHz), channel 36 or 149 (fixed, non-DFS —
+the Opal does not hold DFS "auto"). Example, the hub's backhaul:
+
+    call wifi set_config {
+      "iface_name":"default_radio1","device":"radio1",
+      "ssid":"WormHole-Core","key":"<backhaul>","encryption":"psk2","hidden":false,
+      "hwmode":"11a/n/ac","htmode":"80","channel":36,"txpower":"Max","random_bssid":false
+    }
 
 Still to capture (schemas not yet reverse-engineered): LAN IP + DHCP, the repeater
 join (5 GHz backhaul), and port forwarding. Changing the LAN IP drops the path to
