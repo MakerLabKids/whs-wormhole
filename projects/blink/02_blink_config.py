@@ -4,7 +4,7 @@
 # top of the file, named in CAPS, so changing behavior never means
 # digging through loop code. Change a number, hit run, see the change.
 #
-# Project page (docs, all levels, install link): https://github.com/acklenx/raspberrypi/tree/main/projects/blink
+# Project page (docs, all levels, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/blink
 
 ON_TIME_S = 0.2     # how long the LED stays on each blink
 OFF_TIME_S = 0.8    # how long it stays off

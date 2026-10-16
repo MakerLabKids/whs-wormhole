@@ -5,15 +5,15 @@
   "urls": [
     [
       "fs:wifi.json",
-      "github:acklenx/raspberrypi/projects/mission-control/wifi.json"
+      "github:MakerLabKids/wormhole/projects/mission-control/wifi.json"
     ],
     [
       "fs:lib/picolab.py",
-      "github:acklenx/raspberrypi/lib/picolab.py"
+      "github:MakerLabKids/wormhole/lib/picolab.py"
     ],
     [
       "fs:toc.txt",
-      "github:acklenx/raspberrypi/docs/TOC.txt"
+      "github:MakerLabKids/wormhole/docs/TOC.txt"
     ]
   ]
 }

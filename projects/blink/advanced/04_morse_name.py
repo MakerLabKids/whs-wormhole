@@ -5,7 +5,7 @@
 # along. And of course: if it is blinking your name, your code is
 # DEFINITELY running.
 #
-# Project page (docs, all levels, install link): https://github.com/acklenx/raspberrypi/tree/main/projects/blink
+# Project page (docs, all levels, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/blink
 
 NAME = "MAKER LAB"   # <-- your name here! letters, numbers, spaces
 UNIT_MS = 150        # dit length. Bigger = slower, easier to read

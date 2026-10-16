@@ -16,7 +16,7 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
-const GH = "github:acklenx/raspberrypi";
+const GH = "github:MakerLabKids/wormhole";
 const INSTALL = "https://viper-ide.org/?install=" + GH;
 
 // ---- the manifest -------------------------------------------------
@@ -105,11 +105,11 @@ for (const p of PROJECTS) {
 toc += `workshop examples (01 hello-world, 03 blink, 04 webserver, 05 display)
   ${INSTALL}/examples/01-hello-world/package.json  (etc.)
 
-Lab guide + wiring diagrams:  https://acklenx.github.io/raspberrypi/
-Electronics glossary:         https://acklenx.github.io/raspberrypi/glossary.html
-Programming cheat sheet:      https://acklenx.github.io/raspberrypi/cheatsheet.html
-Repo + docs:                  https://github.com/acklenx/raspberrypi
-Firmware (.uf2, flash once):  https://github.com/acklenx/raspberrypi/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2
+Lab guide + wiring diagrams:  https://makerlabkids.github.io/wormhole/
+Electronics glossary:         https://makerlabkids.github.io/wormhole/glossary.html
+Programming cheat sheet:      https://makerlabkids.github.io/wormhole/cheatsheet.html
+Repo + docs:                  https://github.com/MakerLabKids/wormhole
+Firmware (.uf2, flash once):  https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2
 `;
 fs.writeFileSync(path.join(ROOT, "docs", "TOC.txt"), toc);
 console.log("wrote docs/TOC.txt");

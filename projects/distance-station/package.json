@@ -5,23 +5,23 @@
   "urls": [
     [
       "fs:main.py",
-      "github:acklenx/raspberrypi/projects/distance-station/main.py"
+      "github:MakerLabKids/wormhole/projects/distance-station/main.py"
     ],
     [
       "fs:index.html",
-      "github:acklenx/raspberrypi/projects/distance-station/index.html"
+      "github:MakerLabKids/wormhole/projects/distance-station/index.html"
     ],
     [
       "fs:lib/ssd1306.py",
-      "github:acklenx/raspberrypi/lib/ssd1306.py"
+      "github:MakerLabKids/wormhole/lib/ssd1306.py"
     ],
     [
       "fs:lib/vl53l0x.py",
-      "github:acklenx/raspberrypi/lib/vl53l0x.py"
+      "github:MakerLabKids/wormhole/lib/vl53l0x.py"
     ],
     [
       "fs:toc.txt",
-      "github:acklenx/raspberrypi/docs/TOC.txt"
+      "github:MakerLabKids/wormhole/docs/TOC.txt"
     ]
   ]
 }

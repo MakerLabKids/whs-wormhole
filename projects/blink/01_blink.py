@@ -6,7 +6,7 @@
 # This IS the truth light at its most basic: if the LED is blinking,
 # your code is running. If it is dark, it is not. No guessing.
 #
-# Project page (docs, all levels, install link): https://github.com/acklenx/raspberrypi/tree/main/projects/blink
+# Project page (docs, all levels, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/blink
 
 import time
 from machine import Pin

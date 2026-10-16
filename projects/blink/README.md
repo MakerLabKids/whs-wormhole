@@ -1,6 +1,6 @@
 # Blink: a real project, in levels
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/blink/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/blink/package.json)**: one click installs everything it needs onto a connected Pico.
 
 Blink is not a toy, it is the smallest honest program: hardware you can
 see obeying code you wrote. So it gets the full project treatment,
@@ -22,4 +22,4 @@ panel, copy a link into your browser, done.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/acklenx/raspberrypi/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).

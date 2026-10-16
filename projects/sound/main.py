@@ -15,7 +15,7 @@
 #
 # On the board: main.py, index.html, lib/picolab.py, lib/ssd1306.py.
 #
-# Project page (docs, wiring, install link): https://github.com/acklenx/raspberrypi/tree/main/projects/sound
+# Project page (docs, wiring, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/sound
 
 import gc
 import time

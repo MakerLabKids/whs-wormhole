@@ -23,7 +23,7 @@
 #
 # On the board: main.py, index.html, lib/picolab.py, lib/ssd1306.py.
 #
-# Project page: https://github.com/acklenx/raspberrypi/tree/main/projects/speaker
+# Project page: https://github.com/MakerLabKids/wormhole/tree/main/projects/speaker
 
 import gc
 import time

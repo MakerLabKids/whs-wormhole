@@ -1,6 +1,6 @@
 # Mission Control
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/mission-control/package.json)**: one click puts a connected Pico on the classroom network.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/mission-control/package.json)**: one click puts a connected Pico on the classroom network.
 
 One wall display for every station in the room. Stations keep running
 their normal demos; the only change is WHERE they serve: instead of
@@ -91,4 +91,4 @@ points it at fake stations (anything serving `/data` JSON).
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/acklenx/raspberrypi/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).

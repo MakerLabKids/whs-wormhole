@@ -78,8 +78,8 @@
     <h3>The easy button: load everything at once</h3>
     <p>Not sure where to start, or want it all on one board? This single <a class="term" href="glossary.html#upload-install">install</a> puts every project
        below onto the Pico, each in its own folder. Stop one, open another, <a class="term" href="glossary.html#run">run</a> it, no reloading.</p>
-    <p><a class="ext" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/everything/package.json"><b>Install everything</b></a>
-       &nbsp;·&nbsp; <a class="ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/everything">what's inside</a></p>
+    <p><a class="ext" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/everything/package.json"><b>Install everything</b></a>
+       &nbsp;·&nbsp; <a class="ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/everything">what's inside</a></p>
   </div>
 
   <h2>Heat &amp; air</h2>
@@ -97,8 +97,8 @@
          BME280s can't sit on one bus unless they have different addresses. Bridge one sensor's SDO pad
          to move it from <code>0x76</code> to <code>0x77</code>, so at most two per bus (one inside,
          one outside is the classic pair).</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/bme280/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/bme280">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/bme280/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/bme280">Project README</a></p>
     </div>
   </section>
 
@@ -113,8 +113,8 @@
          factory <a class="term" href="glossary.html#uart-serial">serial</a>, so many share the <em>same three wires</em>. About 10&ndash;15 are easy on the
          4.7k pullup; for a dense bin drop to a 2.2k&ndash;3.3k pullup and daisy-chain the probes; past
          ~50, split onto a second <a class="term" href="glossary.html#gpio">GPIO</a>. <a href="wiring/soil-temperature-multi.svg">See the many-on-one-wire diagram.</a></p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/soil-temperature/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/soil-temperature">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/soil-temperature/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/soil-temperature">Project README</a></p>
     </div>
   </section>
 
@@ -132,8 +132,8 @@
       <p class="multi"><b>More than one?</b> Each probe needs its own analog pin, and the Pico has only
          three (GP26/27/28). Want a moisture gradient at several depths? Add an <b>ADS1115</b> over the
          green/white I2C wires for four more analog inputs. <a href="wiring/soil-moisture-multi.svg">See the several-at-once diagram.</a></p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/soil-moisture/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/soil-moisture">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/soil-moisture/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/soil-moisture">Project README</a></p>
     </div>
   </section>
 
@@ -149,8 +149,8 @@
       <p>A cheap classic. Perfect for "how dark is it inside the worm bin with the lid on?"</p>
       <p class="multi"><b>More than one?</b> Like moisture, each one uses an analog pin (three on the
          Pico: GP26/27/28). Beyond three, add an <b>ADS1115</b> for four more.</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/light-basic/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/light-basic">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/light-basic/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/light-basic">Project README</a></p>
     </div>
   </section>
 
@@ -163,8 +163,8 @@
       <p>Actual numbers you can compare between rooms and days. (A shared classroom sensor.)</p>
       <p class="multi"><b>More than one?</b> It rides the green/white I2C wires. Two on one bus need
          different addresses, tie the ADDR pin high on one to move it to <code>0x5C</code>, so at most two per bus.</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/light-lux/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/light-lux">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/light-lux/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/light-lux">Project README</a></p>
     </div>
   </section>
 
@@ -182,8 +182,8 @@
       <p class="multi"><b>More than one?</b> Every VL53L0X ships at the same address (<code>0x29</code>),
          so two can't share a bus as-is, you'd have to power them up one at a time (XSHUT) and
          re-address each. For the classroom, run one per bin.</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/distance-station/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/distance-station">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/distance-station/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/distance-station">Project README</a></p>
     </div>
   </section>
 
@@ -197,8 +197,8 @@
       <p class="multi"><b>More than one?</b> Same story as the VL53L0X, shared <code>0x29</code>
          address, so one per bus unless you re-address with XSHUT. Note it shares that address with the
          VL53L0X too, so don't put both on one bus.</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/distance-vl53l1x/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/distance-vl53l1x">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/distance-vl53l1x/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/distance-vl53l1x">Project README</a></p>
     </div>
   </section>
 
@@ -215,8 +215,8 @@
       <p class="multi"><b>More than one?</b> Each mic uses one analog pin (three on the Pico:
          GP26/27/28), or add an <b>ADS1115</b> for more. For true whisper-quiet worm listening you want
          the shared geophone rig instead, see the "Next Level" ideas.</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/sound/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/sound">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/sound/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/sound">Project README</a></p>
     </div>
   </section>
 
@@ -236,8 +236,8 @@
       <p class="multi"><b>More than one?</b> One PWM-capable GPIO per speaker. The square-wave tone is
          loud and a little buzzy: turn the amp's volume pot down, or add a 10k+1k divider on the input
          for cleaner tones.</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/speaker/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/speaker">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/speaker/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/speaker">Project README</a></p>
     </div>
   </section>
 
@@ -268,8 +268,8 @@
          still goes to the Pico). Sticking with USB power? <a class="term" href="glossary.html#soldering">Solder</a> a fat <b>capacitor (470&ndash;1000&micro;F
          electrolytic, mind the +/- polarity)</b> across the servo's 5V and GND, right at the servo, to
          soak up the spikes.</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/servo/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/servo">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/servo/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/servo">Project README</a></p>
     </div>
   </section>
 
@@ -289,8 +289,8 @@
          module has this <a class="term" href="glossary.html#fourwords">driver</a> built in, wire its S pin to GP19 and skip the transistor.</p>
       <p class="multi"><b>More than one?</b> One driver and GPIO per motor. For a bigger thump, the MG995
          "thumper" servo works too (see the servo above).</p>
-      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/vibration/package.json">Install</a>
-        <a class="rd ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/vibration">Project README</a></p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/vibration/package.json">Install</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/vibration">Project README</a></p>
     </div>
   </section>
 
@@ -302,8 +302,8 @@
        moisture probes, light, sound, compaction, two servos, and a <a class="term" href="glossary.html#relay">relay</a>, all running together,
        with a full control dashboard (units, calibration, and a wiring/pinout guide built into the menu).
        This is where a real worm-bin <a class="term" href="glossary.html#access-point-vs-station">station</a> lives.</p>
-    <p><a class="ext" href="https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/worm-bin/package.json"><b>Install the worm-bin monitor</b></a>
-       &nbsp;·&nbsp; <a class="ext" href="https://github.com/acklenx/raspberrypi/tree/main/projects/worm-bin">full wiring &amp; details</a></p>
+    <p><a class="ext" href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/worm-bin/package.json"><b>Install the worm-bin monitor</b></a>
+       &nbsp;·&nbsp; <a class="ext" href="https://github.com/MakerLabKids/wormhole/tree/main/projects/worm-bin">full wiring &amp; details</a></p>
   </div>
 </div>
 <footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share.</footer>

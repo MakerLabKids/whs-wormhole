@@ -1,6 +1,6 @@
 # MAX9814: Sound Level Meter
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/sound/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/sound/package.json)**: one click installs everything it needs onto a connected Pico.
 
 A microphone with a built-in amplifier and automatic gain control (AGC).
 The AGC quietly turns its own volume up and down so quiet sounds are
@@ -28,7 +28,7 @@ GP27 is ADC1.
 
 ![sound wiring](../../docs/wiring/sound.svg)
 
-Also in the [lab guide](https://acklenx.github.io/raspberrypi/#wire-sound). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/wormhole/#wire-sound). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Two versions
 
@@ -59,4 +59,4 @@ holds steady. Great for a "how loud is the classroom" experiment.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/acklenx/raspberrypi/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).

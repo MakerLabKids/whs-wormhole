@@ -1,6 +1,6 @@
 # Distance Station
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/distance-station/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/distance-station/package.json)**: one click installs everything it needs onto a connected Pico.
 
 The full class build: a Pico 2 W reads a VL53L0X time-of-flight laser
 distance sensor, shows the distance on an SSD1306 OLED, and broadcasts its
@@ -27,7 +27,7 @@ Both devices share the same two I2C wires. That is the point of I2C.
 
 ![distance-station wiring](../../docs/wiring/distance-station.svg)
 
-Also in the [lab guide](https://acklenx.github.io/raspberrypi/#wire-distance-station). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/wormhole/#wire-distance-station). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Files to put on the board
 
@@ -67,4 +67,4 @@ the table.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/acklenx/raspberrypi/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).

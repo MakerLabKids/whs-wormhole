@@ -5,43 +5,43 @@
   "urls": [
     [
       "fs:main.py",
-      "github:acklenx/raspberrypi/projects/worm-bin/main.py"
+      "github:MakerLabKids/wormhole/projects/worm-bin/main.py"
     ],
     [
       "fs:index.html",
-      "github:acklenx/raspberrypi/projects/worm-bin/index.html"
+      "github:MakerLabKids/wormhole/projects/worm-bin/index.html"
     ],
     [
       "fs:lib/picolab.py",
-      "github:acklenx/raspberrypi/lib/picolab.py"
+      "github:MakerLabKids/wormhole/lib/picolab.py"
     ],
     [
       "fs:lib/ssd1306.py",
-      "github:acklenx/raspberrypi/lib/ssd1306.py"
+      "github:MakerLabKids/wormhole/lib/ssd1306.py"
     ],
     [
       "fs:lib/bme280.py",
-      "github:acklenx/raspberrypi/lib/bme280.py"
+      "github:MakerLabKids/wormhole/lib/bme280.py"
     ],
     [
       "fs:lib/ads1115.py",
-      "github:acklenx/raspberrypi/lib/ads1115.py"
+      "github:MakerLabKids/wormhole/lib/ads1115.py"
     ],
     [
       "fs:lib/vl53l0x.py",
-      "github:acklenx/raspberrypi/lib/vl53l0x.py"
+      "github:MakerLabKids/wormhole/lib/vl53l0x.py"
     ],
     [
       "fs:lib/bh1750.py",
-      "github:acklenx/raspberrypi/lib/bh1750.py"
+      "github:MakerLabKids/wormhole/lib/bh1750.py"
     ],
     [
       "fs:cal.js",
-      "github:acklenx/raspberrypi/web/cal.js"
+      "github:MakerLabKids/wormhole/web/cal.js"
     ],
     [
       "fs:toc.txt",
-      "github:acklenx/raspberrypi/docs/TOC.txt"
+      "github:MakerLabKids/wormhole/docs/TOC.txt"
     ]
   ]
 }

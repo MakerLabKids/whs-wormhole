@@ -5,23 +5,23 @@
   "urls": [
     [
       "fs:01_blink.py",
-      "github:acklenx/raspberrypi/projects/blink/01_blink.py"
+      "github:MakerLabKids/wormhole/projects/blink/01_blink.py"
     ],
     [
       "fs:02_blink_config.py",
-      "github:acklenx/raspberrypi/projects/blink/02_blink_config.py"
+      "github:MakerLabKids/wormhole/projects/blink/02_blink_config.py"
     ],
     [
       "fs:03_blink_async.py",
-      "github:acklenx/raspberrypi/projects/blink/03_blink_async.py"
+      "github:MakerLabKids/wormhole/projects/blink/03_blink_async.py"
     ],
     [
       "fs:advanced/04_morse_name.py",
-      "github:acklenx/raspberrypi/projects/blink/advanced/04_morse_name.py"
+      "github:MakerLabKids/wormhole/projects/blink/advanced/04_morse_name.py"
     ],
     [
       "fs:toc.txt",
-      "github:acklenx/raspberrypi/docs/TOC.txt"
+      "github:MakerLabKids/wormhole/docs/TOC.txt"
     ]
   ]
 }

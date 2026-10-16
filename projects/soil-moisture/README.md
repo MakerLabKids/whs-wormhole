@@ -1,6 +1,6 @@
 # Soil Moisture: Capacitive Sensor v1.2
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:acklenx/raspberrypi/projects/soil-moisture/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/soil-moisture/package.json)**: one click installs everything it needs onto a connected Pico.
 
 Reads how wet the soil is. The sensor changes capacitance with moisture,
 and outputs a voltage the Pico reads on an analog pin. More moisture
@@ -23,7 +23,7 @@ electronics at the top are not waterproof.
 
 ![soil-moisture wiring](../../docs/wiring/soil-moisture.svg)
 
-Also in the [lab guide](https://acklenx.github.io/raspberrypi/#wire-soil-moisture). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/wormhole/#wire-soil-moisture). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Two versions
 
@@ -56,7 +56,7 @@ numbers look random and refuse to settle, check the wiring.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/acklenx/raspberrypi/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
 
 ## Wiring multiples
 

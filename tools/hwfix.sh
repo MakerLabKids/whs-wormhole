@@ -122,12 +122,12 @@ everything_manifest() {   # the FULL image, straight from the everything package
     echo "  (no everything package.json, using core set)" >&2
     core_manifest; return
   fi
-  # Pair each "fs:<board-path>" line with the "github:.../raspberrypi/<repo-path>"
+  # Pair each "fs:<board-path>" line with the "github:.../wormhole/<repo-path>"
   # line that follows it. Portable awk, no python/jq needed.
   awk '
     match($0, /"fs:[^"]*"/) { fs=substr($0, RSTART+4, RLENGTH-5); haveps=1; next }
-    haveps && match($0, /"github:[^"]*raspberrypi\/[^"]*"/) {
-      s=substr($0, RSTART+1, RLENGTH-2); sub(/.*raspberrypi\//, "", s)
+    haveps && match($0, /"github:[^"]*wormhole\/[^"]*"/) {
+      s=substr($0, RSTART+1, RLENGTH-2); sub(/.*wormhole\//, "", s)
       print fs "|" s; haveps=0
     }
   ' "$pkg"

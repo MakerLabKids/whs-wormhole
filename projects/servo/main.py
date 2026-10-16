@@ -35,7 +35,7 @@
 # 10k resistor from GP28 to GND.
 # On the board: main.py, index.html, lib/picolab.py, lib/ssd1306.py.
 #
-# Project page (docs, wiring, install link): https://github.com/acklenx/raspberrypi/tree/main/projects/servo
+# Project page (docs, wiring, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/servo
 
 import gc
 import time
