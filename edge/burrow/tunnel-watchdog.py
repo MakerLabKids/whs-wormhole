@@ -8,7 +8,8 @@ and re-sends the join when it is not connected. Config: /etc/burrow/tunnel.json
   {"host": "192.168.81.1", "password": "<router admin>",
    "ssid": "WormHole-Core", "key": "<backhaul>", "bssid": "94:83:c4:84:d2:0c",
    "device": "radio1", "band": "5g", "encryption": "psk2"}
-Exit 0 = connected (or just re-sent), 1 = could not talk to the Tunnel.
+Always exits 0 (an unreachable Tunnel is logged, not a failed unit); the
+last outcome is in /run/tunnel-watchdog.json for /api/status.
 """
 import json
 import os
@@ -45,11 +46,13 @@ def main():
         status = r.call("repeater", "get_status")
     except Exception as e:
         print("tunnel %s unreachable: %s" % (cfg["host"], str(e)[:120]))
-        return 1
+        _save({**st, "last_check": time.time(), "last_result": "unreachable"})
+        return 0
     now = time.time()
     what = decide(status, st.get("last_join_at"), now)
     if what == "ok":
         print("connected to %s (%s dBm)" % (status.get("ssid"), status.get("signal")))
+        _save({**st, "last_check": now, "last_result": "connected", "signal": status.get("signal")})
         return 0
     if what == "wait":
         print("repeater %s; join sent %ds ago, waiting" % (status.get("state_s"), now - st["last_join_at"]))
@@ -63,11 +66,15 @@ def main():
         print("repeater was %s: re-sent join to %s" % (status.get("state_s"), cfg["ssid"]))
     except Exception as e:
         print("join failed: %s" % str(e)[:120])
+    _save({"last_join_at": now, "last_check": now, "last_result": "joined"})
+    return 0
+
+
+def _save(d):
     try:
-        json.dump({"last_join_at": now}, open(STATE, "w"))
+        json.dump(d, open(STATE, "w"))
     except OSError:
         pass
-    return 0
 
 
 if __name__ == "__main__":
