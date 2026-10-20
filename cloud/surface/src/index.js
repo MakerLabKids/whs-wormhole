@@ -8,7 +8,7 @@ import { handleAdmin } from "./admin.js";
 import { getSession, listTeams, login, logout, meBody } from "./auth.js";
 import { handleEdge } from "./edge.js";
 import { HttpError, err, ipHash, json, now } from "./util.js";
-import { apiBins, apiHistory, apiNow } from "./viewer.js";
+import { apiBins, apiHistory, apiNow, apiPublicNow } from "./viewer.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -40,6 +40,8 @@ async function handleApi(request, env, ctx, path) {
   if (path === "/api/teams" && m === "GET") return listTeams(env);
   if (path === "/api/login" && m === "POST") return login(request, env);
   if (path === "/api/admin/bootstrap") return handleAdmin(request, env, ctx, path, null);
+  // Public, anonymous, trimmed and cached: the wall skins on GitHub Pages.
+  if (path === "/api/public/now") return apiPublicNow(request, env, ctx);
 
   const session = await getSession(request, env, ctx);
   if (path === "/api/me") return session ? json(meBody(session)) : json({ ok: false }, 401);

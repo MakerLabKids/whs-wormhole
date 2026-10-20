@@ -1,4 +1,6 @@
 // Viewer API (cookie required): /api/now, /api/bins, /api/history.
+// Plus one anonymous, trimmed, 60 s-cached feed for the public wall skins:
+// /api/public/now (CORS for the project's GitHub Pages site).
 
 import { err, json, now, safeParse, toInt } from "./util.js";
 
@@ -66,4 +68,55 @@ export async function apiHistory(request, env) {
   ).bind(uid, step, from, to, HISTORY_ROW_CAP).all();
   const points = results.map((r) => [r.ts, safeParse(r.data, {})]);
   return json({ uid, step, from, to, points }, 200, { "cache-control": "private, max-age=60" });
+}
+
+// ---- public feed -----------------------------------------------------------
+// The mission-control skins on makerlabkids.github.io run on real data through
+// this. No cookie, no visit row, nothing per-person: team names, period, bin,
+// room and the readings. IPs and anything about who is looking never leave.
+const PUBLIC_TTL_S = 60;
+const PUBLIC_ORIGINS = ["https://makerlabkids.github.io", "https://whs.makerlabkids.com"];
+const PUBLIC_FIELDS = ["in_temp_c", "out_temp_c", "in_hum_pct", "out_hum_pct", "in_press_hpa", "moist1_pct",
+  "moist2_pct", "light_pct", "lux", "sound_pct", "surface_mm", "probe_temps_c", "mode", "relay"];
+
+export function publicCors(request, headers = {}) {
+  const origin = request.headers.get("origin") || "";
+  const ok = PUBLIC_ORIGINS.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  return ok ? { ...headers, "access-control-allow-origin": origin, vary: "origin" } : headers;
+}
+
+export async function apiPublicNow(request, env, ctx) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: publicCors(request, { "access-control-allow-methods": "GET", "access-control-max-age": "86400" }) });
+  }
+  if (request.method !== "GET") return err(405, "method not allowed");
+  const cache = caches.default;
+  const key = new Request(new URL(request.url).origin + "/api/public/now", { method: "GET" });
+  const hit = await cache.match(key);
+  if (hit) return new Response(hit.body, { status: hit.status, headers: publicCors(request, Object.fromEntries(hit.headers)) });
+
+  const { results } = await env.DB.prepare("SELECT edge_id, room, ts, clk, snapshot, updated_at FROM edges").all();
+  const t = now();
+  const edges = {}, bins = {};
+  for (const r of results) {
+    edges[r.edge_id] = { edge: r.edge_id, room: r.room, ts: r.ts, clk: r.clk, seen: r.updated_at };
+    const snap = safeParse(r.snapshot, {}) || {};
+    for (const [uid, e] of Object.entries(snap)) {
+      if (!e || typeof e !== "object") continue;
+      const cur = bins[uid];
+      if (cur && (cur.ts || 0) >= (e.ts || 0)) continue;
+      const d = e.d && typeof e.d === "object" ? e.d : {};
+      const parts = Array.isArray(d.parts) ? d.parts : [];
+      const dd = {};
+      for (const k of PUBLIC_FIELDS) if (d[k] !== undefined) dd[k] = d[k];
+      dd.parts_ok = parts.filter((p) => p && p.ok).length;
+      dd.parts_total = parts.length;
+      bins[uid] = { ts: e.ts, clk: e.clk, edge: e.edge || r.edge_id, room: e.room ?? r.room,
+        team: e.team || e.name || null, period: e.period ?? null, bin: e.bin ?? null,
+        stale: t - (e.ts || 0) > STALE_S, d: dd };
+    }
+  }
+  const resp = json({ ts: t, edges, bins }, 200, { "cache-control": `public, max-age=${PUBLIC_TTL_S}` });
+  ctx.waitUntil(cache.put(key, resp.clone()));
+  return new Response(resp.body, { status: 200, headers: publicCors(request, Object.fromEntries(resp.headers)) });
 }
