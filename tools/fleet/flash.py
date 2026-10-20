@@ -94,7 +94,7 @@ def read_roster():
 def write_roster(rows):
     tmp = ROSTER + ".tmp"
     with open(tmp, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=FIELDS)
+        w = csv.DictWriter(f, fieldnames=FIELDS, lineterminator="\n")
         w.writeheader()
         for r in rows:
             w.writerow({k: r.get(k, "") for k in FIELDS})

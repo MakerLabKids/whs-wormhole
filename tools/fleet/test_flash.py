@@ -56,14 +56,14 @@ class FlashTest(unittest.TestCase):
         for local, _ in pairs:
             self.assertTrue(os.path.exists(local), local)
 
-    def test_dry_run_flash_writes_roster(self):
+    def test_dry_run_flash_leaves_roster_untouched(self):
         rows = flash.init_roster(self.fleet)
         rn = flash.FakeRunner()
         row = flash.flash_one(rn, "/dev/ttyFAKE0", self.fleet, rows, "pw", dry=True)
         self.assertEqual(row["uid"], rn.uid)
         self.assertEqual(row["version"], "0.2.0")
         saved = flash.read_roster()
-        self.assertEqual(saved[0]["uid"], rn.uid)
+        self.assertEqual(saved[0]["uid"], "")      # --dry-run never writes roster.csv
         # the three identity files were pushed, after the wipe and the project files
         pushed = [c for c in rn.calls if len(c) > 3 and c[2] == "fs" and c[3] == "cp"]
         remotes = [c[5] for c in pushed]
