@@ -1,7 +1,11 @@
 #!/bin/bash
 # setup-pi.sh: turn a fresh Raspberry Pi OS Lite (64-bit, Trixie) into a Burrow.
 #
-#   sudo ./setup-pi.sh <room 1|2|3> [--no-partition]
+#   sudo ./setup-pi.sh <room 1|2|3> [--no-partition] [--defer-net]
+#
+#   --defer-net   save the static classroom address but do not switch to it now
+#                 (use when setting up through the Portal or a home LAN; the Pi
+#                 takes 192.168.8N.10 at the next boot or cable change)
 #
 # Run ONCE, as root, on a Pi that has booted, has internet (for apt), and
 # whose root partition was NOT auto-expanded (see docs/design/burrow.html:
@@ -11,8 +15,9 @@
 set -euo pipefail
 
 ROOM="${1:-}"
-case "$ROOM" in 1|2|3) ;; *) echo "usage: sudo $0 <room 1|2|3> [--no-partition]"; exit 2;; esac
-NOPART=0; [ "${2:-}" = "--no-partition" ] && NOPART=1
+case "$ROOM" in 1|2|3) ;; *) echo "usage: sudo $0 <room 1|2|3> [--no-partition] [--defer-net]"; exit 2;; esac
+NOPART=0; DEFER_NET=0
+for a in "${@:2}"; do case "$a" in --no-partition) NOPART=1;; --defer-net) DEFER_NET=1;; *) echo "unknown option $a"; exit 2;; esac; done
 [ "$(id -u)" = 0 ] || { echo "run with sudo"; exit 2; }
 
 HOST="burrow$ROOM"
@@ -28,6 +33,13 @@ sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t$HOST/" /etc/hosts || true
 # hostname; it has done its job (user, ssh), so switch it off.
 touch /etc/cloud/cloud-init.disabled 2>/dev/null || true
 
+ADMIN_USER="${SUDO_USER:-}"
+if [ -n "$ADMIN_USER" ] && [ "$ADMIN_USER" != root ] && [ ! -f /etc/sudoers.d/010-"$ADMIN_USER"-nopasswd ]; then
+  say "sudo without a password for $ADMIN_USER"
+  echo "$ADMIN_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/010-"$ADMIN_USER"-nopasswd
+  chmod 440 /etc/sudoers.d/010-"$ADMIN_USER"-nopasswd
+fi
+
 say "packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
@@ -39,6 +51,20 @@ apt-get purge -y -qq fake-hwclock >/dev/null 2>&1 || true
 say "data partition"
 DEV="$(findmnt -n -o SOURCE / | sed 's/p[0-9]*$//')"       # /dev/mmcblk0
 ROOTP="$(findmnt -n -o SOURCE /)"
+ROOTN="${ROOTP##*p}"
+# An un-expanded Trixie Lite root is 2.4 GiB with ~150 MB free: too small for
+# apt lists and cloudflared. Grow it (online, in place) to ROOT_GIB before
+# anything else is carved out of the free space.
+ROOT_GIB="${ROOT_GIB:-6}"
+ROOT_BYTES="$(lsblk -nbdo SIZE "$ROOTP")"
+NPARTS0="$(lsblk -nlo NAME,TYPE "$DEV" | awk '$2=="part"' | wc -l)"
+if [ "$NOPART" = 0 ] && [ "$NPARTS0" -le 2 ] && [ "$ROOT_BYTES" -lt $((ROOT_GIB*1024*1024*1024)) ]; then
+  echo "root is $((ROOT_BYTES/1024/1024)) MiB: growing it to ${ROOT_GIB} GiB"
+  echo ",${ROOT_GIB}G" | sfdisk --no-reread --force -N "$ROOTN" "$DEV" >/dev/null
+  partx -u "$DEV" 2>/dev/null || partprobe "$DEV" 2>/dev/null || true
+  resize2fs "$ROOTP" >/dev/null
+  echo "root now: $(df -h / | awk 'NR==2{print $2" ("$4" free)"}')"
+fi
 # A previous run may have created the partition but been unable to see it
 # until a reboot (the kernel sometimes refuses to re-read a busy table).
 LASTP="$(lsblk -nlo NAME,TYPE "$DEV" | awk '$2=="part"{print $1}' | tail -1)"
@@ -109,8 +135,12 @@ else
     connection.autoconnect yes connection.autoconnect-priority 10 >/dev/null
 fi
 ls /etc/NetworkManager/system-connections/ | grep -q burrow-lan || echo "!! burrow-lan profile is not under /etc; check nmcli"
-echo "switching eth0 to $LAN_IP now (an SSH session on the old address will drop; reconnect to $LAN_IP)"
-nmcli connection up burrow-lan >/dev/null 2>&1 || true
+if [ "$DEFER_NET" = 1 ]; then
+  echo "static $LAN_IP saved (--defer-net): it takes effect at the next boot or when the cable moves"
+else
+  echo "switching eth0 to $LAN_IP now (an SSH session on the old address will drop; reconnect to $LAN_IP)"
+  nmcli connection up burrow-lan >/dev/null 2>&1 || true
+fi
 nmcli radio wifi off || true
 CFG=/boot/firmware/config.txt
 grep -q '^dtoverlay=disable-wifi' $CFG || echo 'dtoverlay=disable-wifi' >> $CFG

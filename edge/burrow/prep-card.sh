@@ -55,6 +55,7 @@ check() {
   grep -q '^hostname:' "$UD" && pass "hostname: $(sed -n 's/^hostname: *//p' "$UD" | head -1)" || fail "no hostname: line"
   grep -qE '^users?:' "$UD" && pass "user: $(grep -m1 -oE '^ *-? *name: *"?[A-Za-z0-9_-]+' "$UD" | sed -E 's/.*name: *"?//')" || fail "no user:/users: block"
   grep -q 'ssh-ed25519\|ssh-rsa\|ssh_pwauth' "$UD" && pass "ssh configured" || fail "no ssh key or ssh_pwauth"
+  grep -qE '^  sudo: *null' "$UD" && fail "user has 'sudo: null' (no passwordless sudo; the script fixes it)" || pass "sudo rule ok"
   grep -q '^growpart:' "$UD" && pass "growpart block present" || fail "growpart block missing"
   grep -q '^resize_rootfs: *false' "$UD" && pass "resize_rootfs: false" || fail "resize_rootfs: false missing"
   local dups; dups=$(grep -oE '^[A-Za-z_]+:' "$UD" | sort | uniq -d | tr -d ':' | tr '\n' ' ')
@@ -83,6 +84,9 @@ fi
 tr -d '\n' < "$CMD" > "$CMD.tmp" && printf '\n' >> "$CMD.tmp" && mv "$CMD.tmp" "$CMD"
 
 if grep -q $'\r' "$UD"; then sed -i 's/\r$//' "$UD"; echo "  stripped CR line endings from user-data"; fi
+if grep -qE '^  sudo: *null' "$UD"; then
+  sed -i -E 's/^  sudo: *null *$/  sudo: "ALL=(ALL) NOPASSWD:ALL"/' "$UD"; echo "  gave the user passwordless sudo (was 'sudo: null')"
+fi
 if ! grep -q '^growpart:' "$UD"; then
   [ -n "$(tail -c1 "$UD")" ] && printf '\n' >> "$UD"      # file did not end with a newline
   printf '\ngrowpart:\n  mode: "off"\nresize_rootfs: false\n' >> "$UD"
