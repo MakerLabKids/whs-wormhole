@@ -275,7 +275,8 @@ def flash_one(rn, port, fleet, rows, password, dry=False):
         put_text(rn, port, "name.txt", team + "\n", td)
     version = read_version(rn, port)
     row.update(uid=uid, flashed_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), version=version)
-    write_roster(rows)
+    if not dry:
+        write_roster(rows)      # --dry-run must leave roster.csv untouched
     try:
         rn.run("connect", port, "reset", timeout=20, check=False)
     except Exception:
