@@ -2,9 +2,29 @@
 # Print every secret the Surface needs, plus the three per-Burrow token files.
 # Nothing is written anywhere: copy what you need. Run once; keep the output safe.
 #
-#   tools/gen-secrets.sh            # print everything
-#   tools/gen-secrets.sh --put      # also run `wrangler secret put` for each
+#   tools/gen-secrets.sh                  # print everything
+#   tools/gen-secrets.sh --put            # also run `wrangler secret put` for each
+#   tools/gen-secrets.sh --put-from FILE  # push the four NAME=value lines from a saved output
 set -euo pipefail
+
+put_all() {  # $1..$4 = SESSION_SECRET LIVE_KEY ADMIN_BOOTSTRAP EDGE_TOKENS
+  cd "$(dirname "$0")/.."
+  printf '%s' "$1" | npx wrangler secret put SESSION_SECRET
+  printf '%s' "$2" | npx wrangler secret put LIVE_KEY
+  printf '%s' "$3" | npx wrangler secret put ADMIN_BOOTSTRAP
+  printf '%s' "$4" | npx wrangler secret put EDGE_TOKENS
+  echo; echo "secrets now on the Worker:"; npx wrangler secret list
+}
+
+if [ "${1:-}" = "--put-from" ]; then
+  F="${2:?usage: $0 --put-from FILE}"
+  val() { grep -m1 "^$1=" "$F" | cut -d= -f2- | tr -d '\r\n'; }
+  for k in SESSION_SECRET LIVE_KEY ADMIN_BOOTSTRAP EDGE_TOKENS; do
+    [ -n "$(val "$k")" ] || { echo "no $k= line in $F" >&2; exit 1; }
+  done
+  put_all "$(val SESSION_SECRET)" "$(val LIVE_KEY)" "$(val ADMIN_BOOTSTRAP)" "$(val EDGE_TOKENS)"
+  exit 0
+fi
 
 rand() { openssl rand -hex "$1"; }
 
@@ -35,9 +55,5 @@ $LIVE_KEY
 EOF
 
 if [ "${1:-}" = "--put" ]; then
-  cd "$(dirname "$0")/.."
-  printf '%s' "$SESSION_SECRET"  | npx wrangler secret put SESSION_SECRET
-  printf '%s' "$LIVE_KEY"        | npx wrangler secret put LIVE_KEY
-  printf '%s' "$ADMIN_BOOTSTRAP" | npx wrangler secret put ADMIN_BOOTSTRAP
-  printf '%s' "$EDGE_TOKENS"     | npx wrangler secret put EDGE_TOKENS
+  put_all "$SESSION_SECRET" "$LIVE_KEY" "$ADMIN_BOOTSTRAP" "$EDGE_TOKENS" >&2
 fi
