@@ -48,7 +48,10 @@ def load(path=None):
             user = json.load(f)
     except FileNotFoundError:
         user = {}
+    if isinstance(user.get("peers"), dict):
+        cfg["peers"] = {}            # the file's peer list replaces the default one, it does not extend it
     _merge(cfg, user)
+    cfg["peers"].pop(cfg["edge"], None)   # never peer with ourselves
     cfg["_path"] = path
     return cfg
 
