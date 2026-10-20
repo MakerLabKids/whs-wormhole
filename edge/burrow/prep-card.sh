@@ -53,7 +53,7 @@ check() {
   if grep -q $'\r' "$UD"; then fail "has Windows line endings (CR); fix with: sed -i 's/\\r\$//' $UD"; fi
   grep -q $'\t' "$UD" && fail "contains a TAB; YAML needs spaces" || true
   grep -q '^hostname:' "$UD" && pass "hostname: $(sed -n 's/^hostname: *//p' "$UD" | head -1)" || fail "no hostname: line"
-  grep -qE '^users:|^ *- name:' "$UD" && pass "user: $(sed -n 's/^ *- name: *//p' "$UD" | head -1)" || fail "no users: block"
+  grep -qE '^users?:' "$UD" && pass "user: $(grep -m1 -oE '^ *-? *name: *"?[A-Za-z0-9_-]+' "$UD" | sed -E 's/.*name: *"?//')" || fail "no user:/users: block"
   grep -q 'ssh-ed25519\|ssh-rsa\|ssh_pwauth' "$UD" && pass "ssh configured" || fail "no ssh key or ssh_pwauth"
   grep -q '^growpart:' "$UD" && pass "growpart block present" || fail "growpart block missing"
   grep -q '^resize_rootfs: *false' "$UD" && pass "resize_rootfs: false" || fail "resize_rootfs: false missing"
