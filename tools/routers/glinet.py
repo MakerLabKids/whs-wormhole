@@ -24,7 +24,10 @@ import warnings
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    import crypt  # noqa: E402  (deprecated in 3.12, still present; see _crypt below)
+    try:
+        import crypt  # noqa: E402  (deprecated in 3.12, removed in 3.13; see _crypt below)
+    except ImportError:
+        crypt = None
 
 
 class RpcError(RuntimeError):
@@ -80,7 +83,18 @@ class Router:
 
 
 def _crypt(password, setting):
-    return crypt.crypt(password, setting)
+    """Unix crypt(3) with a "$alg$salt$" setting. Python 3.13 dropped the crypt
+    module, so fall back to `openssl passwd` (the password goes in on stdin)."""
+    if crypt is not None:
+        return crypt.crypt(password, setting)
+    import subprocess
+    alg, salt = setting.split("$")[1:3]
+    flag = {"1": "-1", "5": "-5", "6": "-6"}.get(alg)
+    if not flag:
+        raise RpcError("unsupported crypt algorithm $%s$ and no crypt module" % alg)
+    out = subprocess.run(["openssl", "passwd", flag, "-salt", salt, "-stdin"],
+                         input=password + "\n", capture_output=True, text=True, check=True).stdout
+    return out.strip()
 
 
 def login_hash(password, challenge, username="root"):

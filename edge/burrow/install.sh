@@ -17,10 +17,18 @@ if [ -d "$REPO/web/dash" ]; then
   rm -rf /opt/burrow/www && cp -r "$REPO/web/dash" /opt/burrow/www
 fi
 cp "$HERE/burrow-lock.sh" "$HERE/burrow-unlock.sh" "$HERE/install-cloudflared.sh" /opt/burrow/ 2>/dev/null || true
+cp "$HERE/tunnel-watchdog.py" /opt/burrow/
+[ -f "$REPO/tools/routers/glinet.py" ] && cp "$REPO/tools/routers/glinet.py" /opt/burrow/
 chown -R root:root /opt/burrow
 chmod -R a+rX /opt/burrow
 install -m 644 "$HERE/systemd/burrow.service" /etc/systemd/system/burrow.service
+install -m 644 "$HERE/systemd/tunnel-watchdog.service" "$HERE/systemd/tunnel-watchdog.timer" /etc/systemd/system/
 systemctl daemon-reload
+if [ -f /etc/burrow/tunnel.json ]; then
+  systemctl enable --now tunnel-watchdog.timer >/dev/null
+else
+  echo "no /etc/burrow/tunnel.json: the Tunnel backhaul watchdog is installed but not enabled"
+fi
 systemctl enable burrow >/dev/null
 systemctl restart burrow
 sleep 2

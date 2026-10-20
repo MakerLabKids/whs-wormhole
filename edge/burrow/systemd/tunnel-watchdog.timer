@@ -1,0 +1,10 @@
+[Unit]
+Description=Burrow: check the Tunnel backhaul every 2 minutes
+
+[Timer]
+OnBootSec=90
+OnUnitActiveSec=2min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

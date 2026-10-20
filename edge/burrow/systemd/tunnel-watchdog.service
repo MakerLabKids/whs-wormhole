@@ -1,0 +1,8 @@
+[Unit]
+Description=Burrow: re-join this room's Tunnel to the Portal when its repeater goes idle
+After=network-online.target
+ConditionPathExists=/etc/burrow/tunnel.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/burrow/tunnel-watchdog.py
