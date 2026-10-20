@@ -56,7 +56,7 @@
 <h2 id="wall">The Wall (<code>/</code>): instant status</h2>
 <hr class="rule g">
 <p>One tile per bin, grouped by room then period, sorted by bin number. Fifty tiles render in about a tenth of a second from a 15–40 KB JSON (<code>/api/now</code>), refreshed every 15 s and nudged instantly by the live stream. A filter box and room/period selectors; <b>Projector</b> mode (remembered per browser) hides the filters and enlarges everything for the back of the room. Click a tile for its history.</p>
-<p><img class="shot" src="img/dash-wall.png" alt="The status wall: tiles grouped by room and period, each with inside temperature, humidity, moisture, probe temperatures, surface, a status pill, and the Burrow it reported to"></p>
+<p><img class="shot" src="img/dash-wall.png" alt="The status wall: tiles grouped by room and period, each with air temperature, air humidity, air pressure, soil moisture, soil probe temperatures, surface, a status pill (hover it for the reason), and the Burrow it reported to"></p>
 <h3>What the colours mean</h3>
 <div class="tablewrap"><table>
 <tr><th>Status</th><th>Rule (any one is enough)</th></tr>
@@ -69,7 +69,7 @@
 
 <h2 id="bin">Bin history (<code>/bin/&lt;uid&gt;</code>): the deep view</h2>
 <hr class="rule">
-<p>Range buttons 6 h / 24 h / 3 d / 7 d / 30 d. Up to three days of 5-minute buckets, hourly beyond that (the server picks; the page says which). One chart per metric family: temperature (inside, room, each soil probe), humidity, soil moisture, light, pressure, and a small chart for anything else numeric the bin sends. Each line is the bucket average with a shaded min–max band; hover for values and time; min/avg/max for the range in the legend. Gaps stay gaps. All drawn on <code>&lt;canvas&gt;</code> by <code>charts.js</code>, about 300 lines.</p>
+<p>Range buttons 6 h / 24 h / 3 d / 7 d / 30 d. Up to three days of 5-minute buckets, hourly beyond that (the server picks; the page says which). One chart per metric family: temperature (air, room, each soil probe), air humidity, soil moisture, air pressure, light, and a small chart for anything else numeric the bin sends. Each line is the bucket average with a shaded min–max band; hover for values and time; min/avg/max for the range in the legend. Gaps stay gaps. All drawn on <code>&lt;canvas&gt;</code> by <code>charts.js</code>, about 300 lines.</p>
 <p><img class="shot" src="img/dash-bin.png" alt="A bin's history page: identity header with current readings, range buttons, and charts with min-max bands"></p>
 <p>Before the first casting seals (15 minutes after a bin's first report) the page says so instead of drawing an empty chart.</p>
 
