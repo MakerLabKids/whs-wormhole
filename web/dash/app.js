@@ -302,13 +302,13 @@
     function mCls(m) { return !isNum(m) ? '' : m < 15 ? 'bad' : m < 25 ? 'meh' : ''; }
     var rd = '';
     rd += '<div class="rd"><span class="k">air temp</span><span class="v ' + tCls + '">' + f1(t) + '<small>°C</small></span></div>';
-    rd += '<div class="rd"><span class="k">humidity</span><span class="v">' + f1(d.in_hum_pct) + '<small>%</small></span></div>';
-    if (isNum(d.in_press_hpa)) rd += '<div class="rd"><span class="k">pressure</span><span class="v">' + Math.round(d.in_press_hpa) + '<small> hPa</small></span></div>';
-    rd += '<div class="rd"><span class="k">moisture</span><span class="v">' +
+    rd += '<div class="rd"><span class="k">air humidity</span><span class="v">' + f1(d.in_hum_pct) + '<small>%</small></span></div>';
+    if (isNum(d.in_press_hpa)) rd += '<div class="rd"><span class="k">air pressure</span><span class="v">' + Math.round(d.in_press_hpa) + '<small> hPa</small></span></div>';
+    rd += '<div class="rd"><span class="k">soil moisture</span><span class="v">' +
       (ms.length ? [d.moist1_pct, d.moist2_pct].filter(isNum).map(function (m) { return '<span class="' + mCls(m) + '">' + f1(m) + '</span>'; }).join('<small> · </small>') : '–') + '<small>%</small></span></div>';
-    rd += '<div class="rd"><span class="k">probes</span><span class="v">' + (probes.length ? probes.map(function (x) { return f1(x); }).join('<small> · </small>') : '–') + '<small>°C</small></span></div>';
+    rd += '<div class="rd"><span class="k">soil temp</span><span class="v">' + (probes.length ? probes.map(function (x) { return f1(x); }).join('<small> · </small>') : '–') + '<small>°C</small></span></div>';
     if (isNum(d.surface_mm)) rd += '<div class="rd"><span class="k">surface</span><span class="v">' + Math.round(d.surface_mm) + '<small> mm</small></span></div>';
-    if (isNum(d.out_temp_c)) rd += '<div class="rd"><span class="k">room</span><span class="v">' + f1(d.out_temp_c) + '<small>°C</small></span></div>';
+    if (isNum(d.out_temp_c)) rd += '<div class="rd"><span class="k">room temp</span><span class="v">' + f1(d.out_temp_c) + '<small>°C</small></span></div>';
     var wifi = [d.mode, e.edge].filter(Boolean).join(' · ');
     return '<div class="who"><span>P' + esc(periodOf(e) != null ? periodOf(e) : '?') + ' · Bin ' + esc(binNoOf(e) != null ? binNoOf(e) : '?') + '</span>' +
       '<span class="lamp"><i></i>' + STATUS_LABEL[st] + '</span></div>' +
@@ -420,18 +420,18 @@
     return '';
   }
   function prettyMetric(m) {
-    var names = { in_temp_c: 'air temp', out_temp_c: 'room', in_hum_pct: 'air humidity', out_hum_pct: 'room', moist1_pct: 'moisture 1', moist2_pct: 'moisture 2',
-      light_pct: 'light', lux: 'lux', in_press_hpa: 'pressure', sound_pct: 'sound', surface_mm: 'surface', rssi: 'Wi-Fi signal' };
+    var names = { in_temp_c: 'air temp', out_temp_c: 'room temp', in_hum_pct: 'air humidity', out_hum_pct: 'room humidity', moist1_pct: 'soil moisture 1', moist2_pct: 'soil moisture 2',
+      light_pct: 'light', lux: 'lux', in_press_hpa: 'air pressure', sound_pct: 'sound', surface_mm: 'surface', rssi: 'Wi-Fi signal' };
     if (names[m]) return names[m];
-    var pm = m.match(/^probe_temps_c_(\d+)$/); if (pm) return 'probe ' + (parseInt(pm[1], 10) + 1);
+    var pm = m.match(/^probe_temps_c_(\d+)$/); if (pm) return 'soil temp ' + (parseInt(pm[1], 10) + 1);
     return m.replace(/_/g, ' ');
   }
   /* metric groups, in display order; anything numeric not listed gets its own small chart */
   var GROUPS = [
     { title: 'Temperature', unit: '°C', match: function (m) { return /^(in_temp_c|out_temp_c|probe_temps_c_\d+)$/.test(m); } },
-    { title: 'Humidity', unit: '%', min0: true, match: function (m) { return /^(in_hum_pct|out_hum_pct)$/.test(m); } },
+    { title: 'Air humidity', unit: '%', min0: true, match: function (m) { return /^(in_hum_pct|out_hum_pct)$/.test(m); } },
     { title: 'Soil moisture', unit: '%', min0: true, match: function (m) { return /^moist\d_pct$/.test(m); } },
-    { title: 'Pressure', unit: ' hPa', match: function (m) { return /^in_press_hpa$/.test(m); } },
+    { title: 'Air pressure', unit: ' hPa', match: function (m) { return /^in_press_hpa$/.test(m); } },
     { title: 'Light', unit: '', min0: true, match: function (m) { return /^(light_pct|lux)$/.test(m); } }
   ];
   var SERIES_COLORS = ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6'];
@@ -455,8 +455,8 @@
         ' · Room ' + esc(room != null ? room : '?') + ' · <span class="mono">' + esc(uid) + '</span>' + (d.name && d.name !== name ? ' · ' + esc(d.name) : '') + '</div>' +
         '<div class="meta"><span class="lamp tile-' + st + '">' + STATUS_LABEL[st] + '</span> · last reading ' + (e ? ago(e.ts) + ' (' + clock(e.ts) + ', clock ' + esc(e.clk || '?') + ')' : 'none yet') +
         (d.ip ? ' · <span class="mono">' + esc(d.ip) + '</span>' : '') + (isNum(d.rssi) ? ' · ' + d.rssi + ' dBm' : '') + '</div></div>' +
-        '<div class="nowrow">' + [['air temp', d.in_temp_c, '°C'], ['room', d.out_temp_c, '°C'], ['humidity', d.in_hum_pct, '%'], ['pressure', isNum(d.in_press_hpa) ? Math.round(d.in_press_hpa) : null, ' hPa'], ['moist 1', d.moist1_pct, '%'], ['moist 2', d.moist2_pct, '%'],
-          ['probes', Array.isArray(d.probe_temps_c) ? d.probe_temps_c.filter(isNum).map(function (x) { return f1(x); }).join(' · ') : null, '°C'],
+        '<div class="nowrow">' + [['air temp', d.in_temp_c, '°C'], ['air humidity', d.in_hum_pct, '%'], ['air pressure', isNum(d.in_press_hpa) ? Math.round(d.in_press_hpa) : null, ' hPa'], ['room temp', d.out_temp_c, '°C'], ['soil moisture 1', d.moist1_pct, '%'], ['soil moisture 2', d.moist2_pct, '%'],
+          ['soil temp', Array.isArray(d.probe_temps_c) ? d.probe_temps_c.filter(isNum).map(function (x) { return f1(x); }).join(' · ') : null, '°C'],
           ['surface', isNum(d.surface_mm) ? Math.round(d.surface_mm) : null, ' mm'], ['light', d.light_pct, '%'], ['parts', (function () { var p = partsOk(d); return p.total ? p.ok + '/' + p.total : null; })(), '']]
           .filter(function (x) { return x[1] != null && x[1] !== ''; })
           .map(function (x) { return '<div class="rd"><span class="k">' + x[0] + '</span><span class="v">' + (typeof x[1] === 'number' ? f1(x[1]) : esc(x[1])) + '<small>' + x[2] + '</small></span></div>'; }).join('') +
@@ -537,7 +537,7 @@
   }
 
   /* ---- view: live ---------------------------------------------------- */
-  var SPARK_METRICS = [['in_temp_c', 'air temp °C'], ['in_hum_pct', 'humidity %'], ['moist1_pct', 'moisture 1 %'], ['moist2_pct', 'moisture 2 %']];
+  var SPARK_METRICS = [['in_temp_c', 'air temp °C'], ['in_hum_pct', 'air humidity %'], ['moist1_pct', 'soil moisture 1 %'], ['moist2_pct', 'soil moisture 2 %']];
   var WATCH = ['in_temp_c', 'in_hum_pct', 'moist1_pct', 'moist2_pct', 'out_temp_c', 'light_pct', 'surface_mm'];
   function viewLive(main) {
     var sparkMetric = 'in_temp_c';
@@ -840,9 +840,9 @@
       '<p>Every worm bin has a small computer (a <b>Bin</b>) that reads its sensors once a minute and posts them to the classroom <b>Burrow</b> (a Raspberry Pi). ' +
       'The Burrow keeps every reading on its own memory card in sealed 15-minute blocks called <b>castings</b>, copies them to the other classrooms\' Burrows, and uploads them to the cloud (<b>the Surface</b>) whenever the school has internet.</p>' +
       '<h2>What the colors mean</h2><div class="swatches">' +
-      '<div class="swatch" style="border-color:var(--ok)"><b>NOMINAL</b> (green): air temp 15–27 °C, moisture 25 % or more, every part reporting.</div>' +
-      '<div class="swatch" style="border-color:var(--warn)"><b>WARN</b> (orange): air temp above 27 °C or below 15 °C, a moisture probe under 25 %, or a sensor part not responding.</div>' +
-      '<div class="swatch" style="border-color:var(--alarm)"><b>ALARM</b> (red): air temp above 30 °C or below 10 °C, or a moisture probe under 15 %. Worms are in trouble; go look.</div>' +
+      '<div class="swatch" style="border-color:var(--ok)"><b>NOMINAL</b> (green): air temp 15–27 °C, soil moisture 25 % or more, every part reporting.</div>' +
+      '<div class="swatch" style="border-color:var(--warn)"><b>WARN</b> (orange): air temp above 27 °C or below 15 °C, soil moisture under 25 %, or a sensor part not responding.</div>' +
+      '<div class="swatch" style="border-color:var(--alarm)"><b>ALARM</b> (red): air temp above 30 °C or below 10 °C, or soil moisture under 15 %. Worms are in trouble; go look.</div>' +
       '<div class="swatch" style="border-color:var(--stale)"><b>STALE</b> (grey, striped): no reading for 3 minutes. The Bin may be off, or off the Wi-Fi.</div></div>' +
       '<h2>Pages</h2><ul><li><a href="/">Wall</a>: one tile per bin, grouped by room and period. Click a tile for its history. The projector button makes everything bigger.</li>' +
       '<li><a href="/feed">Live</a>: every reading as it arrives, with a sparkline per bin.</li>' +
