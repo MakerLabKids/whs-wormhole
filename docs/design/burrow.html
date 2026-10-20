@@ -67,6 +67,7 @@
 </ol>
 
 <h2 id="cmdline">Step 2 · Stop the root partition from eating the card</h2>
+<p><strong>Shortcut:</strong> with the card re-inserted, run <code>edge/burrow/prep-card.sh</code> from the repo on your laptop. It finds the <code>bootfs</code> volume, checks both files, makes the two edits below only if they are missing, and checks again; boot the card only when it prints <code>ready</code>. <code>--check</code> only reports. The manual steps follow for reference.</p>
 <hr class="rule">
 <p>On first boot, Raspberry Pi OS expands its root partition to fill the card. We want the root to stay small (about 3 GB) so the rest becomes a separate, read-write <code>/data</code> partition. One edit, before the card ever boots:</p>
 <ol class="steps">
