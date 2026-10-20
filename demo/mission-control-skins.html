@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Mission Control: four takes</title>
+<title>Mission Control: seven takes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root { --ink: #0A0E12; }
@@ -17,6 +17,8 @@
   #rail button { background: #131A22; color: #C7D1DB; border: 1px solid #26313D;
                  border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
   #rail button.on { background: #C7D1DB; color: #0A0E12; font-weight: 700; }
+  #rail .src { font-size: 12px; letter-spacing: 1px; color: #6B7683; margin-left: 4px; }
+  #rail .src.live { color: #33FF66; } #rail .src.sim { color: #FFB000; }
   .view { display: none; } .view.on { display: block; }
 
   /* ---------- TAKE 1: FLIGHT DECK ---------- */
@@ -263,7 +265,7 @@
   <path d="M28 6 L38 34 L48 12 L58 34 L68 6" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
 </symbol></svg>
 <div id="rail">
-  <span>MISSION CONTROL, 4 WAYS:</span>
+  <span>MISSION CONTROL, 7 WAYS:</span>
   <button data-v="deck" class="on">1 · Flight Deck</button>
   <button data-v="bin">2 · The Living Bin</button>
   <button data-v="board">3 · The Leaderboard</button>
@@ -277,6 +279,8 @@
     <option value="ALL">ALL 46 BINS</option>
   </select>
   <button id="rawbtn" title="raw sensor firehose, styled to match">RAW</button>
+  <button id="simbtn" title="pretend data instead of the live feed (for rehearsals)">SIM</button>
+  <span id="src" class="src" title="where the numbers come from">connecting…</span>
   <span class="brand"><span class="mlklogo"></span><span class="whslogo"></span>
     <svg class="ww"><use href="#ww"/></svg>
     <span><b>Woodstock High School</b> · Audra Thomas</span></span>
@@ -356,7 +360,7 @@
 <div class="view" id="orbital">
   <div class="head">
     <h1>W O R M H O L E</h1>
-    <div class="tag">SIX STATIONS IN ORBIT · WOODSTOCK HIGH SCHOOL · FLIGHT DIRECTOR A. THOMAS</div>
+    <div class="tag" id="orbtag">SIX STATIONS IN ORBIT · WOODSTOCK HIGH SCHOOL · FLIGHT DIRECTOR A. THOMAS</div>
   </div>
   <canvas id="orbcanvas" width="1100" height="600"></canvas>
 </div>
@@ -435,11 +439,151 @@ for (var cls = 1; cls <= 7; cls++) {
       hist: [], score: 0, status: 'NOMINAL', anomaly: 0 });
   }
 }
+
+// ================= live data (the real thing) =================
+// Sources, in order: this host's own /api/now (a Burrow in the classroom, or
+// the website when you are logged in), then the website's public feed. If
+// neither answers the badge says SIMULATED and the fake engine below runs;
+// the SIM button forces that for rehearsals.
+var LIVE_SOURCES = ['https://whs.makerlabkids.com/api/public/now'];
+if (location.protocol !== 'file:' && location.hostname !== 'makerlabkids.github.io') LIVE_SOURCES.unshift(location.origin + '/api/now');
+var live = { on: false, forcedSim: false, src: null, lastOk: 0, bins: {}, fails: 0, prev: {} };
+var LIVEBINS = [];
+function fin(v) { return typeof v === 'number' && isFinite(v); }
+function fx(v, d) { return fin(v) ? v.toFixed(d) : '–'; }
+function avgOf(xs) { xs = xs.filter(fin); return xs.length ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null; }
+function avg2(a, b) { return avgOf([a, b]); }
+function liveStatus(e, d) {              // the same thresholds as the dashboard
+  if (e.stale) return 'STALE';
+  var t = d.in_temp_c, ms = [d.moist1_pct, d.moist2_pct].filter(fin);
+  if ((fin(t) && (t > 30 || t < 10)) || ms.some(function (m) { return m < 15; })) return 'ALARM';
+  var missing = fin(d.parts_total) ? d.parts_ok < d.parts_total
+    : (d.parts || []).some(function (p) { return p && p.ok === false; });
+  if ((fin(t) && (t > 27 || t < 15)) || ms.some(function (m) { return m < 25; }) || missing) return 'WARN';
+  return 'NOMINAL';
+}
+function liveScore(s) {                  // the sim's recipe, skipping what this bin does not measure
+  var parts = [], w = [], m = avg2(s.m1, s.m2);
+  if (fin(m)) { parts.push(100 - Math.abs(55 - m) * 1.6); w.push(0.4); }
+  if (fin(s.tin)) { parts.push(100 - Math.abs(23.5 - s.tin) * 9); w.push(0.4); }
+  if (fin(s.sound)) { parts.push(100 - s.sound); w.push(0.2); }
+  if (!parts.length) return 0;
+  var tw = w.reduce(function (a, b) { return a + b; }, 0), sc = 0;
+  parts.forEach(function (p, i) { sc += Math.max(0, p) * w[i] / tw; });
+  return Math.round(Math.max(0, Math.min(100, sc)));
+}
+function applyLive(j) {
+  var seen = {}, tnow = fin(j.ts) ? j.ts : Date.now() / 1000;
+  Object.keys(j.bins || {}).forEach(function (uid) {
+    var e = j.bins[uid], d = e.d || {};
+    var s = live.bins[uid];
+    if (!s) { s = live.bins[uid] = { uid: uid, hist: [], score: 0, status: undefined, anomaly: 0 }; LIVEBINS.push(s); }
+    var per = e.period != null ? e.period : (d.bin && d.bin.period);
+    var bn = (e.bin != null && typeof e.bin !== 'object') ? e.bin : (d.bin && d.bin.bin);
+    s.cls = 'P' + (per != null ? per : '?');
+    s.name = e.team || e.name || d.name || ('bin ' + uid.slice(-4));
+    s.cs = s.cls + '-' + (bn != null ? bn : '?');
+    s.room = e.room; s.edge = e.edge; s.ts = e.ts;
+    e.stale = !!e.stale || (fin(e.ts) && tnow - e.ts > 180);
+    s.tin = fin(d.in_temp_c) ? d.in_temp_c : null;
+    s.tout = fin(d.out_temp_c) ? d.out_temp_c : null;
+    s.hum = fin(d.in_hum_pct) ? d.in_hum_pct : null;
+    s.m1 = fin(d.moist1_pct) ? d.moist1_pct : null;
+    s.m2 = fin(d.moist2_pct) ? d.moist2_pct : null;
+    s.light = fin(d.light_pct) ? d.light_pct : null;
+    s.sound = fin(d.sound_pct) ? d.sound_pct : null;
+    s.press = fin(d.in_press_hpa) ? d.in_press_hpa : null;
+    s.probes = Array.isArray(d.probe_temps_c) ? d.probe_temps_c.filter(fin) : [];
+    if (fin(s.tin) && s.lastTs !== e.ts) { s.hist.push(s.tin); if (s.hist.length > 60) s.hist.shift(); }
+    s.lastTs = e.ts;
+    var st = liveStatus(e, d);
+    if (s.status !== undefined && s.status !== st && st !== 'NOMINAL') {
+      events.unshift(s.cs + ' ' + s.name.toUpperCase() + ': ' + st +
+        (fin(s.tin) ? ' · AIR ' + fx(s.tin, 1) + ' C' : '') + (fin(s.m1) ? ' · SOIL ' + fx(s.m1, 0) + '%' : ''));
+      if (events.length > 8) events.pop();
+    }
+    s.status = st; s.score = liveScore(s); seen[uid] = 1;
+  });
+  for (var i = LIVEBINS.length - 1; i >= 0; i--) if (!seen[LIVEBINS[i].uid]) { delete live.bins[LIVEBINS[i].uid]; LIVEBINS.splice(i, 1); }
+  LIVEBINS.sort(function (a, b) {
+    var pa = parseInt(a.cls.slice(1), 10) || 99, pb = parseInt(b.cls.slice(1), 10) || 99;
+    var ba = parseInt(a.cs.split('-')[1], 10) || 99, bb = parseInt(b.cs.split('-')[1], 10) || 99;
+    return pa - pb || ba - bb || a.name.localeCompare(b.name);
+  });
+}
+function pollLive() {
+  if (live.forcedSim) return;
+  var urls = live.src ? [live.src] : LIVE_SOURCES.slice();
+  (function tryNext() {
+    var u = urls.shift();
+    if (!u) {
+      live.fails++;
+      if (!live.on && live.fails >= 1) setMode(false);
+      else if (live.on && Date.now() - live.lastOk > 120000) setMode(false);
+      return;
+    }
+    fetch(u, { credentials: u.indexOf(location.origin) === 0 ? 'same-origin' : 'omit', cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (j) {
+        if (!j || !j.bins) throw new Error('no bins');
+        live.src = u; live.lastOk = Date.now(); live.fails = 0;
+        var before = LIVEBINS.map(function (s) { return s.uid; }).join();
+        applyLive(j);
+        var after = LIVEBINS.map(function (s) { return s.uid; }).join();
+        if (!live.on) setMode(true); else if (before !== after) { rebuildClassOptions(); rebuild(); }
+        paintSrc();
+      })
+      .catch(function () { if (live.src === u) live.src = null; tryNext(); });
+  })();
+}
+function setMode(on) {
+  live.on = on;
+  viewClass = on ? 'ALL' : 'P3';
+  rebuildClassOptions();
+  rebuild();
+  paintSrc();
+}
+function paintSrc() {
+  var el = document.getElementById('src');
+  if (!el) return;
+  if (live.on) {
+    var host = live.src.replace(/^https?:\/\//, '').split('/')[0];
+    el.className = 'src live';
+    el.textContent = '● LIVE · ' + LIVEBINS.length + ' bin' + (LIVEBINS.length === 1 ? '' : 's') + ' · ' + host;
+  } else {
+    el.className = 'src sim';
+    el.textContent = '● SIMULATED' + (live.forcedSim ? ' (by request)' : ' · no live feed reachable');
+  }
+}
+function rebuildClassOptions() {
+  var sel = document.getElementById('clsSel'), html = '';
+  if (live.on) {
+    var pers = {}; LIVEBINS.forEach(function (s) { pers[s.cls] = (pers[s.cls] || 0) + 1; });
+    Object.keys(pers).sort().forEach(function (p) { html += '<option value="' + p + '"' + (p === viewClass ? ' selected' : '') + '>' + p + ' (' + pers[p] + ')</option>'; });
+    html += '<option value="ALL"' + (viewClass === 'ALL' || !pers[viewClass] ? ' selected' : '') + '>ALL ' + LIVEBINS.length + ' BINS</option>';
+  } else {
+    for (var p = 1; p <= 7; p++) html += '<option' + (('P' + p) === viewClass ? ' selected' : '') + '>P' + p + '</option>';
+    html += '<option value="ALL"' + (viewClass === 'ALL' ? ' selected' : '') + '>ALL 46 BINS</option>';
+  }
+  sel.innerHTML = html;
+}
+function rebuild() {
+  setClass(viewClass);
+  buildDeck(); buildShelf(); buildBoard(); buildNet(); buildGarden(); resetOrbits();
+  focusTeam = Math.min(focusTeam || 0, Math.max(0, sims.length - 1));
+  netTeam = Math.min(netTeam || 0, Math.max(0, sims.length - 1));
+  recordHigh = 0; rlLines = [];
+  var tag = document.getElementById('orbtag');
+  if (tag) tag.textContent = (sims.length === 1 ? 'ONE STATION' : sims.length + ' STATIONS') + ' IN ORBIT · WOODSTOCK HIGH SCHOOL · FLIGHT DIRECTOR A. THOMAS';
+}
+
 var viewClass = 'P3';
 var sims = [];
 function setClass(v) {
   viewClass = v;
-  sims = v === 'ALL' ? ALLSIMS.slice() : ALLSIMS.filter(function (s) { return s.cls === v; });
+  var pool = live.on ? LIVEBINS : ALLSIMS;
+  sims = v === 'ALL' ? pool.slice() : pool.filter(function (s) { return s.cls === v; });
+  if (!sims.length && v !== 'ALL') { viewClass = 'ALL'; sims = pool.slice(); }
 }
 setClass(viewClass);
 function walk(v, step, lo, hi) {
@@ -448,6 +592,7 @@ function walk(v, step, lo, hi) {
 }
 var events = [], t0 = Date.now();
 function simTick() {
+  if (live.on) return;
   ALLSIMS.forEach(function (s) {
     if (s.anomaly > 0) { s.anomaly--; }
     else if (Math.random() < 0.004) {
@@ -511,12 +656,12 @@ function renderDeck() {
     ('0' + Math.floor(s / 60) % 60).slice(-2) + ':' + ('0' + s % 60).slice(-2);
   sims.forEach(function (s, i) {
     var d = deckTiles[i];
-    d.className = 'tile' + (s.status === 'WARN' ? ' warn' : s.status === 'ALARM' ? ' alarm' : '');
-    d.querySelector('.v-tin').textContent = s.tin.toFixed(1) + ' C';
+    d.className = 'tile' + (s.status === 'WARN' || s.status === 'STALE' ? ' warn' : s.status === 'ALARM' ? ' alarm' : '');
+    d.querySelector('.v-tin').textContent = fx(s.tin, 1) + ' C';
     d.querySelector('.v-tin').className = 'v-tin' + (s.tin > 30 ? ' hot' : '');
-    d.querySelector('.v-m').textContent = s.m1.toFixed(0) + '% / ' + s.m2.toFixed(0) + '%';
+    d.querySelector('.v-m').textContent = fx(s.m1, 0) + '% / ' + fx(s.m2, 0) + '%';
     d.querySelector('.v-m').className = 'v-m' + (s.m1 < 20 ? ' bad' : '');
-    d.querySelector('.v-hs').textContent = s.hum.toFixed(0) + '% / ' + s.sound.toFixed(0);
+    d.querySelector('.v-hs').textContent = fx(s.hum, 0) + '% / ' + fx(s.sound, 0);
     spark(d.querySelector('canvas'), s.hist, s.status === 'NOMINAL' ? '#33FF66' : '#FFB000', 18, 34);
   });
   var tk = events.map(function (e) { return '<em>&#9650;</em> ' + e; }).join(' &nbsp;&nbsp;·&nbsp;&nbsp; ')
@@ -551,12 +696,12 @@ function renderBin() {
   sims.forEach(function (t, i) {
     var m = document.querySelector('.m-' + i), v = document.querySelector('.t-' + i);
     if (m) m.textContent = mood(t);
-    if (v) v.textContent = t.tin.toFixed(1) + '°';
+    if (v) v.textContent = fx(t.tin, 1) + '°';
   });
   var cv = document.getElementById('binscene'), c = cv.getContext('2d');
   var W = cv.width, H = cv.height;
   // sky by light level
-  var day = Math.min(1, s.light / 40);
+  var day = Math.min(1, (fin(s.light) ? s.light : 10) / 40);
   c.fillStyle = 'rgb(' + Math.round(150 + 60 * day) + ',' + Math.round(190 + 30 * day) + ',' +
     Math.round(210 + 20 * day) + ')';
   c.fillRect(0, 0, W, 200);
@@ -572,7 +717,7 @@ function renderBin() {
   c.fillStyle = '#4A3521'; c.fillRect(42, 252, W - 84, 90);
   c.fillStyle = '#39281A'; c.fillRect(42, 342, W - 84, 56);
   // moisture droplets when wet
-  if ((s.m1 + s.m2) / 2 > 60) {
+  if ((avg2(s.m1, s.m2) || 0) > 60) {
     c.fillStyle = 'rgba(120,180,220,0.8)';
     for (var dnum = 0; dnum < 8; dnum++) {
       var dx2 = 60 + ((dnum * 97 + Date.now() / 30) % (W - 120));
@@ -581,7 +726,7 @@ function renderBin() {
     }
   }
   // worms (wiggle speed = happiness)
-  var happy = s.score / 100;
+  var happy = Math.max(0.15, s.score / 100);
   worms.forEach(function (wm) {
     wm.ph += 0.1 + happy * 0.15;
     wm.x += Math.cos(wm.a) * wm.spd * happy * 2;
@@ -601,19 +746,19 @@ function renderBin() {
   // probe dots at depths, colored by temp offsets
   for (var pnum = 0; pnum < 5; pnum++) {
     var ppx = 100 + pnum * ((W - 200) / 4), ppy = 240 + (pnum % 3) * 55;
-    var pt = s.tin + Math.sin(pnum * 2 + Date.now() / 5000);
-    var n = Math.max(0, Math.min(1, (pt - 18) / 14));
+    var pt = s.probes ? (s.probes.length ? s.probes[pnum % s.probes.length] : null) : s.tin + Math.sin(pnum * 2 + Date.now() / 5000);
+    var n = fin(pt) ? Math.max(0, Math.min(1, (pt - 18) / 14)) : null;
     c.beginPath(); c.arc(ppx, ppy, 9, 0, 7);
-    c.fillStyle = 'hsl(' + Math.round(220 - n * 200) + ',75%,55%)'; c.fill();
+    c.fillStyle = n == null ? '#8A8178' : 'hsl(' + Math.round(220 - n * 200) + ',75%,55%)'; c.fill();
     c.strokeStyle = '#F2E9D8'; c.lineWidth = 2; c.stroke();
     c.fillStyle = '#F2E9D8'; c.font = 'bold 11px Georgia';
-    c.textAlign = 'center'; c.fillText(pt.toFixed(1) + '°', ppx, ppy - 14);
+    c.textAlign = 'center'; c.fillText(fx(pt, 1) + '°', ppx, ppy - 14);
   }
   // gauges on the rim
   c.fillStyle = '#F2E9D8'; c.font = 'italic 15px Georgia'; c.textAlign = 'left';
-  c.fillText('bedding moisture ' + ((s.m1 + s.m2) / 2).toFixed(0) + '%', 46, 175);
+  c.fillText('bedding moisture ' + fx(avg2(s.m1, s.m2), 0) + '%', 46, 175);
   c.textAlign = 'right';
-  c.fillText('air ' + s.tout.toFixed(1) + '° · rh ' + s.hum.toFixed(0) + '%', W - 46, 175);
+  c.fillText('air ' + fx(s.tout, 1) + '° · rh ' + fx(s.hum, 0) + '%', W - 46, 175);
 }
 
 // ================= TAKE 3 render =================
@@ -634,8 +779,8 @@ function renderBoard() {
     var d = boardRows[si], s = sims[si];
     d.style.order = rank;
     d.querySelector('.rank').textContent = rank + 1;
-    d.querySelector('.st').textContent = s.tin.toFixed(1) + '° · moist ' +
-      ((s.m1 + s.m2) / 2).toFixed(0) + '% · ' + (s.status === 'NOMINAL' ? 'steady' : s.status.toLowerCase());
+    d.querySelector('.st').textContent = fx(s.tin, 1) + '° · moist ' +
+      fx(avg2(s.m1, s.m2), 0) + '% · ' + (s.status === 'NOMINAL' ? 'steady' : s.status.toLowerCase());
     d.querySelector('.score').textContent = s.score;
     spark(d.querySelector('canvas'), s.hist, rank === 0 ? '#FFD400' : '#7C89B8', 18, 34);
   });
@@ -690,7 +835,7 @@ function renderRain() {
   c.font = '13px monospace';
   rainCols.forEach(function (r) {
     r.y += r.v; if (r.y > h) { r.y = -12; r.x = Math.random() * w; }
-    var chs = (s.tin.toFixed(1) + s.m1.toFixed(0) + s.hum.toFixed(0));
+    var chs = (fx(s.tin, 1) + fx(s.m1, 0) + fx(s.hum, 0)).replace(/\u2013/g, '0');
     c.fillStyle = Math.random() < 0.08 ? '#E8FDFF' : '#0A5F55';
     c.fillText(chs[Math.floor(Math.random() * chs.length)], r.x, r.y);
   });
@@ -728,14 +873,14 @@ function renderHolo() {
   // probe points inside, colored by temp
   for (var i = 0; i < 5; i++) {
     var px = -1 + (i % 3), py = -0.7 + Math.floor(i / 3) * 0.7, pz = -0.4 + (i % 2) * 0.8;
-    var pt = s.tin + Math.sin(i * 2 + Date.now() / 4000) * 1.2;
-    var n = Math.max(0, Math.min(1, (pt - 18) / 14));
+    var pt = s.probes ? (s.probes.length ? s.probes[i % s.probes.length] : null) : s.tin + Math.sin(i * 2 + Date.now() / 4000) * 1.2;
+    var n = fin(pt) ? Math.max(0, Math.min(1, (pt - 18) / 14)) : null;
     var q = p3(px * 0.9, py, pz * 0.8);
     c.beginPath(); c.arc(q[0], q[1], 6, 0, 7);
-    c.fillStyle = 'hsl(' + Math.round(190 - n * 190) + ',100%,60%)';
+    c.fillStyle = n == null ? '#4A6F78' : 'hsl(' + Math.round(190 - n * 190) + ',100%,60%)';
     c.shadowColor = c.fillStyle; c.shadowBlur = 14; c.fill(); c.shadowBlur = 0;
     c.fillStyle = '#9AECF5'; c.font = '10px monospace'; c.textAlign = 'center';
-    c.fillText('P' + (i + 1) + ' ' + pt.toFixed(1), q[0], q[1] - 10);
+    c.fillText('P' + (i + 1) + ' ' + fx(pt, 1), q[0], q[1] - 10);
   }
 }
 function renderRadar() {
@@ -754,7 +899,7 @@ function renderRadar() {
   c.beginPath(); c.moveTo(cx, cy);
   c.lineTo(cx + Math.cos(ang) * R, cy + Math.sin(ang) * R); c.stroke();
   // blips: rate scales with sound + worm happiness
-  if (Math.random() < (s.sound / 70 + s.score / 300)) {
+  if (Math.random() < ((fin(s.sound) ? s.sound : 10) / 70 + s.score / 300)) {
     blips.push({ a: Math.random() * 6.3, r: Math.random() * R * 0.9, life: 90 });
   }
   blips = blips.filter(function (b) { return b.life-- > 0; });
@@ -767,11 +912,11 @@ function renderRadar() {
 function renderNetHud() {
   var s = sims[netTeam];
   document.getElementById('nethud').innerHTML =
-    '<span>CORE <b>' + s.tin.toFixed(2) + 'C</b></span>' +
+    '<span>CORE <b>' + fx(s.tin, 2) + 'C</b></span>' +
     '<span>SUBSTRATE H2O <b' + (s.m1 < 20 ? ' class="crit"' : '') + '>' +
-      s.m1.toFixed(1) + '% / ' + s.m2.toFixed(1) + '%</b></span>' +
-    '<span>ATMOS <b>' + s.hum.toFixed(0) + '%RH</b></span>' +
-    '<span>ACOUSTIC <b>' + s.sound.toFixed(1) + 'dB*</b></span>' +
+      fx(s.m1, 1) + '% / ' + fx(s.m2, 1) + '%</b></span>' +
+    '<span>ATMOS <b>' + fx(s.hum, 0) + '%RH</b></span>' +
+    '<span>ACOUSTIC <b>' + fx(s.sound, 1) + 'dB*</b></span>' +
     '<span>BIOMASS INDEX <b>' + s.score + '</b></span>' +
     '<span>STATUS <b' + (s.status !== 'NOMINAL' ? ' class="crit"' : '') + '>' + s.status + '</b></span>';
 }
@@ -789,10 +934,10 @@ function renderPaper() {
   var head = document.getElementById('phead'), sub = document.getElementById('psub');
   if (trouble && trouble.m1 < 20) {
     head.textContent = 'MOISTURE CRISIS GRIPS ' + trouble.name.toUpperCase();
-    sub.textContent = 'bedding at a parched ' + trouble.m1.toFixed(0) + '%; sources say a watering can has been dispatched';
+    sub.textContent = 'bedding at a parched ' + fx(trouble.m1, 0) + '%; sources say a watering can has been dispatched';
   } else if (trouble && trouble.tin > 30) {
     head.textContent = 'HEAT WAVE REPORTED IN ' + trouble.name.toUpperCase() + ' BIN';
-    sub.textContent = trouble.tin.toFixed(1) + ' degrees and climbing; worms relocate to lower bedding';
+    sub.textContent = fx(trouble.tin, 1) + ' degrees and climbing; worms relocate to lower bedding';
   } else {
     head.textContent = top.name.toUpperCase() + ' LEADS THE LEAGUE AT BIN SCORE ' + top.score;
     sub.textContent = 'rivals within striking distance; conditions described as \'suspiciously ideal\'';
@@ -806,14 +951,14 @@ function renderPaper() {
   var html = '';
   var roster = sims.slice(0, 8);
   roster.forEach(function (x, i) {
-    html += '<h3>' + x.name + ': bin holds at ' + x.tin.toFixed(1) + '&deg;</h3>' +
-      '<p>Bedding moisture measured ' + x.m1.toFixed(0) + '% and ' + x.m2.toFixed(0) +
-      '% at the two stations this hour, with relative humidity of ' + x.hum.toFixed(0) +
-      '% over the bedding. Acoustic activity registered ' + x.sound.toFixed(0) +
+    html += '<h3>' + x.name + ': bin holds at ' + fx(x.tin, 1) + '&deg;</h3>' +
+      '<p>Bedding moisture measured ' + fx(x.m1, 0) + '% and ' + fx(x.m2, 0) +
+      '% at the two stations this hour, with relative humidity of ' + fx(x.hum, 0) +
+      '% over the bedding. Acoustic activity registered ' + fx(x.sound, 0) +
       ' units. ' + quotes[(i + Math.floor(Date.now() / 20000)) % quotes.length] + '</p>';
     if (i === 1) {
       html += '<div class="wx"><b>THE WEATHER, UNDERGROUND</b>' +
-        'Inside the bins: mild, ' + (sims.reduce(function (a, x2) { return a + x2.tin; }, 0) / sims.length).toFixed(1) +
+        'Inside the bins: mild, ' + fx(avgOf(sims.map(function (x2) { return x2.tin; })), 1) +
         '&deg; average. Outlook: dark, with scattered feeding. Chance of castings: 100%.</div>';
     }
   });
@@ -866,7 +1011,7 @@ function renderOrbital() {
       c.fillStyle = '#E8EEFF'; c.font = 'bold 11px sans-serif';
       c.fillText(s.cs + ' ' + s.name, x, y - 16);
       c.fillStyle = '#8FA3E8'; c.font = '10px sans-serif';
-      c.fillText(s.tin.toFixed(1) + '\u00B0 \u00B7 ' + ((s.m1 + s.m2) / 2).toFixed(0) + '% \u00B7 ' + s.score, x, y + 22);
+      c.fillText(fx(s.tin, 1) + '\u00B0 \u00B7 ' + fx(avg2(s.m1, s.m2), 0) + '% \u00B7 ' + s.score, x, y + 22);
     } else {
       c.fillStyle = '#8FA3E8'; c.font = '9px sans-serif';
       c.fillText(s.cs, x, y - 13);
@@ -890,8 +1035,8 @@ function renderGarden() {
   sims.forEach(function (s, i) {
     var d = plotEls[i];
     d.querySelector('.lv').textContent = s.score;
-    d.querySelector('.tp').textContent = s.tin.toFixed(1) + 'C';
-    d.querySelector('.wa').textContent = ((s.m1 + s.m2) / 2).toFixed(0) + '%';
+    d.querySelector('.tp').textContent = fx(s.tin, 1) + 'C';
+    d.querySelector('.wa').textContent = fx(avg2(s.m1, s.m2), 0) + '%';
     var hp = s.status === 'NOMINAL' ? 3 : s.status === 'WARN' ? 2 : 1;
     d.querySelector('.hearts').innerHTML =
       '\u2665\u2665\u2665'.split('').map(function (h, j) {
@@ -929,9 +1074,9 @@ function rawTick() {
   var s = sims[rlN++ % sims.length];
   var ts = ((Date.now() - t0) / 1000).toFixed(2);
   var flag = s.status !== 'NOMINAL' ? '  <em>[' + s.status + ']</em>' : '';
-  rlLines.unshift('T+' + ts + '  <em>' + s.cs + '</em>  temp_in=' + s.tin.toFixed(2) +
-    'C temp_out=' + s.tout.toFixed(2) + 'C rh=' + s.hum.toFixed(1) + '% m1=' + s.m1.toFixed(1) +
-    '% m2=' + s.m2.toFixed(1) + '% light=' + s.light.toFixed(1) + '% snd=' + s.sound.toFixed(1) +
+  rlLines.unshift('T+' + ts + '  <em>' + s.cs + '</em>  temp_in=' + fx(s.tin, 2) +
+    'C temp_out=' + fx(s.tout, 2) + 'C rh=' + fx(s.hum, 1) + '% m1=' + fx(s.m1, 1) +
+    '% m2=' + fx(s.m2, 1) + '% light=' + fx(s.light, 1) + '% snd=' + fx(s.sound, 1) +
     ' score=' + s.score + flag);
   if (rlLines.length > 220) rlLines.pop();
   document.getElementById('rlbody').innerHTML = rlLines.join('\n');
@@ -951,11 +1096,18 @@ document.querySelectorAll('#rail button').forEach(function (b) {
   };
 });
 document.getElementById('clsSel').onchange = function () {
-  setClass(this.value);
-  buildDeck(); buildShelf(); buildBoard(); buildNet(); buildGarden(); resetOrbits();
-  focusTeam = 0; netTeam = 0; recordHigh = 0; rlLines = [];
+  viewClass = this.value; focusTeam = 0; netTeam = 0;
+  rebuild();
+};
+document.getElementById('simbtn').onclick = function () {
+  live.forcedSim = !live.forcedSim;
+  this.className = live.forcedSim ? 'on' : '';
+  if (live.forcedSim) { setMode(false); }
+  else { live.on = false; live.fails = 0; live.src = null; paintSrc(); pollLive(); }
 };
 setInterval(simTick, 350);
+pollLive();
+setInterval(pollLive, 15000);
 setInterval(function () {
   if (cur === 'deck') renderDeck();
   if (cur === 'bin') renderBin();

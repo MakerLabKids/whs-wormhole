@@ -168,6 +168,12 @@ if (fs.existsSync(demoSrc)) {
     const out = f.replace(/-skins\.html$/, ".html");
     fs.copyFileSync(path.join(demoSrc, f), path.join(demoOut, out));
     console.log(`published demo/${f} -> docs/demos/${out}`);
+    // the skins also ship inside the dashboard, so every Burrow (and the
+    // website) serves them on live data at /wall.html
+    if (f === "mission-control-skins.html") {
+      fs.copyFileSync(path.join(demoSrc, f), path.join(ROOT, "web", "dash", "wall.html"));
+      console.log(`published demo/${f} -> web/dash/wall.html`);
+    }
   }
 }
 
