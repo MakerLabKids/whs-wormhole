@@ -101,6 +101,26 @@
     return 'ok';
   }
   var STATUS_LABEL = { ok: 'NOMINAL', warn: 'WARN', alarm: 'ALARM', stale: 'STALE' };
+  /* why a bin is in its state, for the lamp's tooltip */
+  function statusWhy(e, now) {
+    now = now || nowS();
+    if (e.stale || !isNum(e.ts)) return 'no reading yet';
+    if (now - e.ts > STALE_S) return 'last reading ' + ago(e.ts) + ' ago';
+    var d = e.d || {}, t = d.in_temp_c, why = [];
+    if (isNum(t)) {
+      if (t > 30) why.push('air temp ' + f1(t) + ' °C, above 30 (alarm)');
+      else if (t < 10) why.push('air temp ' + f1(t) + ' °C, below 10 (alarm)');
+      else if (t > 27) why.push('air temp ' + f1(t) + ' °C, above 27 (warn)');
+      else if (t < 15) why.push('air temp ' + f1(t) + ' °C, below 15 (warn)');
+    }
+    [['soil moisture 1', d.moist1_pct], ['soil moisture 2', d.moist2_pct]].forEach(function (x) {
+      if (!isNum(x[1])) return;
+      if (x[1] < 15) why.push(x[0] + ' ' + f1(x[1]) + ' %, under 15 (alarm)');
+      else if (x[1] < 25) why.push(x[0] + ' ' + f1(x[1]) + ' %, under 25 (warn)');
+    });
+    (d.parts || []).forEach(function (pt) { if (pt && pt.ok === false) why.push(pt.name + ' not responding (warn)'); });
+    return why.length ? why.join('\n') : 'air temp 15–27 °C, soil moisture 25 % or more, every part reporting';
+  }
 
   /* ---- data: polling + SSE ------------------------------------------- */
   function applyNow(j) {
@@ -311,7 +331,7 @@
     if (isNum(d.out_temp_c)) rd += '<div class="rd"><span class="k">room temp</span><span class="v">' + f1(d.out_temp_c) + '<small>°C</small></span></div>';
     var wifi = [d.mode, e.edge].filter(Boolean).join(' · ');
     return '<div class="who"><span>P' + esc(periodOf(e) != null ? periodOf(e) : '?') + ' · Bin ' + esc(binNoOf(e) != null ? binNoOf(e) : '?') + '</span>' +
-      '<span class="lamp"><i></i>' + STATUS_LABEL[st] + '</span></div>' +
+      '<span class="lamp" title="' + esc(statusWhy(e, now)) + '"><i></i>' + STATUS_LABEL[st] + '</span></div>' +
       '<div class="team" title="' + esc(teamOf(e)) + '">' + esc(teamOf(e)) + '</div>' +
       '<div class="readings">' + rd + '</div>' +
       '<div class="foot"><span class="parts ' + (p.total && p.ok < p.total ? 'bad' : '') + '" title="' + esc((d.parts || []).map(function (x) { return (x.ok ? 'ok ' : 'FAIL ') + x.name; }).join('\n')) + '">' +
@@ -453,7 +473,7 @@
       var d = (e && e.d) || {};
       head.innerHTML = '<div><div class="team">' + esc(name) + '</div><div class="meta">Period ' + esc(per != null ? per : '?') + ' · Bin ' + esc(bn != null ? bn : '?') +
         ' · Room ' + esc(room != null ? room : '?') + ' · <span class="mono">' + esc(uid) + '</span>' + (d.name && d.name !== name ? ' · ' + esc(d.name) : '') + '</div>' +
-        '<div class="meta"><span class="lamp tile-' + st + '">' + STATUS_LABEL[st] + '</span> · last reading ' + (e ? ago(e.ts) + ' (' + clock(e.ts) + ', clock ' + esc(e.clk || '?') + ')' : 'none yet') +
+        '<div class="meta"><span class="lamp tile-' + st + '" title="' + (e ? esc(statusWhy(e)) : '') + '">' + STATUS_LABEL[st] + '</span> · last reading ' + (e ? ago(e.ts) + ' (' + clock(e.ts) + ', clock ' + esc(e.clk || '?') + ')' : 'none yet') +
         (d.ip ? ' · <span class="mono">' + esc(d.ip) + '</span>' : '') + (isNum(d.rssi) ? ' · ' + d.rssi + ' dBm' : '') + '</div></div>' +
         '<div class="nowrow">' + [['air temp', d.in_temp_c, '°C'], ['air humidity', d.in_hum_pct, '%'], ['air pressure', isNum(d.in_press_hpa) ? Math.round(d.in_press_hpa) : null, ' hPa'], ['room temp', d.out_temp_c, '°C'], ['soil moisture 1', d.moist1_pct, '%'], ['soil moisture 2', d.moist2_pct, '%'],
           ['soil temp', Array.isArray(d.probe_temps_c) ? d.probe_temps_c.filter(isNum).map(function (x) { return f1(x); }).join(' · ') : null, '°C'],
