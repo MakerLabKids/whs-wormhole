@@ -869,6 +869,8 @@
       '<li>Bin pages show 6 hours to 30 days of history. Each point is a 5-minute (or hourly) bucket: the line is the average and the shaded band is the min–max inside that bucket. Gaps in the line are gaps in the data.</li></ul>' +
       '<h2>Where the data goes</h2><p>Bin → Burrow (this classroom, kept 7 days as castings, longer as 5-minute summaries) → the other Burrows (mirrors) → the Surface at <a href="https://whs.makerlabkids.com">whs.makerlabkids.com</a> (raw castings in storage, summaries in a database). ' +
       'Nothing is deleted from a Burrow until the cloud has confirmed it holds an identical copy.</p>' +
+      '<h2>Source code</h2><p>Everything here is open: the Bin firmware, the Burrow and Surface code, this dashboard, and the student lab guide live in one repository, ' +
+      '<a href="https://github.com/MakerLabKids/whs-wormhole" target="_blank" rel="noopener">github.com/MakerLabKids/whs-wormhole</a>. The lab guide is published at <a href="https://makerlabkids.github.io/whs-wormhole/" target="_blank" rel="noopener">makerlabkids.github.io/whs-wormhole</a>.</p>' +
       '<p class="muted">You are looking at ' + (S.local ? 'a classroom Burrow (' + esc(Object.keys(S.edges).join(', ') || 'local') + '): open to anyone in the room, no login.' : 'the Surface: the cloud copy, with team logins.') + '</p>';
     main.appendChild(box);
     return { destroy: function () { } };
