@@ -1,6 +1,6 @@
 # Worm Bin Command Center
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/worm-bin/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/projects/worm-bin/package.json)**: one click installs everything it needs onto a connected Pico.
 
 The capstone: every sensor in the toolbox, and the actuators, running
 off ONE Pico at the same time. Everything is optional, hot-pluggable,
@@ -68,4 +68,4 @@ Or use the one-click install link in the repo README.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).

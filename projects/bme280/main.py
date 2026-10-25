@@ -14,7 +14,7 @@
 # On the board: main.py, index.html, lib/picolab.py, lib/bme280.py,
 # lib/ssd1306.py.
 #
-# Project page (docs, wiring, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/bme280
+# Project page (docs, wiring, install link): https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/bme280
 
 import gc
 

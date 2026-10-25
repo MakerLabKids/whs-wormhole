@@ -1,6 +1,6 @@
 # Soil Temperature: DS18B20 Waterproof Probes
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/soil-temperature/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/projects/soil-temperature/package.json)**: one click installs everything it needs onto a connected Pico.
 
 Reads temperature from DS18B20 probes: the steel-tipped waterproof ones
 made to bury in a worm bin. They speak the 1-Wire protocol, which means
@@ -24,7 +24,7 @@ serves the whole bus no matter how many probes you add.
 
 ![soil-temperature wiring](../../docs/wiring/soil-temperature.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/wormhole/#wire-soil-temperature). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-soil-temperature). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Two versions
 
@@ -57,7 +57,7 @@ drivers (`onewire`, `ds18x20`) are built into MicroPython.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
 
 ## Wiring multiples
 

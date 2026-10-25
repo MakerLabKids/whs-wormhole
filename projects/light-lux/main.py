@@ -14,7 +14,7 @@
 # On the board: main.py, index.html, lib/picolab.py, lib/bh1750.py,
 # lib/ssd1306.py.
 #
-# Project page (docs, wiring, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/light-lux
+# Project page (docs, wiring, install link): https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/light-lux
 
 import gc
 

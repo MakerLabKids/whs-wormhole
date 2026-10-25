@@ -1,6 +1,6 @@
 # BME280: Temperature, Humidity, Pressure
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/bme280/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/projects/bme280/package.json)**: one click installs everything it needs onto a connected Pico.
 
 The environment sensor. Reads air temperature, relative humidity, and
 barometric pressure over I2C. Also works with a BMP280 (its humidity-free
@@ -22,7 +22,7 @@ I2C address `0x76` or `0x77` (the demo finds either automatically).
 
 ![bme280 wiring](../../docs/wiring/bme280.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/wormhole/#wire-bme280). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-bme280). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Four tiers, from bare to mack daddy
 
@@ -53,7 +53,7 @@ need one of each.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
 
 ## Wiring two at once
 

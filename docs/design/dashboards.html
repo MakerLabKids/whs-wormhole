@@ -95,7 +95,7 @@
 <hr class="rule">
 <ul>
   <li>Edit the files in <span class="file">web/dash/</span>. No build. <code>node --check app.js</code> catches typos.</li>
-  <li>Try it against a real backend on your laptop: the <a class="ext" href="https://github.com/MakerLabKids/wormhole/blob/main/edge/burrow/README.md">Burrow README</a> "Run it on a laptop" (a Burrow on :8080 serving <code>web/dash</code>, fake bins from <code>simbins.py</code>), or the whole chain with the real Worker: <code>tools/e2e/run.sh</code> starts a local Worker (wrangler, local D1/R2), a Burrow uploading to it, 12 fake bins, and drives the pages in a headless browser: 26 checks, admin flows included.</li>
+  <li>Try it against a real backend on your laptop: the <a class="ext" href="https://github.com/MakerLabKids/whs-wormhole/blob/main/edge/burrow/README.md">Burrow README</a> "Run it on a laptop" (a Burrow on :8080 serving <code>web/dash</code>, fake bins from <code>simbins.py</code>), or the whole chain with the real Worker: <code>tools/e2e/run.sh</code> starts a local Worker (wrangler, local D1/R2), a Burrow uploading to it, 12 fake bins, and drives the pages in a headless browser: 26 checks, admin flows included.</li>
   <li>Ship it: on the Surface, <code>npx wrangler deploy</code> (assets go with the Worker); on each Burrow, the unlock → <code>git pull</code> → <code>install.sh</code> → lock dance from the <a href="burrow.html#lock">Pi 5 page</a>. The Burrow copy and the cloud copy may differ for a while; nothing breaks.</li>
   <li>The page detects which host it is on from <code>/api/me</code> (<code>local: true</code> means a Burrow); everything else is the same code.</li>
 </ul>

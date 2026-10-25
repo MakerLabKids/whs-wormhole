@@ -6,8 +6,8 @@ mirrors castings with the other two Burrows, uploads to the **Surface**
 (Cloudflare) whenever any internet exists, and serves the local dashboards.
 Standard library only; nothing to pip install.
 
-Design: https://makerlabkids.github.io/wormhole/design/ · Build guide:
-https://makerlabkids.github.io/wormhole/design/burrow.html · Wire protocol:
+Design: https://makerlabkids.github.io/whs-wormhole/design/ · Build guide:
+https://makerlabkids.github.io/whs-wormhole/design/burrow.html · Wire protocol:
 [PROTOCOL.md](PROTOCOL.md)
 
 ```

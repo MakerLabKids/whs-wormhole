@@ -5,11 +5,11 @@
   "urls": [
     [
       "fs:main.py",
-      "github:MakerLabKids/wormhole/examples/03-blink/main.py"
+      "github:MakerLabKids/whs-wormhole/examples/03-blink/main.py"
     ],
     [
       "fs:toc.txt",
-      "github:MakerLabKids/wormhole/docs/TOC.txt"
+      "github:MakerLabKids/whs-wormhole/docs/TOC.txt"
     ]
   ]
 }

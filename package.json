@@ -1,12 +1,12 @@
 {
   "urls": [
-    ["lib/picolab.py", "github:MakerLabKids/wormhole/lib/picolab.py"],
-    ["lib/ssd1306.py", "github:MakerLabKids/wormhole/lib/ssd1306.py"],
-    ["lib/vl53l0x.py", "github:MakerLabKids/wormhole/lib/vl53l0x.py"],
-    ["lib/bme280.py", "github:MakerLabKids/wormhole/lib/bme280.py"],
-    ["lib/vl53l1x.py", "github:MakerLabKids/wormhole/lib/vl53l1x.py"],
-    ["lib/bh1750.py", "github:MakerLabKids/wormhole/lib/bh1750.py"],
-    ["lib/ads1115.py", "github:MakerLabKids/wormhole/lib/ads1115.py"]
+    ["lib/picolab.py", "github:MakerLabKids/whs-wormhole/lib/picolab.py"],
+    ["lib/ssd1306.py", "github:MakerLabKids/whs-wormhole/lib/ssd1306.py"],
+    ["lib/vl53l0x.py", "github:MakerLabKids/whs-wormhole/lib/vl53l0x.py"],
+    ["lib/bme280.py", "github:MakerLabKids/whs-wormhole/lib/bme280.py"],
+    ["lib/vl53l1x.py", "github:MakerLabKids/whs-wormhole/lib/vl53l1x.py"],
+    ["lib/bh1750.py", "github:MakerLabKids/whs-wormhole/lib/bh1750.py"],
+    ["lib/ads1115.py", "github:MakerLabKids/whs-wormhole/lib/ads1115.py"]
   ],
   "version": "0.3.0",
   "description": "Drivers and the picolab framework for Maker Lab Kids Pico 2 W samples"

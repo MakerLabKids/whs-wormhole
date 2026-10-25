@@ -1,5 +1,5 @@
 #
-# Project page (docs, wiring, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/distance-station
+# Project page (docs, wiring, install link): https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/distance-station
 import gc
 import json
 import random

@@ -5,39 +5,39 @@
   "urls": [
     [
       "fs:main.py",
-      "github:MakerLabKids/wormhole/projects/bme280/main.py"
+      "github:MakerLabKids/whs-wormhole/projects/bme280/main.py"
     ],
     [
       "fs:index.html",
-      "github:MakerLabKids/wormhole/projects/bme280/index.html"
+      "github:MakerLabKids/whs-wormhole/projects/bme280/index.html"
     ],
     [
       "fs:bench.py",
-      "github:MakerLabKids/wormhole/projects/bme280/bench.py"
+      "github:MakerLabKids/whs-wormhole/projects/bme280/bench.py"
     ],
     [
       "fs:hello.py",
-      "github:MakerLabKids/wormhole/projects/bme280/hello.py"
+      "github:MakerLabKids/whs-wormhole/projects/bme280/hello.py"
     ],
     [
       "fs:multi.py",
-      "github:MakerLabKids/wormhole/projects/bme280/multi.py"
+      "github:MakerLabKids/whs-wormhole/projects/bme280/multi.py"
     ],
     [
       "fs:lib/picolab.py",
-      "github:MakerLabKids/wormhole/lib/picolab.py"
+      "github:MakerLabKids/whs-wormhole/lib/picolab.py"
     ],
     [
       "fs:lib/ssd1306.py",
-      "github:MakerLabKids/wormhole/lib/ssd1306.py"
+      "github:MakerLabKids/whs-wormhole/lib/ssd1306.py"
     ],
     [
       "fs:lib/bme280.py",
-      "github:MakerLabKids/wormhole/lib/bme280.py"
+      "github:MakerLabKids/whs-wormhole/lib/bme280.py"
     ],
     [
       "fs:toc.txt",
-      "github:MakerLabKids/wormhole/docs/TOC.txt"
+      "github:MakerLabKids/whs-wormhole/docs/TOC.txt"
     ]
   ]
 }

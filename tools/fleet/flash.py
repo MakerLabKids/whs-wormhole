@@ -207,7 +207,7 @@ def picotool_load(uf2, picotool=None, run=subprocess.run):
 
 def project_files(fleet):
     """(local path, remote path) pairs from the project's package.json
-    ("fs:lib/picolab.py" <- "github:MakerLabKids/wormhole/lib/picolab.py")."""
+    ("fs:lib/picolab.py" <- "github:MakerLabKids/whs-wormhole/lib/picolab.py")."""
     pkg = os.path.join(REPO, fleet["project"], "package.json")
     with open(pkg) as f:
         spec = json.load(f)

@@ -5,31 +5,31 @@
   "urls": [
     [
       "fs:main.py",
-      "github:MakerLabKids/wormhole/projects/light-lux/main.py"
+      "github:MakerLabKids/whs-wormhole/projects/light-lux/main.py"
     ],
     [
       "fs:index.html",
-      "github:MakerLabKids/wormhole/projects/light-lux/index.html"
+      "github:MakerLabKids/whs-wormhole/projects/light-lux/index.html"
     ],
     [
       "fs:bench.py",
-      "github:MakerLabKids/wormhole/projects/light-lux/bench.py"
+      "github:MakerLabKids/whs-wormhole/projects/light-lux/bench.py"
     ],
     [
       "fs:lib/picolab.py",
-      "github:MakerLabKids/wormhole/lib/picolab.py"
+      "github:MakerLabKids/whs-wormhole/lib/picolab.py"
     ],
     [
       "fs:lib/ssd1306.py",
-      "github:MakerLabKids/wormhole/lib/ssd1306.py"
+      "github:MakerLabKids/whs-wormhole/lib/ssd1306.py"
     ],
     [
       "fs:lib/bh1750.py",
-      "github:MakerLabKids/wormhole/lib/bh1750.py"
+      "github:MakerLabKids/whs-wormhole/lib/bh1750.py"
     ],
     [
       "fs:toc.txt",
-      "github:MakerLabKids/wormhole/docs/TOC.txt"
+      "github:MakerLabKids/whs-wormhole/docs/TOC.txt"
     ]
   ]
 }

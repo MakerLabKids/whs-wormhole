@@ -5,31 +5,31 @@
   "urls": [
     [
       "fs:main.py",
-      "github:MakerLabKids/wormhole/projects/soil-temperature/main.py"
+      "github:MakerLabKids/whs-wormhole/projects/soil-temperature/main.py"
     ],
     [
       "fs:index.html",
-      "github:MakerLabKids/wormhole/projects/soil-temperature/index.html"
+      "github:MakerLabKids/whs-wormhole/projects/soil-temperature/index.html"
     ],
     [
       "fs:bench.py",
-      "github:MakerLabKids/wormhole/projects/soil-temperature/bench.py"
+      "github:MakerLabKids/whs-wormhole/projects/soil-temperature/bench.py"
     ],
     [
       "fs:lib/picolab.py",
-      "github:MakerLabKids/wormhole/lib/picolab.py"
+      "github:MakerLabKids/whs-wormhole/lib/picolab.py"
     ],
     [
       "fs:lib/ssd1306.py",
-      "github:MakerLabKids/wormhole/lib/ssd1306.py"
+      "github:MakerLabKids/whs-wormhole/lib/ssd1306.py"
     ],
     [
       "fs:cal.js",
-      "github:MakerLabKids/wormhole/web/cal.js"
+      "github:MakerLabKids/whs-wormhole/web/cal.js"
     ],
     [
       "fs:toc.txt",
-      "github:MakerLabKids/wormhole/docs/TOC.txt"
+      "github:MakerLabKids/whs-wormhole/docs/TOC.txt"
     ]
   ]
 }

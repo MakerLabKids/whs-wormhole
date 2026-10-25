@@ -25,7 +25,7 @@
 # On the board: main.py, index.html, and from lib/: picolab.py,
 # ssd1306.py, bme280.py, ads1115.py, vl53l0x.py, bh1750.py.
 #
-# Project page (docs, wiring, install link): https://github.com/MakerLabKids/wormhole/tree/main/projects/worm-bin
+# Project page (docs, wiring, install link): https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/worm-bin
 
 import gc
 import time

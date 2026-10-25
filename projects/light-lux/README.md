@@ -1,6 +1,6 @@
 # BH1750: Light in Real Lux
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/light-lux/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/projects/light-lux/package.json)**: one click installs everything it needs onto a connected Pico.
 
 The higher-quality light demo. The BH1750 is a digital lux meter: instead
 of a rough "brighter / darker" voltage, it reports illuminance in real
@@ -24,7 +24,7 @@ It shares the I2C bus with the OLED (and any other I2C sensors).
 
 ![light-lux wiring](../../docs/wiring/light-lux.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/wormhole/#wire-light-lux). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-light-lux). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Two versions
 
@@ -46,4 +46,4 @@ version only), plus from `lib/`: `picolab.py`, `bh1750.py`, `ssd1306.py`.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).

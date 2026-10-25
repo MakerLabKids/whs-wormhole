@@ -1,6 +1,6 @@
 # Servo: Move Something In Real Life
 
-**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/wormhole/projects/servo/package.json)**: one click installs everything it needs onto a connected Pico.
+**[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/projects/servo/package.json)**: one click installs everything it needs onto a connected Pico.
 
 An SG90 hobby servo driven by the Pico's PWM, controlled from a web page:
 a slider, an automatic sweep mode, and a "follow light" mode where an
@@ -31,7 +31,7 @@ own 5V supply with a shared ground.
 
 ![servo wiring](../../docs/wiring/servo.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/wormhole/#wire-servo). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-servo). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Two versions
 
@@ -56,4 +56,4 @@ driver needed.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).

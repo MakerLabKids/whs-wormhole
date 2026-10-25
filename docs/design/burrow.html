@@ -48,7 +48,7 @@
     <li>Optional and recommended: the <a class="ext" href="https://www.raspberrypi.com/products/rtc-battery/">official Pi 5 RTC battery</a> (about $5) on the J5 connector. With it, a Burrow that has been off for a week boots knowing the time.</li>
     <li>A laptop with <b>Raspberry Pi Imager 2.x</b> (1.x cannot customise the current Trixie images) and an SD card reader.</li>
   </ul>
-  <p>The code lives in the repo under <span class="file">edge/burrow/</span>: <a class="ext" href="https://github.com/MakerLabKids/wormhole/tree/main/edge/burrow">github.com/MakerLabKids/wormhole/tree/main/edge/burrow</a>. The <a class="ext" href="https://github.com/MakerLabKids/wormhole/blob/main/edge/burrow/README.md">README</a> there explains the files; this page is the procedure.</p>
+  <p>The code lives in the repo under <span class="file">edge/burrow/</span>: <a class="ext" href="https://github.com/MakerLabKids/whs-wormhole/tree/main/edge/burrow">github.com/MakerLabKids/whs-wormhole/tree/main/edge/burrow</a>. The <a class="ext" href="https://github.com/MakerLabKids/whs-wormhole/blob/main/edge/burrow/README.md">README</a> there explains the files; this page is the procedure.</p>
 </div>
 
 <h2 id="image">Step 1 · Write the card</h2>
@@ -92,8 +92,8 @@ resize_rootfs: false</code></pre>
   <li>Find it. Easiest: the Tunnel's admin page → Clients lists <code>burrowN</code> with a 192.168.8N.1xx address. Or from a laptop on the room's <code>WormHole</code>: <pre><code>ssh worm@burrow1.local</code></pre></li>
   <li>Get the code and run the setup (replace the room number):
 <pre><code>sudo apt-get update &amp;&amp; sudo apt-get install -y git
-git clone https://github.com/MakerLabKids/wormhole.git
-cd wormhole/edge/burrow
+git clone https://github.com/MakerLabKids/whs-wormhole.git
+cd whs-wormhole/edge/burrow
 sudo ./setup-pi.sh 1</code></pre>
     It takes about five minutes with an internet uplink through the Portal. (No internet yet? It needs apt for <code>chrony</code> and <code>parted</code>; everything else is offline. Do this step somewhere with Wi-Fi, or tether the Portal to a phone.)</li>
   <li>Near the end the script moves the Pi to its fixed address, so your SSH session freezes. Reconnect: <pre><code>ssh worm@192.168.81.10</code></pre> (82 or 83 for the other rooms). If the script stopped with "the kernel has not picked up the new partition yet", reboot and run it again; the second pass finds and formats the partition and carries on.</li>

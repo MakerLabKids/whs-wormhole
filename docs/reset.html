@@ -83,7 +83,7 @@
     <div class="body test">
       <h3>Does code run at all?, Blink</h3>
       <p>No wiring needed. Loads a program that blinks the Pico's own green light.
-         <a href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/examples/03-blink/package.json" class="ext"><b>Install &amp; run Blink</b></a></p>
+         <a href="https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/examples/03-blink/package.json" class="ext"><b>Install &amp; run Blink</b></a></p>
       <p class="verdict"><span class="ok">Light blinks?</span> The Pico, its <a class="term" href="glossary.html#firmware">firmware</a>, and code-pushing all work. Go to Test 2.<br>
          <span class="no">Nothing blinks / can't install?</span> The board isn't running code. Re-flash the firmware (bottom of page).</p>
     </div>
@@ -94,7 +94,7 @@
     <div class="body test">
       <h3>Does the screen work?, Display</h3>
       <p>Needs the OLED wired (4 wires: <a class="term" href="glossary.html#3v3-pin">3V3</a>, <a class="term" href="glossary.html#ground">GND</a>, SDA=GP0, SCL=GP1). Draws text to the screen.
-         <a href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/examples/05-display/package.json" class="ext"><b>Install &amp; run Display</b></a></p>
+         <a href="https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/examples/05-display/package.json" class="ext"><b>Install &amp; run Display</b></a></p>
       <p class="verdict"><span class="ok">Text on the screen?</span> Your wiring and the screen are good. Go to Test 3.<br>
          <span class="no">Blank screen / error?</span> It's the wiring, not the code. Check those four wires, especially <b>3V3</b> and <b>GND</b> to the <a class="term" href="glossary.html#breadboard">breadboard</a> rail (if power's out, the whole bus goes dark). Then reseat SDA (GP0) and SCL (GP1).</p>
     </div>
@@ -105,7 +105,7 @@
     <div class="body test">
       <h3>Does WiFi work?, Webserver</h3>
       <p>No wiring. The Pico makes its own WiFi network and serves a web page.
-         <a href="https://viper-ide.org/?install=github:MakerLabKids/wormhole/examples/04-webserver/package.json" class="ext"><b>Install &amp; run Webserver</b></a></p>
+         <a href="https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/examples/04-webserver/package.json" class="ext"><b>Install &amp; run Webserver</b></a></p>
       <p class="verdict"><span class="ok">You can join its WiFi and see the page?</span> Everything works, load your real station, it should be fine.<br>
          <span class="no">"Address in use" error?</span> A leftover socket from a previous run. Do the clean-slate ritual above (the <b>unplug</b> step clears it). Our current code also recovers from this on its own, reinstall to get the latest.</p>
     </div>
@@ -121,7 +121,7 @@
       <p>Removes <em>every</em> file (old programs, leftover settings, junk from past projects)
          back to bare <a class="term" href="glossary.html#micropython">MicroPython</a>. The reliable "make it behave" reset. Then reinstall.</p>
       <div class="paths">
-        <div class="p"><b>In Viper:</b> open <a href="https://github.com/MakerLabKids/wormhole/blob/main/tools/wipe.py" class="ext"><code>tools/wipe.py</code></a>, paste into a new file, Run. Then reinstall.</div>
+        <div class="p"><b>In Viper:</b> open <a href="https://github.com/MakerLabKids/whs-wormhole/blob/main/tools/wipe.py" class="ext"><code>tools/wipe.py</code></a>, paste into a new file, Run. Then reinstall.</div>
         <div class="p"><b>Command line:</b><pre>mpremote connect &lt;port&gt; run tools/wipe.py</pre></div>
       </div>
     </div>
@@ -135,7 +135,7 @@
          MicroPython. Use when a board is truly unresponsive, or Blink (Test 1) won't run.</p>
       <ol class="mini">
         <li>Hold the <b><a class="term" href="glossary.html#bootsel">BOOTSEL</a></b> button while plugging into USB. It appears as a drive named <code>RP2350</code>.</li>
-        <li>Drag on <a href="https://github.com/MakerLabKids/wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2" class="ext">the tested firmware (.uf2)</a>.</li>
+        <li>Drag on <a href="https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2" class="ext">the tested firmware (.uf2)</a>.</li>
         <li>The drive vanishes and the board reboots into fresh MicroPython. Reinstall your project.</li>
       </ol>
       <p style="font-size:13px;color:var(--gray)">Already-working board? From the <code>&gt;&gt;&gt;</code> prompt,
