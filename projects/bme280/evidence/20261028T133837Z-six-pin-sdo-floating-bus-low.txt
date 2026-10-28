@@ -1,0 +1,17 @@
+# Wed Oct 28 13:38:37 UTC 2026  label: six-pin module alone, SDO floating; SDA and SCL stuck low, nothing answers  port: /dev/host/ttyACM0
+Bosch BMx280 identifier  |  board unique id 8E B5 2B 7B 43 C1 F6 D8  |  MicroPython 1.28.0
+Scanning all 12 valid Pico I2C pin pairs, addresses 0x08-0x77:
+  I2C0 SDA=GP0 SCL=GP1      : (nothing)
+  I2C0 SDA=GP4 SCL=GP5      : (nothing)
+  I2C0 SDA=GP8 SCL=GP9      : (nothing)
+  I2C0 SDA=GP12 SCL=GP13    : (nothing)
+  I2C0 SDA=GP16 SCL=GP17    : (nothing)
+  I2C0 SDA=GP20 SCL=GP21    : (nothing)
+  I2C1 SDA=GP2 SCL=GP3      : (nothing)
+  I2C1 SDA=GP6 SCL=GP7      : (nothing)
+  I2C1 SDA=GP10 SCL=GP11    : (nothing)
+  I2C1 SDA=GP14 SCL=GP15    : (nothing)
+  I2C1 SDA=GP18 SCL=GP19    : (nothing)
+  I2C1 SDA=GP26 SCL=GP27    : (nothing)
+
+No Bosch sensor found on any pin pair / any address.
