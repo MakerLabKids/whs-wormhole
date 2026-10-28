@@ -74,7 +74,7 @@ before they are stored.
 | call | body | reply |
 | ---- | ---- | ----- |
 | `GET  /v1/edge/ping` | | `{"ok": true, "ts": <unix>}` (also used to set a free-running clock) |
-| `POST /v1/edge/snapshot` | `{"edge","room","ts","bins":{uid: entry},"status":{...},"roster":[...]?}` | `{"ok": true}` |
+| `POST /v1/edge/snapshot` | `{"edge","room","ts","bins":{uid: entry},"status":{...},"roster":[...]?}`; `status.tunnel` is the Opal brief `{state, checked, down_since, upstream, signal, cloud_ok, clients, reboots, wifi_fallback, last_event, last_event_at}` or null | `{"ok": true}` |
 | `PUT  /v1/edge/castings/<id>` | the gz bytes; header `X-Casting-Meta: <meta json>` | `{"ok": true, "sha256": "..."}` (Worker hashes what it received) |
 | `POST /v1/edge/rollups` | `{"casting": "<id>", "rows": [{"uid","step","ts","data"}]}` | `{"ok": true, "n": 150}` |
 | `POST /v1/edge/verify` | `{"ids": ["r1-...", ...]}` (<= 40: the Worker reads each from R2, and free Workers get 50 subrequests) | `{"verified": [...], "rollups": [...], "missing": [...]}` |
@@ -94,7 +94,7 @@ plus `"team","period","bin","room"` lifted out of `d.bin` for convenience.
 | `GET /api/bins` | roster: `{uid: {"name","team","period","bin","room","seen"}}` |
 | `GET /api/history?uid=&from=&to=&step=5m\|1h` | `{"uid","step","points":[[ts, {metric:[min,avg,max,n]}], ...]}` |
 | `GET /live` (Burrow) / `GET /live/<room>` (Surface) | SSE. `event: hello` on connect with `{edge, room, ts, bins}` (the now-table); then `event: row` per ingest with `{"uid", "entry"}` where `entry` is that Bin's now-table entry (`ts, clk, src, edge, room, name, team, period, bin, home_room, d`). Surface replies 503 when the room's tunnel is down; the page falls back to polling |
-| `GET /api/status` (Burrow) | peers, cloud, disk, clock, counts |
+| `GET /api/status` (Burrow) | peers, cloud, disk, clock, counts, `tunnel` (the Opal watchdog's full state: repeater, cloud_ok, clients, uptime_s, reboots[], wifi_fallback, events[]) |
 
 ## Rollups
 

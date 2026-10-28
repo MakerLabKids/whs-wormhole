@@ -23,6 +23,11 @@ burrow/           the service (python3 -m burrow)
   clock.py        clock quality from chrony (ntp | peer | free)
 setup-pi.sh       one-time OS preparation on a fresh Pi OS Lite (partition, chrony, static IP...)
 install.sh        (re)deploy the code into /opt/burrow, systemd unit
+tunnel-watchdog.py  every 2 min: keep this room's Opal on its best upstream (school net
+                  first, Portal backhaul second), reboot it over RPC after 15 min down
+                  (then hourly x3, then daily, forever), raise the Pi's own Wi-Fi to another
+                  Opal meanwhile, and report it all under "tunnel" in /api/status and the
+                  cloud snapshot. Config: etc/tunnel.json.example -> /etc/burrow/tunnel.json
 burrow-lock.sh    make root read-only (overlay) / burrow-unlock.sh to maintain
 install-cloudflared.sh <token>   the outbound-only live link
 tools/simbins.py  pretend to be N Bins (no hardware needed)
@@ -33,7 +38,7 @@ tests/            unittest suite incl. a fake Surface (tests/fake_surface.py)
 
 ```
 cd edge/burrow
-python3 -m unittest discover -s tests -t .          # 18 tests
+python3 -m unittest discover -s tests -t .          # 54 tests
 mkdir -p /tmp/b1/www && cp -r ../../web/dash/* /tmp/b1/www/ 2>/dev/null || echo '<h1>dash</h1>' > /tmp/b1/www/index.html
 cat > /tmp/b1/burrow.json <<'J'
 {"edge":"burrow1","room":1,"port":8080,"data_dir":"/tmp/b1/data","www_dir":"/tmp/b1/www",

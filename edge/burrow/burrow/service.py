@@ -1,5 +1,6 @@
 """The Burrow service: wires store, rollups, state, server, peers, cloud, sweep
 together and runs the background loops."""
+import json
 import os
 import threading
 import time
@@ -120,6 +121,27 @@ class Service:
         pts = self.rollups.query(uid, t_from, t_to, step)
         return {"uid": uid, "step": step, "from": t_from, "to": t_to, "points": pts}
 
+    def tunnel_state(self):
+        """What tunnel-watchdog.py last found out about this room's Opal
+        (/run/tunnel-watchdog.json), or {} when it is not installed."""
+        path = self.cfg.get("tunnel_state", "/run/tunnel-watchdog.json")
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return {}
+
+    def tunnel_brief(self):
+        t = self.tunnel_state()
+        if not t:
+            return None
+        ev = (t.get("events") or [[None, None]])[-1]
+        rep = t.get("repeater") or {}
+        return {"state": t.get("state"), "checked": t.get("last_check"), "down_since": t.get("down_since"),
+                "upstream": rep.get("ssid"), "signal": rep.get("signal"), "cloud_ok": t.get("cloud_ok"),
+                "clients": t.get("clients"), "reboots": len(t.get("reboots") or []),
+                "wifi_fallback": t.get("wifi_fallback"), "last_event": ev[1], "last_event_at": ev[0]}
+
     def api_status_brief(self):
         st = self.store.stats()
         return {"edge": self.cfg["edge"], "room": self.cfg["room"], "ts": util.now(),
@@ -128,12 +150,14 @@ class Service:
                 "disk_pct": round(st["disk_pct"], 1),
                 "cloud_ok": self.cloud.state.get("reachable"), "cloud_last_ok": self.cloud.state.get("last_ok"),
                 "peers_ok": sum(1 for p in self.peers.state.values() if p.get("ok")),
-                "bins": len(self.now.snapshot()), "live_clients": self.bus.count()}
+                "bins": len(self.now.snapshot()), "live_clients": self.bus.count(),
+                "tunnel": self.tunnel_brief()}
 
     def api_status(self):
         b = self.api_status_brief()
         b.update({"store": self.store.stats(), "peers": self.peers.status(), "cloud": self.cloud.status(),
                   "sweep": self.sweep.last, "counts": self.counts, "clock": clock.detail(),
+                  "tunnel": self.tunnel_state() or None,
                   "config": {k: v for k, v in self.cfg.items() if k not in ("cloud",)}})
         return b
 

@@ -1,7 +1,11 @@
 #!/bin/bash
 # setup-pi.sh: turn a fresh Raspberry Pi OS Lite (64-bit, Trixie) into a Burrow.
 #
-#   sudo ./setup-pi.sh <room 1|2|3> [--no-partition] [--defer-net]
+#   sudo ./setup-pi.sh <room 0|1|2|3> [--no-partition] [--defer-net]
+#
+#   room 0 is the Portal's own Pi (burrow0 at 192.168.80.10): the Burrow every
+#   Bin tries first when it lands on the Portal's Wi-Fi, and the watchdog for
+#   the Portal's school-network join.
 #
 #   --defer-net   save the static classroom address but do not switch to it now
 #                 (use when setting up through the Portal or a home LAN; the Pi
@@ -15,7 +19,7 @@
 set -euo pipefail
 
 ROOM="${1:-}"
-case "$ROOM" in 1|2|3) ;; *) echo "usage: sudo $0 <room 1|2|3> [--no-partition] [--defer-net]"; exit 2;; esac
+case "$ROOM" in 0|1|2|3) ;; *) echo "usage: sudo $0 <room 0|1|2|3> [--no-partition] [--defer-net]"; exit 2;; esac
 NOPART=0; DEFER_NET=0
 for a in "${@:2}"; do case "$a" in --no-partition) NOPART=1;; --defer-net) DEFER_NET=1;; *) echo "unknown option $a"; exit 2;; esac; done
 [ "$(id -u)" = 0 ] || { echo "run with sudo"; exit 2; }
@@ -122,7 +126,7 @@ done
 # already mounts / noatime; only add it if a line lacks it)
 awk '$2=="/" && $3=="ext4" && $4 !~ /noatime/ { $4 = $4 ",noatime" } { print }' /etc/fstab > /etc/fstab.new && mv /etc/fstab.new /etc/fstab
 
-say "network: static $LAN_IP on eth0, Wi-Fi and Bluetooth off"
+say "network: static $LAN_IP on eth0, Wi-Fi off until the watchdog needs it, Bluetooth off"
 # A fresh, explicitly saved profile (the auto-generated "Wired connection 1"
 # lives in /run on Trixie and is not persistent). Idempotent.
 if nmcli -t -f NAME connection show | grep -qx burrow-lan; then
@@ -141,16 +145,19 @@ else
   echo "switching eth0 to $LAN_IP now (an SSH session on the old address will drop; reconnect to $LAN_IP)"
   nmcli connection up burrow-lan >/dev/null 2>&1 || true
 fi
+# The radio stays present but off: tunnel-watchdog.py turns it on to reach
+# another Opal when this room's cable path is dead, and off again after.
 nmcli radio wifi off || true
 CFG=/boot/firmware/config.txt
-grep -q '^dtoverlay=disable-wifi' $CFG || echo 'dtoverlay=disable-wifi' >> $CFG
+sed -i '/^dtoverlay=disable-wifi$/d' $CFG        # earlier images disabled it in firmware; undo
 grep -q '^dtoverlay=disable-bt' $CFG || echo 'dtoverlay=disable-bt' >> $CFG
 
 say "time: chrony peers with the other Burrows, orphan mode when offline"
 PEERS=""
-for r in 1 2 3; do
+for r in 0 1 2 3; do
   [ "$r" = "$ROOM" ] && continue
-  PEERS="${PEERS}peer 192.168.80.2${r} minpoll 4 maxpoll 6 xleave
+  if [ "$r" = 0 ]; then P=192.168.80.10; else P="192.168.80.2${r}"; fi
+  PEERS="${PEERS}peer $P minpoll 4 maxpoll 6 xleave
 "
 done
 awk -v peers="$PEERS" '{ if ($0=="__PEERS__") printf "%s", peers; else print }' \
@@ -169,7 +176,8 @@ room = int(sys.argv[1])
 cfg = {
   "edge": "burrow%d" % room, "room": room, "listen": "0.0.0.0", "port": 8080,
   "data_dir": "/data/burrow", "www_dir": "/opt/burrow/www",
-  "peers": {"burrow%d" % r: "http://192.168.80.2%d:8080" % r for r in (1, 2, 3) if r != room},
+  "peers": {"burrow%d" % r: ("http://192.168.80.10:8080" if r == 0 else "http://192.168.80.2%d:8080" % r)
+            for r in (0, 1, 2, 3) if r != room},
   "cloud": {"url": "https://whs.makerlabkids.com", "token_file": "/etc/burrow/cloud.token",
             "live_key_file": "/etc/burrow/live.key", "every_s": 60},
   "seal_minutes": 15, "fsync_s": 30, "retain_days": 7, "replicate_every_s": 120,

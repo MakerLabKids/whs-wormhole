@@ -229,3 +229,34 @@ class ServiceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TunnelStateTest(ServiceTest):
+    """The Opal watchdog's state file rides along in /api/status and in the
+    status block of every cloud snapshot."""
+
+    def test_brief_and_full_tunnel_state(self):
+        path = os.path.join(self.tmp, "tunnel-state.json")
+        with open(path, "w") as f:
+            json.dump({"state": "upstream-down", "last_check": 1000, "down_since": 400, "cloud_ok": False,
+                       "repeater": {"state_s": "idle", "ssid": None, "signal": None}, "clients": 3,
+                       "uptime_s": 999, "reboots": [900], "wifi_fallback": "up",
+                       "events": [[500, "repeater idle: joined BYLD", 4], [900, "down 8 min: rebooted the Opal (#1)"]]}, f)
+        s = self.svc("burrow1", 1)
+        s.cfg["tunnel_state"] = path
+        brief = s.api_status_brief()["tunnel"]
+        self.assertEqual(brief["state"], "upstream-down")
+        self.assertEqual(brief["down_since"], 400)
+        self.assertEqual(brief["reboots"], 1)
+        self.assertEqual(brief["wifi_fallback"], "up")
+        self.assertEqual(brief["clients"], 3)
+        self.assertEqual(brief["last_event"], "down 8 min: rebooted the Opal (#1)")
+        full = s.api_status()["tunnel"]
+        self.assertEqual(full["uptime_s"], 999)
+        self.assertEqual(len(full["events"]), 2)
+
+    def test_no_watchdog_means_null(self):
+        s = self.svc("burrow2", 2)
+        s.cfg["tunnel_state"] = os.path.join(self.tmp, "absent.json")
+        self.assertIsNone(s.api_status_brief()["tunnel"])
+        self.assertIsNone(s.api_status()["tunnel"])

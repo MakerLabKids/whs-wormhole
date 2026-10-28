@@ -1,0 +1,11 @@
+{
+  "host": "192.168.81.1",
+  "password": "<router admin password>",
+  "upstreams": [
+    {"ssid": "BYLD", "device": "radio0", "band": "2g", "encryption": "none"},
+    {"ssid": "WormHole-Core", "key": "<backhaul key>", "bssid": "94:83:c4:84:d2:0c",
+     "device": "radio1", "band": "5g", "encryption": "psk2"}
+  ],
+  "wifi_fallback": {"ssid": "WormHole", "key": "<WormHole key>", "iface": "wlan0"},
+  "cloud_url": "https://whs.makerlabkids.com"
+}
