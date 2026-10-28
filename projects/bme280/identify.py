@@ -26,7 +26,7 @@
 import struct
 import time
 
-from machine import I2C, Pin, unique_id
+from machine import Pin, SoftI2C, unique_id
 
 BREATH_SECONDS = 10
 
@@ -129,23 +129,31 @@ def examine(label, i2c, addr):
   print("   #   temp_C  press_hPa   hum_%   raw humidity 0xFD-0xFE")
   for n in range(5):
     t, p, h, adc_h, d = s.read()
-    print("  %2d   %6.2f   %8.2f  %6s   0x%04X %s" %
-          (n + 1, t, p, "%.2f" % h if s.is_bme else "n/a", adc_h,
-           "" if s.is_bme else "(0x8000 = 'measurement skipped')"))
+    print("  %2d   %6.2f   %8.2f  %6s   0x%04X" %
+          (n + 1, t, p, "%.2f" % h if s.is_bme else "n/a", adc_h))
     time.sleep_ms(400)
+  if not s.is_bme:
+    print("  (0xFD-0xFE are not documented registers on a BMP280; the value is"
+          " a constant, not a measurement)")
   print()
   print("BREATH TEST: breathe on the sensor for the next %d seconds..." % BREATH_SECONDS)
   lo, hi, start = 101.0, -1.0, time.ticks_ms()
+  raw_lo, raw_hi = 0xFFFF, 0
   while time.ticks_diff(time.ticks_ms(), start) < BREATH_SECONDS * 1000:
     t, p, h, adc_h, d = s.read()
     lo, hi = min(lo, h), max(hi, h)
+    raw_lo, raw_hi = min(raw_lo, adc_h), max(raw_hi, adc_h)
     print("  t=%4.1fs  temp %5.2f C  press %7.2f hPa  humidity %6s %%  raw 0x%04X"
           % (time.ticks_diff(time.ticks_ms(), start) / 1000, t, p,
              "%.2f" % h if s.is_bme else "n/a", adc_h))
     time.sleep_ms(500)
   swing = hi - lo
-  print("  humidity range during breath test: %.2f .. %.2f  (swing %.2f points)"
-        % (lo, hi, swing))
+  if s.is_bme:
+    print("  humidity range during breath test: %.2f .. %.2f  (swing %.2f points)"
+          % (lo, hi, swing))
+  else:
+    print("  raw humidity register during breath test: 0x%04X .. 0x%04X  (%s)"
+          % (raw_lo, raw_hi, "never changed" if raw_lo == raw_hi else "changed"))
   print()
   t_ok = -10 < t < 60
   p_ok = 300 < p < 1100
@@ -160,8 +168,9 @@ def examine(label, i2c, addr):
   else:
     print("  humidity sensor    : NOT PRESENT. Chip ID 0x%02X is a %s." %
           (s.chip_id, CHIP_IDS.get(s.chip_id, "non-BME280 part")))
-    print("  Humidity data register reads 0x%04X and never changes; the chip has"
-          " no humidity hardware." % adc_h)
+    print("  Humidity data register reads 0x%04X and %s during the breath test;"
+          " the chip has no humidity hardware."
+          % (adc_h, "never changed" if raw_lo == raw_hi else "CHANGED"))
     print("  This part is NOT a BME280.")
 
 
@@ -172,7 +181,7 @@ def main():
   found = []
   for ctl, sda, scl in PAIRS:
     try:
-      i2c = I2C(ctl, sda=Pin(sda), scl=Pin(scl), freq=100000)
+      i2c = SoftI2C(sda=Pin(sda), scl=Pin(scl), freq=50000)
       addrs = i2c.scan()
     except Exception as e:
       print("  I2C%d SDA=GP%-2d SCL=GP%-2d : error %s" % (ctl, sda, scl, e))
@@ -182,12 +191,15 @@ def main():
     print("  %-26s: %s" % (label, desc))
     for a in addrs:
       if a in (0x76, 0x77):
-        found.append((label, i2c, a))
+        found.append((label, (ctl, sda, scl), a))
   if not found:
     print()
     print("No Bosch sensor found on any pin pair / any address.")
     return
-  for label, i2c, a in found:
+  for label, (ctl, sda, scl), a in found:
+    # Bit-banged I2C: tolerant of weak pull-ups, and it does not tie up
+    # the Pico's two hardware controllers while we walk all 12 pin pairs.
+    i2c = SoftI2C(sda=Pin(sda), scl=Pin(scl), freq=50000)
     try:
       examine(label, i2c, a)
     except Exception as e:
