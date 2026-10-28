@@ -13,7 +13,7 @@ All I2C devices share the standard bus (SDA=GP0, SCL=GP1, 3V3, GND).
 
 | Part | Where | Notes |
 | ---- | ----- | ----- |
-| OLED | I2C `0x3C` | rotating status pages |
+| OLED | I2C `0x3C` | one screen of whatever is reporting; pages only if that overflows |
 | BME280 "in" | I2C `0x76` | inside the bin (SDO to GND) |
 | BME280 "out" | I2C `0x77` | outside the bin (SDO to 3V3) |
 | ADS1115 | I2C `0x48` | ADDR to GND; adds 4 analog channels |
@@ -37,9 +37,23 @@ POST codes: one blink per part, in the order of the `PARTS` list in
 probe grows the tail of the pattern without renumbering anything).
 Short blink = OK, long blink = trouble, dark = code not running.
 
-Default slot order: 1 BME in, 2 BME out, 3 ADS1115 bank, 4 mic,
-5 compaction, then the probes. Comment a part out of `PARTS` and its slot
-disappears; the pattern only ever shows what you claim to have wired.
+Default slot order: 1 BME in, 2 BME out, 3 ADS1115 bank, 4 mic, 5 light,
+6 compaction, 7 lux, then the probes. Comment a part out of `PARTS` and its
+slot disappears; the pattern only ever shows what you claim to have wired.
+The mic and the light divider sit on bare ADC pins and cannot tell
+"unplugged" from "quiet", so for a bin without them set `MIC_PIN = None`
+or `LIGHT_PIN = None` in the config block: that drops them from the slots,
+the screen, and the dashboard.
+
+## The screen
+
+The OLED shows one row per part that is reporting, nothing for parts that
+are absent. A lean bin (one BME280, a probe, a moisture bank, the distance
+sensor) fits on a single screen and never pages. Only when more rows exist
+than fit (six under the title) does it page, and then only through rows
+that exist, lingering on a page with a light sensor so you can shine a
+torch at it. Servo and relay get a row only once something has been
+commanded.
 
 ## Dashboard
 

@@ -251,7 +251,12 @@ class Display:
       self.oled = None
 
   def show(self, lines, bar=None):
-    """Draw up to 5 text rows plus an optional 0.0-1.0 bar at the bottom."""
+    """Draw text rows plus an optional 0.0-1.0 bar at the bottom.
+
+    Up to 5 rows sit at a roomy 11 px pitch. Six rows tighten to 10 px and
+    seven to 9 px (the 8 px font still clears), so a station with more to
+    say can keep it on ONE screen instead of paging. With a bar, 5 rows max.
+    """
     if not self.oled and self._retry.ready():
       self._connect()
     if not self.oled:
@@ -259,8 +264,10 @@ class Display:
     try:
       o = self.oled
       o.fill(0)
-      for idx, text in enumerate(lines[:5]):
-        o.text(str(text)[:16], 0, idx * 11)
+      rows = lines[:5] if bar is not None else lines[:7]
+      pitch = 11 if len(rows) <= 5 else (10 if len(rows) == 6 else 9)
+      for idx, text in enumerate(rows):
+        o.text(str(text)[:16], 0, idx * pitch)
       if bar is not None:
         width = int(min(1.0, max(0.0, bar)) * 128)
         o.rect(0, 58, 128, 6, 1)

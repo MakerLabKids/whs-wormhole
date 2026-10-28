@@ -10,7 +10,8 @@
 #     lid down to the bedding surface. As worms process and the bedding
 #     settles, that gap grows; a sudden change flags a disturbance)
 #   Big servo GP16, small servo GP17, relay GP15
-#   OLED 0x3C, rotating status pages
+#   OLED 0x3C: ONE screen built from whatever is reporting (pages only
+#     if that overflows)
 #
 # The Pico opens a Wi-Fi network named PicoLab<N>. Join it and browse
 # to http://192.168.4.1 (JSON at /data, actuators at /set).
@@ -47,8 +48,11 @@ MOIST_WET_V = 0.91   # default 0.91 V
 # Where things plug in. These are GP numbers, NOT physical pin numbers
 # (GP22 is physical pin 29; the wiring diagrams show both).
 PROBE_PIN = 22        # DS18B20 one-wire bus + its 4.7k pullup (default GP22)
-MIC_PIN = 27          # MAX9814 mic; must be a native ADC pin (default GP27)
-LIGHT_PIN = 28        # GL5528 photoresistor divider; native ADC pin (default GP28)
+# The two parts on bare Pico ADC pins cannot tell "unplugged" from "quiet"
+# or "dark", so they always report. If your bin does not have one, set its
+# pin to None: it leaves the parts list, the truth light, and the screen.
+MIC_PIN = 27          # MAX9814 mic; native ADC pin (default GP27), None = not fitted
+LIGHT_PIN = 28        # GL5528 photoresistor divider; native ADC pin (default GP28), None = not fitted
 SERVO_BIG_PIN = 16    # MG995; own 5V supply, grounds joined (default GP16)
 SERVO_SMALL_PIN = 17  # SG90; VBUS power is fine (default GP17)
 RELAY_PIN = 15        # relay module IN (default GP15)
@@ -62,11 +66,12 @@ SERVO_DPS = 400
 
 # Timing.
 READ_EVERY_MS = 500   # sensor sweep cadence (default 500 ms)
-# OLED page dwell adapts to what is ON the page, so you have time to shine a
-# light on a sensor and watch it react, but do not wait on an empty page.
+# The OLED shows one row per part that is reporting; parts that are absent
+# take no space. Only if there are more rows than fit (6 under the title)
+# does it page, and then the dwell adapts to what is ON the page, so you
+# have time to shine a light on a sensor and watch it react.
 PAGE_SEC_LIGHT = 10   # a page with a light sensor (shine a light, watch it move)
-PAGE_SEC_SENSOR = 5   # a page with other live sensors (temp, moisture, distance)
-PAGE_SEC_NONE = 2     # a page with nothing plugged in to look at
+PAGE_SEC_SENSOR = 5   # any other page
 # ===== end of config ==================================================
 
 
@@ -125,7 +130,10 @@ def photoresistor():
   """GL5528 photoresistor divider on GP28 (Pico ADC): 3V3 - LDR - GP28 -
   10k - GND, the GP28 node rises with light. Same pin the light-basic
   project uses, and no ADS1115 needed. Like the mic, an ADC pin cannot
-  tell 'unplugged' from 'dark', so this slot mostly proves it is sampling."""
+  tell 'unplugged' from 'dark', so this slot mostly proves it is sampling.
+  LIGHT_PIN = None means the bin has no light sensor: no part at all."""
+  if LIGHT_PIN is None:
+    return None
 
   def connect():
     return ADC(LIGHT_PIN)
@@ -138,7 +146,9 @@ def photoresistor():
 
 def microphone():
   """MAX9814 on GP27. An ADC pin cannot detect an unplugged mic, so
-  this slot mostly proves the code is sampling."""
+  this slot mostly proves the code is sampling. MIC_PIN = None: no mic."""
+  if MIC_PIN is None:
+    return None
 
   def connect():
     return ADC(MIC_PIN)
@@ -244,15 +254,15 @@ def probe_bus():
 # THE PARTS LIST. Slot order on the truth light = this order, then one
 # slot per DS18B20 probe. Comment out what your bin does not have.
 # ---------------------------------------------------------------------
-PARTS = [
+PARTS = [p for p in (
     bme("in", 0x76),
     bme("out", 0x77),
     analog_bank(),
-    microphone(),
-    photoresistor(),
+    microphone(),       # None (no slot) when MIC_PIN is None
+    photoresistor(),    # None (no slot) when LIGHT_PIN is None
     compaction(),
     lux_meter(),
-]
+) if p is not None]
 DS = probe_bus()   # dynamic slots, always last
 
 
@@ -333,58 +343,73 @@ def data_fn():
   return d
 
 
-# ---- OLED pages -----------------------------------------------------
+# ---- OLED: one screen built from what is REPORTING --------------------
+# Every part with data contributes a row (16 characters); an absent part
+# contributes nothing. Up to 6 rows fit under the title on one screen (the
+# display tightens its line pitch past 4), so a lean bin just sits there,
+# readable, and a crowded bin pages, through rows that exist. Rows are in
+# priority order; the actuator row only appears once something has been
+# commanded, because an idle servo is not data.
+ROWS_PER_SCREEN = 6
+
+
 def fmt(val, pattern="%s"):
   return "--" if val is None else pattern % val
 
 
-def page_lines(page, d):
-  if page == 0:
-    dt = None
-    if d.get("in_temp_c") is not None and d.get("out_temp_c") is not None:
-      dt = d["in_temp_c"] - d["out_temp_c"]
-    return [
-        "AIR   in / out",
-        "T %s / %s" % (fmt(d.get("in_temp_c"), "%.1f"), fmt(d.get("out_temp_c"), "%.1f")),
-        "H %s / %s" % (fmt(d.get("in_hum_pct"), "%.0f%%"), fmt(d.get("out_hum_pct"), "%.0f%%")),
-        "dT %s" % fmt(dt, "%+.1f C"),
-    ]
-  if page == 1:
-    lines = ["PROBES %s/%s" % (d.get("probe_count", 0), d.get("probes", 0))]
-    for idx, t in enumerate((d.get("probe_temps_c") or [])[:3]):
-      lines.append("%d: %s" % (idx + 1, "fault!" if t is None else "%5.1f C" % t))
-    return lines
-  if page == 2:
-    return [
-        "SOIL + LIGHT",
-        "M1 %s  M2 %s" % (fmt(d.get("moist1_pct"), "%.0f%%"),
-                          fmt(d.get("moist2_pct"), "%.0f%%")),
-        "Lt %s  Lux %s" % (fmt(d.get("light_pct"), "%.0f%%"),
-                           fmt(d.get("lux"), "%.0f")),
-        "Snd %s" % fmt(d.get("sound_pct"), "%.0f%%"),
-    ]
-  return [
-      "ACT + DIST",
-      "surf %s" % fmt(d.get("surface_mm"), "%d mm"),
-      "servo %d / %d" % (int(servo_big.angle), int(servo_small.angle)),
-      "relay %s" % ("ON" if relay.value() else "off"),
-  ]
+def screen_rows(d):
+  """[(text, kind)] for everything that is reporting right now. kind is
+  'light' for rows worth lingering on when paging, else 'sensor'."""
+  rows = []
+  ti, to = d.get("in_temp_c"), d.get("out_temp_c")
+  hi, ho = d.get("in_hum_pct"), d.get("out_hum_pct")
+  if ti is not None and to is not None:
+    rows.append(("In  %s %s" % (fmt(ti, "%.1fC"), fmt(hi, "%.0f%%")), "sensor"))
+    rows.append(("Out %s %s" % (fmt(to, "%.1fC"), fmt(ho, "%.0f%%")), "sensor"))
+    rows.append(("dT %+.1fC" % (ti - to), "sensor"))
+  elif ti is not None or to is not None:
+    which = "in" if ti is not None else "out"
+    rows.append(("Air %s %s" % (fmt(d.get(which + "_temp_c"), "%.1fC"),
+                                fmt(d.get(which + "_hum_pct"), "%.0f%%")), "sensor"))
+    rows.append(("Press %s" % fmt(d.get(which + "_press_hpa"), "%.0f hPa"), "sensor"))
+  temps = d.get("probe_temps_c") or []
+  if len(temps) == 1:
+    rows.append(("Soil %s" % ("fault!" if temps[0] is None else "%.1fC" % temps[0]), "sensor"))
+  elif temps:
+    rows.append(("Soil " + " ".join("--" if t is None else "%.1f" % t for t in temps[:2])
+                 + (" +%d" % (len(temps) - 2) if len(temps) > 2 else ""), "sensor"))
+  if d.get("moist1_pct") is not None:
+    rows.append(("Moist %s  %s" % (fmt(d.get("moist1_pct"), "%.0f%%"),
+                                   fmt(d.get("moist2_pct"), "%.0f%%")), "sensor"))
+  if d.get("light_pct") is not None or d.get("lux") is not None:
+    lux = d.get("lux")
+    lux_s = None if lux is None else ("%.1fk" % (lux / 1000) if lux >= 1000 else "%.0flx" % lux)
+    if lux_s is not None and d.get("light_pct") is not None:
+      rows.append(("Light %s %s" % (fmt(d["light_pct"], "%.0f%%"), lux_s), "light"))
+    elif lux_s is not None:
+      rows.append(("Light %s" % lux_s, "light"))
+    else:
+      rows.append(("Light %s" % fmt(d["light_pct"], "%.0f%%"), "light"))
+  if d.get("sound_pct") is not None:
+    rows.append(("Sound %s" % fmt(d["sound_pct"], "%.0f%%"), "sensor"))
+  if d.get("surface_mm") is not None:
+    rows.append(("Dist %s" % fmt(d["surface_mm"], "%d mm"), "sensor"))
+  big, small, rly = d.get("big", 90), d.get("small", 90), d.get("relay", 0)
+  if rly or big != 90 or small != 90:
+    rows.append(("Srv %d/%d %s" % (big, small, "RlyON" if rly else "rly-"), "sensor"))
+  if not rows:
+    rows.append(("no parts found", "sensor"))
+    rows.append(("check wiring", "sensor"))
+  return rows
 
 
-def page_dwell(page, d):
-  """How long to hold a page: long enough to interact with what is on it.
-  A light page gets 10s (shine a light and watch), other live-sensor pages
-  get a few seconds, and a page with nothing plugged in flicks by in 2s."""
-  if page == 2 and (d.get("light_pct") is not None or d.get("lux") is not None):
-    return PAGE_SEC_LIGHT
-  live = {
-      0: (d.get("in_temp_c"), d.get("out_temp_c"),
-          d.get("in_hum_pct"), d.get("out_hum_pct")),
-      1: (d.get("probe_temps_c") or None,),
-      2: (d.get("moist1_pct"), d.get("moist2_pct"), d.get("sound_pct")),
-      3: (d.get("surface_mm"),),
-  }.get(page, ())
-  return PAGE_SEC_SENSOR if any(v is not None for v in live) else PAGE_SEC_NONE
+def screen_pages(rows):
+  """Split rows into screens of ROWS_PER_SCREEN. One screen = no paging."""
+  return [rows[i:i + ROWS_PER_SCREEN] for i in range(0, len(rows), ROWS_PER_SCREEN)] or [[]]
+
+
+def screen_dwell(page_rows):
+  return PAGE_SEC_LIGHT if any(k == "light" for _, k in page_rows) else PAGE_SEC_SENSOR
 
 
 picolab.banner("WORM BIN COMMAND CENTER  v" + picolab.VERSION, [
@@ -408,8 +433,8 @@ light = picolab.StatusLight()
 app = picolab.WebApp()
 tick = picolab.Throttle(READ_EVERY_MS)
 heartbeat = picolab.Throttle(5000)
-page = -1                        # OLED page, advanced by its own dwell timer
-page_deadline = time.ticks_ms()  # due now, so page 0 shows on the first sweep
+page = 0                         # OLED page (only moves when rows overflow a screen)
+page_deadline = time.ticks_ms()
 
 app.announce("Worm Bin Command Center Active!")
 
@@ -440,14 +465,17 @@ try:
     picolab.status(light, slots, display, app)
 
     d = data_fn()
-    # Advance the page only when the current one's dwell has elapsed, so a
-    # light page lingers while you shine a torch and an empty one flicks past.
+    # One screen if everything reporting fits; otherwise page through what
+    # exists, advancing only when the current page's dwell has elapsed.
+    pages = screen_pages(screen_rows(d))
     now = time.ticks_ms()
-    if time.ticks_diff(now, page_deadline) >= 0:
-      page = (page + 1) % 4
-      page_deadline = time.ticks_add(now, page_dwell(page, d) * 1000)
-    lines = [app.ssid + " p%d/4" % (page + 1)] + page_lines(page, d)
-    display.show(lines[:5])
+    if page >= len(pages):
+      page = 0
+    if len(pages) > 1 and time.ticks_diff(now, page_deadline) >= 0:
+      page = (page + 1) % len(pages)
+      page_deadline = time.ticks_add(now, screen_dwell(pages[page]) * 1000)
+    title = app.ssid if len(pages) == 1 else app.ssid[:11] + " %d/%d" % (page + 1, len(pages))
+    display.show([title] + [text for text, _ in pages[page]])
 
     if heartbeat.ready():
       bad = [s.name for s in PARTS if not s.ok] + ([] if DS.ok else [DS.name])
