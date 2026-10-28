@@ -19,6 +19,7 @@ All I2C devices share the standard bus (SDA=GP0, SCL=GP1, 3V3, GND).
 | ADS1115 | I2C `0x48` | ADDR to GND; adds 4 analog channels |
 | Soil moisture 1 | ADS1115 A0 | capacitive v1.2, VCC 3V3 |
 | Soil moisture 2 | ADS1115 A1 | second probe, other end of the bin |
+| Soil moisture, direct | GP26 (pin 31, ADC0) | no ADS1115: probe AOUT straight into the Pico, set `MOIST_PIN = 26` |
 | GL5528 light divider | ADS1115 A2 | LDR to 3V3, 10k to GND, junction to A2 |
 | MAX9814 mic | GP27 (pin 32, ADC1) | native ADC: needs the fast 25 ms sampling |
 | DS18B20 probes | GP22 (pin 29) | one wire, many probes, 4.7k pullup to 3V3 |
@@ -54,6 +55,12 @@ than fit (six under the title) does it page, and then only through rows
 that exist, lingering on a page with a light sensor so you can shine a
 torch at it. Servo and relay get a row only once something has been
 commanded.
+
+A lean bin recipe, for a board with one BME280, a probe, a moisture sensor
+on GP26, the distance sensor and the OLED: in the config block set
+`MOIST_PIN = 26`, `MIC_PIN = None`, `LIGHT_PIN = None`, and comment
+`bme("in", 0x76)`, `analog_bank()` and `lux_meter()` out of `PARTS`. The
+result is a single screen and a truth light with four short blinks.
 
 ## Dashboard
 

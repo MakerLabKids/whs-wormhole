@@ -51,6 +51,8 @@ PROBE_PIN = 22        # DS18B20 one-wire bus + its 4.7k pullup (default GP22)
 # The two parts on bare Pico ADC pins cannot tell "unplugged" from "quiet"
 # or "dark", so they always report. If your bin does not have one, set its
 # pin to None: it leaves the parts list, the truth light, and the screen.
+MOIST_PIN = None      # capacitive probe AOUT straight into a Pico ADC pin (26, 27 or 28)
+                      # instead of the ADS1115 bank; None = no direct probe
 MIC_PIN = 27          # MAX9814 mic; native ADC pin (default GP27), None = not fitted
 LIGHT_PIN = 28        # GL5528 photoresistor divider; native ADC pin (default GP28), None = not fitted
 SERVO_BIG_PIN = 16    # MG995; own 5V supply, grounds joined (default GP16)
@@ -124,6 +126,28 @@ def analog_bank():
     }
 
   return picolab.Sensor("ADS1115 bank (0x48)", connect, read)
+
+
+def soil_probe():
+  """One capacitive moisture probe on a bare Pico ADC pin (MOIST_PIN), for a
+  bin without the ADS1115 bank. Reports as moist1, same keys and same
+  calibration as bank channel A0, so the screen, the dashboard and /cal do
+  not care which way it is wired. An ADC pin cannot tell 'unplugged' from
+  'dry', so this slot mostly proves it is sampling."""
+  if MOIST_PIN is None:
+    return None
+
+  def connect():
+    return ADC(MOIST_PIN)
+
+  def read(dev):
+    total = 0
+    for _ in range(16):
+      total += dev.read_u16()
+    v = total / 16 / 65535 * 3.3
+    return {"moist1_pct": _moist_pct("moist1", v), "moist1_v": round(v, 2)}
+
+  return picolab.Sensor("moisture probe (GP%d)" % MOIST_PIN, connect, read)
 
 
 def photoresistor():
@@ -258,6 +282,7 @@ PARTS = [p for p in (
     bme("in", 0x76),
     bme("out", 0x77),
     analog_bank(),
+    soil_probe(),       # None (no slot) when MOIST_PIN is None
     microphone(),       # None (no slot) when MIC_PIN is None
     photoresistor(),    # None (no slot) when LIGHT_PIN is None
     compaction(),
@@ -379,8 +404,11 @@ def screen_rows(d):
     rows.append(("Soil " + " ".join("--" if t is None else "%.1f" % t for t in temps[:2])
                  + (" +%d" % (len(temps) - 2) if len(temps) > 2 else ""), "sensor"))
   if d.get("moist1_pct") is not None:
-    rows.append(("Moist %s  %s" % (fmt(d.get("moist1_pct"), "%.0f%%"),
-                                   fmt(d.get("moist2_pct"), "%.0f%%")), "sensor"))
+    if d.get("moist2_pct") is None:
+      rows.append(("Moist %s" % fmt(d["moist1_pct"], "%.0f%%"), "sensor"))
+    else:
+      rows.append(("Moist %s  %s" % (fmt(d["moist1_pct"], "%.0f%%"),
+                                     fmt(d["moist2_pct"], "%.0f%%")), "sensor"))
   if d.get("light_pct") is not None or d.get("lux") is not None:
     lux = d.get("lux")
     lux_s = None if lux is None else ("%.1fk" % (lux / 1000) if lux >= 1000 else "%.0flx" % lux)
@@ -475,11 +503,13 @@ try:
       page = (page + 1) % len(pages)
       page_deadline = time.ticks_add(now, screen_dwell(pages[page]) * 1000)
     title = app.ssid if len(pages) == 1 else app.ssid[:11] + " %d/%d" % (page + 1, len(pages))
-    display.show([title] + [text for text, _ in pages[page]])
+    lines = [title] + [text for text, _ in pages[page]]
+    display.show(lines)
 
     if heartbeat.ready():
       bad = [s.name for s in PARTS if not s.ok] + ([] if DS.ok else [DS.name])
       picolab.log("all parts OK" if not bad else "TROUBLE: " + ", ".join(bad))
+      picolab.log("screen %d/%d:" % (page + 1, len(pages)), " | ".join(lines))
 
     gc.collect()
 finally:
