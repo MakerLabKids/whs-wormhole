@@ -18,6 +18,7 @@
 import json
 import socket
 import time
+import machine
 from machine import I2C, Pin, unique_id
 
 # Version of the SOFTWARE THAT RUNS ON THE PICO (this framework + the project
@@ -94,6 +95,48 @@ def _uptime():
 
 def log(*args):
   print("[%4ds]" % _uptime(), *args)
+
+
+# ---- hardware watchdog ----------------------------------------------
+# A wedged board in a worm bin reboots itself; a board on a laptop does not
+# fight the person at the keyboard. The RP2 watchdog cannot be disarmed once
+# started, so it is only armed when NO USB host is attached (a plain power
+# supply never asserts CONNECTED). Every wait in this file that can exceed a
+# couple of seconds calls feed(); demo loops feed through WebApp.poll().
+WATCHDOG_MS = 8000        # the RP2040/RP2350 hardware maximum is about 8.3 s
+_wdt = None
+
+
+def usb_host_attached():
+  """True when a computer is on the USB port (Viper, Thonny, mpremote),
+  False on a power-only supply. USB SIE_STATUS bit 16 = CONNECTED."""
+  try:
+    return bool(machine.mem32[0x50110000 + 0x50] & (1 << 16))
+  except Exception:
+    return True            # cannot tell: assume a human, stay out of the way
+
+
+def arm_watchdog(force=False):
+  """Start the hardware watchdog unless a USB host is attached (or force)."""
+  global _wdt
+  if _wdt:
+    return True
+  if usb_host_attached() and not force:
+    log("USB host attached: hardware watchdog left off")
+    return False
+  try:
+    _wdt = machine.WDT(timeout=WATCHDOG_MS)
+    log("hardware watchdog armed: a stuck board reboots after %d s" % (WATCHDOG_MS // 1000))
+    return True
+  except Exception as e:
+    log("watchdog unavailable:", e)
+    return False
+
+
+def feed():
+  """Pat the watchdog. Cheap; safe to call when it is not armed."""
+  if _wdt:
+    _wdt.feed()
 
 
 def banner(title, lines=()):
@@ -485,6 +528,7 @@ def _try_join(sta, ssid, password, attempts=2, wait_s=12):
       for _ in range(wait_s * 2):
         if sta.isconnected():
           return True
+        feed()
         time.sleep_ms(500)
     except Exception:
       pass
@@ -744,6 +788,7 @@ def _edge_candidates(ip, override=None):
 
 class WebApp:
   def __init__(self, import_network=True, index="index.html"):
+    arm_watchdog()
     import network
 
     # Where this app's dashboard lives. Under the EVERYTHING install a
@@ -1129,7 +1174,9 @@ class WebApp:
             pass
         else:
           log("Port 80 busy, waiting for the old socket to free (try %d)..." % (attempt + 1))
-        time.sleep(1 + attempt)   # 1, 2, 3, 4, 5 s
+        for _ in range(1 + attempt):   # 1, 2, 3, 4, 5 s, fed each second
+          feed()
+          time.sleep(1)
     log("Port 80 stayed busy - station is running WITHOUT the web page")
     log("(the screen and sensors work; do a full reset to get the web page back).")
     self.server = None
@@ -1215,6 +1262,7 @@ class WebApp:
     """
     # Housekeeping first, every call, all cheap unless something changed:
     # the Wi-Fi ladder, the push to the Burrow, the history sample.
+    feed()
     try:
       self._net_tick()
     except Exception as e:
