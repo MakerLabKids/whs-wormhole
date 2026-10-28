@@ -1,0 +1,72 @@
+TEST SUMMARY: modules sold as "BME280" are BMP280 (no humidity sensor)
+=======================================================================
+
+Test date: 28 October 2026
+
+HOW THE TEST WORKS
+------------------
+The module was wired to a Raspberry Pi Pico 2 W (3V3, GND, SDA, SCL) and
+read over I2C. The test program:
+
+  1. scans every valid I2C pin pair on the Pico and every address, so
+     nothing attached can be missed;
+  2. reads the Bosch factory chip-ID register (address 0xD0) of each
+     sensor found. Bosch programs this at the factory:
+        0x60 = BME280  (temperature + pressure + humidity)
+        0x58 = BMP280  (temperature + pressure, NO humidity sensor)
+  3. dumps the calibration registers (a BME280 has humidity calibration
+     values; a BMP280 has none);
+  4. takes live temperature, pressure and humidity readings, then runs a
+     10-second "breathe on the sensor" test. A real humidity sensor
+     jumps 10 to 40 points when breathed on.
+
+A genuine BME280 was tested at the same time, on the same wires, with the
+same program, for comparison.
+
+RESULT
+------
+Module from this order (board marked HW-413A, "BME/BMP 280"), address 0x76:
+  Chip ID register 0xD0 ......... 0x58  = BMP280
+  Humidity calibration .......... all zeros
+  Temperature ................... working (about 22.6 C)
+  Pressure ...................... working (about 991 hPa)
+  Humidity ...................... NOT PRESENT. Register never changed
+                                  during the breath test.
+
+Genuine BME280 (six-pin GY-BME280), same bus, same minute, address 0x77:
+  Chip ID register 0xD0 ......... 0x60  = BME280
+  Humidity calibration .......... factory values present
+  Temperature ................... working (about 23.2 C)
+  Pressure ...................... working (about 988 hPa)
+  Humidity ...................... working, 50.5 % to 78.9 % when breathed on
+
+Conclusion: two of the three sensors on the supplied module work. The
+third, humidity, is not faulty; it does not exist. The chip identifies
+itself as a BMP280. The module cannot do what the BME280 listing says.
+
+FILES IN THIS PACKET
+--------------------
+test-summary.txt
+    This file.
+
+20261028T134307Z-suspect-vs-sixpin.txt
+    Full program output: the supplied module (0x76) next to a genuine
+    BME280 (0x77). Verdict block for each at the end of its section.
+
+20261028T132715Z-suspect-1.txt
+    Full program output: the supplied module alone on the bus.
+
+20261028-photo-02-suspect-only-module-closeup.jpg
+    The supplied module, close up. Board marked HW-413A, "BME/BMP 280".
+
+20261028-photo-03-suspect-only-pico-and-module.jpg
+    The supplied module wired alone to the Pico.
+
+20261028-photo-04-both-modules-genuine-bme280-added.jpg
+    The comparison setup, genuine BME280 added on the same bus.
+
+REPEATING THE TEST
+------------------
+The program and every transcript are public. Anyone with a Raspberry Pi
+Pico can repeat the test in a few minutes:
+https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/bme280/evidence

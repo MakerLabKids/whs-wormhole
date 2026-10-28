@@ -9,7 +9,7 @@ The modules were tested on a Raspberry Pi Pico. We read the Bosch factory chip-I
 For comparison, a genuine BME280 was tested on the same wiring with the same code in the same minute. It reports 0x60 and its humidity reading rises when breathed on. The module from your order does not respond at all.
 
 Attached:
-- test-summary.md: one-page summary of the test and results
+- test-summary.txt: one-page summary of the test and results
 - 20261028T134307Z-suspect-vs-sixpin.txt: full output, your module next to a genuine BME280
 - 20261028T132715Z-suspect-1.txt: full output, your module alone
 - three photos of the test setup
