@@ -139,6 +139,29 @@ def should_reboot(down_since, reboots, now):
     return bool(down_since) and now >= reboot_due_at(down_since, reboots)
 
 
+def chrony_needs_kick(activity_text):
+    """True when chrony still has NTP names it could not resolve (it started while
+    the uplink was down and retries DNS only every few hours), so a restart now that
+    the cloud answers gets the clock back in minutes instead of hours."""
+    for line in (activity_text or "").splitlines():
+        parts = line.split()
+        if "unknown address" in line and parts and parts[0].isdigit():
+            return int(parts[0]) > 0
+    return False
+
+
+def kick_chrony_if_stale(st, now):
+    try:
+        act = subprocess.run(["chronyc", "activity"], capture_output=True, text=True, timeout=5).stdout
+    except Exception:
+        return False
+    if not chrony_needs_kick(act):
+        return False
+    subprocess.run(["systemctl", "restart", "chrony"], capture_output=True, timeout=20)
+    event(st, now, "chrony restarted: NTP names were unresolved from the outage")
+    return True
+
+
 def choose_fallback_bssid(scan_rows, ssid, exclude_bssids):
     """Strongest access point for `ssid` whose BSSID is not one of ours.
     scan_rows: [(bssid, ssid, signal_int)]."""
@@ -357,6 +380,8 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
             wifi.down()
             event(st, now, "cable healthy again: Wi-Fi fallback dropped")
         st["wifi_fallback"] = "off" if wifi.available() else "unavailable"
+        if cloud_ok:
+            kick_chrony_if_stale(st, now)
         save_state(st)
         print("ok: %s via %s (%s dBm), cloud %s" % (cfg["host"], status.get("ssid"), status.get("signal"), cloud_ok))
         return 0

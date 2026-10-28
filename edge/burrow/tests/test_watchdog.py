@@ -84,6 +84,18 @@ class Upstreams(unittest.TestCase):
         self.assertIn("key", wd.connect_params(self.UPS[1]))
 
 
+class ChronyKick(unittest.TestCase):
+    ACT = "200 OK\n2 sources online\n0 sources offline\n0 sources doing burst (return to online)\n0 sources doing burst (return to offline)\n%d sources with unknown address\n"
+
+    def test_unresolved_names_need_a_kick(self):
+        self.assertTrue(wd.chrony_needs_kick(self.ACT % 6))
+
+    def test_all_resolved_leaves_chrony_alone(self):
+        self.assertFalse(wd.chrony_needs_kick(self.ACT % 0))
+        self.assertFalse(wd.chrony_needs_kick(""))
+        self.assertFalse(wd.chrony_needs_kick(None))
+
+
 class RebootSchedule(unittest.TestCase):
     def test_first_reboot_after_15_minutes(self):
         self.assertFalse(wd.should_reboot(1000, [], 1000 + 14 * 60))
