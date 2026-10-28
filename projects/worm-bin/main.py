@@ -66,6 +66,14 @@ RELAY_PIN = 15        # relay module IN (default GP15)
 # standalone servo demo.)
 SERVO_DPS = 400
 
+# Height of the bin above sea level, in metres. A BME280 measures the actual
+# air pressure where it sits (station pressure), which is a few percent
+# lower than the sea-level pressure weather reports quote. With the
+# elevation known, press_hpa is corrected to sea level so it matches the
+# weather app; press_raw_hpa stays the real reading. 0 = no correction.
+# Woodstock High School is about 305 m (1000 ft); Roswell about 330 m.
+ELEVATION_M = 305
+
 # Timing.
 READ_EVERY_MS = 500   # sensor sweep cadence (default 500 ms)
 # The OLED shows one row per part that is reporting; parts that are absent
@@ -77,6 +85,14 @@ PAGE_SEC_SENSOR = 5   # any other page
 # ===== end of config ==================================================
 
 
+def sea_level(station_hpa):
+  """Station pressure -> sea-level pressure for ELEVATION_M (standard
+  atmosphere, the same formula weather stations use)."""
+  if not ELEVATION_M:
+    return station_hpa
+  return station_hpa / (1.0 - 2.25577e-5 * ELEVATION_M) ** 5.25588
+
+
 def bme(name, addr):
   def connect():
     from bme280 import BME280
@@ -86,7 +102,8 @@ def bme(name, addr):
     temp_c, press_hpa, hum_pct = dev.read()
     return {
         name + "_temp_c": round(temp_c, 1),
-        name + "_press_hpa": round(press_hpa, 1),
+        name + "_press_hpa": round(sea_level(press_hpa), 1),
+        name + "_press_raw_hpa": round(press_hpa, 1),
         name + "_hum_pct": None if hum_pct is None else round(hum_pct, 1),
     }
 

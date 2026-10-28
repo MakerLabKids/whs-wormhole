@@ -46,6 +46,15 @@ The mic and the light divider sit on bare ADC pins and cannot tell
 or `LIGHT_PIN = None` in the config block: that drops them from the slots,
 the screen, and the dashboard.
 
+## Pressure
+
+Weather reports quote pressure corrected to sea level; a BME280 reads the
+real pressure where it sits, a few percent lower at our altitude. Set
+`ELEVATION_M` in the config block (Woodstock High School is about 305 m)
+and `press_hpa` on the screen, the JSON and the dashboard matches the
+weather app, while `press_raw_hpa` keeps the uncorrected reading. Set it
+to 0 to show the raw reading everywhere.
+
 ## The screen
 
 The OLED shows one row per part that is reporting, nothing for parts that
