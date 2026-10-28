@@ -1,4 +1,4 @@
-# Wed Oct 28 13:24:39 UTC 2026  label: known-1  port: /dev/host/ttyACM0
+# Wed Oct 28 13:24:39 UTC 2026  label: six-pin module, CSB and SDO floating (not yet on the bus)  port: /dev/host/ttyACM0
 Bosch BMx280 identifier  |  board unique id 8E B5 2B 7B 43 C1 F6 D8  |  MicroPython 1.28.0
 Scanning all 12 valid Pico I2C pin pairs, addresses 0x08-0x77:
   I2C0 SDA=GP0 SCL=GP1      : (nothing)
