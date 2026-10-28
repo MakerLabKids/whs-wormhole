@@ -9,3 +9,4 @@ firmware/rpi/*.img.xz
 firmware/rpi/*.img
 firmware/rpi/*.sha256
 firmware/rpi/download.log
+.chatlog/
