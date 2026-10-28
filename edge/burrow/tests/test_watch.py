@@ -78,6 +78,9 @@ class WatchTest(unittest.TestCase):
         w = Watch(cfg(), self.now, self.bus, fetch=pico)
         self.assertFalse(w.add("nobody"))
         self.assertFalse(w.add(""))
+        # a Bin learned from another Burrow's casting is on another LAN: not pollable from here
+        self.now.merge("bb00000000000000", {"ts": 1, "edge": "burrow3", "room": 3, "d": {"id": "bb00000000000000", "ip": "192.168.83.150"}})
+        self.assertFalse(w.add("bb00000000000000"))
         for i in range(2):
             uid = "aa%014d" % i
             self.now.update({"ts": 1, "uid": uid, "edge": "burrow1", "room": 1, "src": "push", "d": {"id": uid, "ip": "192.168.81.%d" % (10 + i)}})

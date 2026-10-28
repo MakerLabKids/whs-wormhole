@@ -27,13 +27,17 @@ class Watch:
         self.bins = {}      # uid -> {"viewers", "stop", "thread", "polls", "errors", "last_ok", "ip"}
 
     def ip_of(self, uid):
+        """The Bin's address, only when its latest row came through THIS Burrow: a Bin we
+        know from a peer's casting lives on another room's LAN and cannot be polled from here."""
         with self.now.lock:
             e = self.now.bins.get(uid)
-        return ((e or {}).get("d") or {}).get("ip")
+        if not e or e.get("edge") != self.edge:
+            return None
+        return (e.get("d") or {}).get("ip")
 
     def add(self, uid):
-        """One more viewer for uid. Returns False when the Bin is unknown (no address to
-        poll) or too many Bins are being watched already."""
+        """One more viewer for uid. Returns False when the Bin is unknown here (no address on
+        this LAN to poll) or too many Bins are being watched already."""
         if not uid or not self.ip_of(uid):
             return False
         with self.lock:

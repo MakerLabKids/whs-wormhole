@@ -182,7 +182,9 @@ class Handler(BaseHTTPRequestHandler):
             last = time.monotonic()
             while True:
                 try:
-                    msg = q.get(timeout=15)
+                    # a watching client is polled for every few seconds so a closed tab
+                    # releases its Bin's poller quickly (the write fails once it is gone)
+                    msg = q.get(timeout=3 if watched else 15)
                     self.wfile.write(msg.encode("utf-8"))
                     self.wfile.flush()
                 except queue.Empty:
