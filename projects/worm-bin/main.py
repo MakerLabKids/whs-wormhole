@@ -199,6 +199,7 @@ def compaction():
     from vl53l0x import VL53L0X
     tof = VL53L0X(picolab.i2c())
     tof.init_sensor()
+    tof.ping()   # the first shot after init reads 0; throw it away
     return tof
 
   def read(dev):
