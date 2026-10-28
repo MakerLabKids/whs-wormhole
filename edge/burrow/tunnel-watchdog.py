@@ -330,7 +330,8 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
         # and get our own radio up so the report leaves the building.
         st["opal_reachable"] = False
         st["state"] = "opal-unreachable"
-        st.setdefault("down_since", int(now))
+        if not st.get("down_since"):      # a healthy run leaves None behind; setdefault would keep it
+            st["down_since"] = int(now)
         event(st, now, "opal %s unreachable: %s" % (cfg["host"], str(e)[:100]))
         _maybe_wifi(st, wifi, now, cloud_ok)
         save_state(st)
@@ -360,7 +361,8 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
         print("ok: %s via %s (%s dBm), cloud %s" % (cfg["host"], status.get("ssid"), status.get("signal"), cloud_ok))
         return 0
 
-    st.setdefault("down_since", int(now))
+    if not st.get("down_since"):      # a healthy run leaves None behind; setdefault would keep it
+        st["down_since"] = int(now)
     st["state"] = "upstream-down" if status.get("state_s") != "connected" else "no-internet"
 
     if what == "wait":

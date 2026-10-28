@@ -1,5 +1,14 @@
 # Router tools — GL.iNet 4.x (GL-SFT1200 "Opal")
 
+`setup_tunnel.py --room N [--host IP] [--dry-run]` makes one Opal a complete Tunnel N in one
+run, matching Tunnel 2 (the 2026-10-28 template): fw 4.8.3 required, 2.4 GHz WormHole on the
+room channel (1/6/11), auto-switch off, 5 GHz repeater onto the Portal's hidden WPA3
+`WormHole-Core`, TCP 8080 -> 192.168.8N.10, and the LAN move to 192.168.8N.1 LAST (the box
+drops off the old address; renew the laptop's lease). Idempotent: each step is skipped when the
+box already has it. Keys from .env (router_admin, wormhole_psk, backhaul_key), never printed.
+Note: a radio that repeats an upstream takes that upstream's channel, so the Portal's 2.4 GHz
+channel follows Q-tastic/BYLD/Loki/Guess and is not ours to set.
+
 `glinet.py` talks to the stock admin API at `http://<router>/rpc`. No SSH, no LuCI.
 
     GLINET_PASSWORD='...' tools/routers/glinet.py status

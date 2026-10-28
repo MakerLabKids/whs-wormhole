@@ -289,6 +289,16 @@ class Runs(unittest.TestCase):
         self.assertTrue(any("rebooted the Opal" in e[1] for e in events))
         self.assertTrue(any(len(e) > 2 and e[2] > 1 for e in events))   # repeated joins folded, not flooding
 
+    def test_outage_after_a_healthy_run_starts_the_clock(self):
+        # healthy first (leaves down_since = None in the state file), then the uplink dies
+        self.cloud = True
+        self.run_at(1000)
+        self.assertIsNone(self.state()["down_since"])
+        self.cloud = False
+        self.run_at(1120)                     # used to crash: None + REBOOT_AFTER_S
+        self.assertEqual(self.state()["down_since"], 1120)
+        self.assertTrue(self.calls("repeater", "connect"))
+
     def test_recovery_clears_outage_and_drops_wifi(self):
         FakeRouter.NEXT_STATE = "idle"
         self.cloud = False
