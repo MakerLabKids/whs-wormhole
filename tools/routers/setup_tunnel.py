@@ -6,7 +6,9 @@
 What a Tunnel is (the template is Tunnel 2, captured 2026-10-28):
   firmware 4.8.3; 2.4 GHz WormHole (WPA2, room channel 1/6/11, width auto) for the Bins;
   5 GHz radio repeating the Portal's hidden WPA3 WormHole-Core (auto-switch OFF, smart
-  reconnect on); TCP 8080 forwarded to the room's Burrow at 192.168.8N.10; LAN 192.168.8N.1.
+  reconnect on); TCP 8080 and 22 forwarded to the room's Burrow at 192.168.8N.10 (dashboard
+  and ssh reachable from the Portal LAN at 192.168.80.2N, so no cable turn is needed to
+  maintain a Pi); LAN 192.168.8N.1.
 
 Order matters and the script keeps it: a factory box gets its admin password first; the LAN
 address goes LAST because the box moves and the laptop's lease is stale afterwards. Every
@@ -39,9 +41,12 @@ def desired(room, wormhole_key, backhaul_key):
         "repeater_cfg": {"auto": False, "smart_reconnect": True},
         "backhaul": {"ssid": "WormHole-Core", "key": backhaul_key, "bssid": PORTAL_CORE_BSSID,
                      "device": "radio1", "band": "5g", "encryption": "sae"},
-        "forward": {"name": "Burrow", "proto": "tcp", "src": "wan", "src_dport": "8080",
-                    "dest": "lan", "dest_ip": "192.168.8%d.10" % room, "dest_port": "8080",
-                    "enabled": True},
+        "forwards": [{"name": "Burrow", "proto": "tcp", "src": "wan", "src_dport": "8080",
+                      "dest": "lan", "dest_ip": "192.168.8%d.10" % room, "dest_port": "8080",
+                      "enabled": True},
+                     {"name": "BurrowSSH", "proto": "tcp", "src": "wan", "src_dport": "22",
+                      "dest": "lan", "dest_ip": "192.168.8%d.10" % room, "dest_port": "22",
+                      "enabled": True}],
     }
 
 
@@ -73,11 +78,11 @@ def plan(state, want):
     rs = state.get("repeater_status") or {}
     if not (rs.get("state_s") == "connected" and rs.get("ssid") == want["backhaul"]["ssid"]):
         steps.append(("backhaul", want["backhaul"]))
-    f = want["forward"]
-    have = any(x.get("src_dport") == f["src_dport"] and x.get("dest_ip") == f["dest_ip"]
-               and x.get("proto") == f["proto"] for x in state.get("forwards") or [])
-    if not have:
-        steps.append(("forward", f))
+    for f in want["forwards"]:
+        have = any(x.get("src_dport") == f["src_dport"] and x.get("dest_ip") == f["dest_ip"]
+                   and x.get("proto") == f["proto"] for x in state.get("forwards") or [])
+        if not have:
+            steps.append(("forward", f))
     if state.get("lan_ip") != want["lan_ip"]:
         steps.append(("lan", {"interface": "lan", "ip": want["lan_ip"], "netmask": "255.255.255.0", "ap_isolate": 0}))
     return steps

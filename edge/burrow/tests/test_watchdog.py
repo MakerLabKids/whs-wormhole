@@ -151,6 +151,7 @@ class FakeRouter:
     NEXT_STATE = "connected"
     NEXT_VISIBLE = ["BYLD", "WormHole-Core"]
     NEXT_UNREACHABLE = False
+    NEXT_FORWARDS = []
     LOG = []
 
     def login(self, pw):
@@ -168,6 +169,8 @@ class FakeRouter:
             return {"system": {"uptime": 12345, "load": [0.1, 0.1, 0.1]}}
         if (obj, method) == ("clients", "get_list"):
             return {"clients": [{"online": True}, {"online": False}, {"online": True}]}
+        if (obj, method) == ("firewall", "get_port_forward_list"):
+            return {"res": list(FakeRouter.NEXT_FORWARDS)}
         if (obj, method) == ("wifi", "get_config"):
             return {"res": [{"ifaces": [{"bssid": "94:83:C4:00:00:01"}]}, {"ifaces": [{"bssid": "94:83:C4:00:00:02"}]}]}
         return {}
@@ -220,6 +223,7 @@ class Runs(unittest.TestCase):
         FakeRouter.LOG = []
         FakeRouter.NEXT_STATE, FakeRouter.NEXT_UNREACHABLE = "connected", False
         FakeRouter.NEXT_VISIBLE = ["BYLD", "WormHole-Core"]
+        FakeRouter.NEXT_FORWARDS = []
         FakeWifi.UP, FakeWifi.ACTIONS, FakeWifi.AVAILABLE = False, [], True
         self.cloud = True
 
@@ -231,6 +235,27 @@ class Runs(unittest.TestCase):
 
     def calls(self, obj, method):
         return [p for o, m, p in FakeRouter.LOG if (o, m) == (obj, method)]
+
+    def test_tunnel_pi_gets_dashboard_and_ssh_forwards(self):
+        write(wd.BURROW_CONFIG, {"room": 1, "cloud": {"url": "https://surface.example"}})
+        self.run_at(1000)
+        adds = self.calls("firewall", "add_port_forward")
+        self.assertEqual([(a["src_dport"], a["dest_ip"], a["dest_port"]) for a in adds],
+                         [("8080", "192.168.81.10", "8080"), ("22", "192.168.81.10", "22")])
+        self.assertIn("port forward added: tcp 22 -> Pi", [e[1] for e in self.state()["events"]])
+        # next run: the Opal has them, nothing is added again
+        FakeRouter.NEXT_FORWARDS = [{"src_dport": "8080", "dest_ip": "192.168.81.10", "proto": "tcp"},
+                                    {"src_dport": "22", "dest_ip": "192.168.81.10", "proto": "tcp"}]
+        FakeRouter.LOG = []
+        self.run_at(1120)
+        self.assertEqual(self.calls("firewall", "add_port_forward"), [])
+
+    def test_portal_pi_never_gets_forwards(self):
+        write(wd.CONFIG, {"host": "192.168.80.1", "password": "pw",
+                          "upstreams": [{"ssid": "BYLD", "device": "radio0", "band": "2g", "encryption": "none"}]})
+        write(wd.BURROW_CONFIG, {"room": 0, "cloud": {"url": "https://surface.example"}})
+        self.run_at(1000)
+        self.assertEqual(self.calls("firewall", "add_port_forward"), [])
 
     def test_healthy_run_records_diagnostics(self):
         self.run_at(1000)

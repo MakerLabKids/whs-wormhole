@@ -10,7 +10,8 @@ def complete():
                               "ifaces": [{"iface_name": "default_radio0", "ssid": "WormHole", "encryption": "psk2", "enabled": True}]}]},
             "repeater_cfg": {"auto": False, "smart_reconnect": True},
             "repeater_status": {"state_s": "connected", "ssid": "WormHole-Core"},
-            "forwards": [{"src_dport": "8080", "dest_ip": "192.168.81.10", "proto": "tcp"}]}
+            "forwards": [{"src_dport": "8080", "dest_ip": "192.168.81.10", "proto": "tcp"},
+                         {"src_dport": "22", "dest_ip": "192.168.81.10", "proto": "tcp"}]}
 
 
 class Plan(unittest.TestCase):
@@ -24,12 +25,16 @@ class Plan(unittest.TestCase):
     def test_factory_box_gets_every_step_in_order_lan_last(self):
         s = {"fw": "4.8.3", "lan_ip": "192.168.8.1", "wifi": {"res": []}, "repeater_cfg": {"auto": True},
              "repeater_status": {"state_s": "idle"}, "forwards": []}
-        self.assertEqual([w for w, _ in st.plan(s, WANT)], ["wifi", "repeater_cfg", "backhaul", "forward", "lan"])
+        self.assertEqual([w for w, _ in st.plan(s, WANT)], ["wifi", "repeater_cfg", "backhaul", "forward", "forward", "lan"])
+
+    def test_missing_ssh_forward_alone_is_added(self):
+        s = complete(); s["forwards"] = s["forwards"][:1]
+        self.assertEqual([(w, p["src_dport"]) for w, p in st.plan(s, WANT)], [("forward", "22")])
 
     def test_room_channel_and_addresses(self):
         w3 = st.desired(3, "w", "b")
         self.assertEqual(w3["radio0"]["channel"], 11)
-        self.assertEqual(w3["forward"]["dest_ip"], "192.168.83.10")
+        self.assertEqual([f["dest_ip"] for f in w3["forwards"]], ["192.168.83.10"] * 2)
         self.assertEqual(w3["lan_ip"], "192.168.83.1")
         self.assertEqual(w3["backhaul"]["encryption"], "sae")
 

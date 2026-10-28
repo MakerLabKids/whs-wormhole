@@ -328,6 +328,27 @@ def opal_facts(r):
     return facts
 
 
+FORWARDS = (("Burrow", "8080"), ("BurrowSSH", "22"))
+
+
+def ensure_forwards(r, host, room):
+    """Keep this Pi reachable from the Portal LAN without a cable turn: TCP 8080 (dashboard)
+    and 22 (ssh) on the Tunnel's WAN side forward to the Pi at .10. Never on the Portal
+    itself (room 0): its WAN is the school net. Returns the ports added this run."""
+    if room not in (1, 2, 3):
+        return []
+    pi = host.rsplit(".", 1)[0] + ".10"
+    have = (r.call("firewall", "get_port_forward_list") or {}).get("res") or []
+    added = []
+    for name, port in FORWARDS:
+        if any(f.get("src_dport") == port and f.get("dest_ip") == pi and f.get("proto") == "tcp" for f in have):
+            continue
+        r.call("firewall", "add_port_forward", {"name": name, "proto": "tcp", "src": "wan", "src_dport": port,
+                                                "dest": "lan", "dest_ip": pi, "dest_port": port, "enabled": True})
+        added.append(port)
+    return added
+
+
 def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factory=None):
     now = now or time.time()
     cfg = load_json(CONFIG, None)
@@ -366,6 +387,11 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
     if isinstance(ip4, dict) and ip4.get("ip"):
         st["repeater"]["ip"] = ip4.get("ip")
     st.update(opal_facts(r))
+    try:
+        for port in ensure_forwards(r, cfg["host"], bcfg.get("room")):
+            event(st, now, "port forward added: tcp %s -> Pi" % port)
+    except Exception as e:
+        print("forwards: %s" % e)
 
     what = decide(status, cloud_ok, st.get("last_join_at"), now)
     if what == "ok":
