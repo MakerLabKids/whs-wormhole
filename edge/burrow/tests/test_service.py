@@ -147,6 +147,49 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(row["entry"]["d"]["in_temp_c"], 30.0)
         r.close()
 
+    def test_watch_streams_live_events_while_connected(self):
+        """?watch=<uid> makes the Burrow poll that Bin's /data once a second and fan it out as
+        `event: live`; the poller stops when the client goes away; nothing is stored."""
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+        import threading
+        calls = {"n": 0}
+
+        class Pico(BaseHTTPRequestHandler):
+            def log_message(self, *a): pass
+            def do_GET(self):
+                calls["n"] += 1
+                body = json.dumps(bin_payload(in_temp_c=40.0 + calls["n"])).encode()
+                self.send_response(200); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+        pico = HTTPServer(("127.0.0.1", 0), Pico)
+        threading.Thread(target=pico.serve_forever, daemon=True).start()
+        s = self.svc("burrow1", 1)
+        s.cfg["watch"]["every_s"] = 0.1
+        s.watch.every_s = 0.1
+        http("POST", s.url + "/ingest", bin_payload(ip="127.0.0.1:%d" % pico.server_port))
+        r = urllib.request.urlopen(urllib.request.Request(s.url + "/live?watch=e66118604b7c2b2a,nobody"), timeout=5)
+        self.assertEqual(r.readline().decode().strip(), "event: hello")
+        hello = json.loads(r.readline().decode()[6:])
+        self.assertEqual(hello["watching"], ["e66118604b7c2b2a"])
+        r.readline()
+        self.assertEqual(r.readline().decode().strip(), "event: live")
+        live = json.loads(r.readline().decode()[6:])
+        self.assertEqual(live["entry"]["src"], "live")
+        self.assertGreater(live["entry"]["d"]["in_temp_c"], 40.0)
+        self.assertEqual(s.api_status()["watch"]["e66118604b7c2b2a"]["viewers"], 1)
+        self.assertEqual(s.api_status_brief()["watching"], 1)
+        r.close()
+        for _ in range(30):
+            if not s.watch.status():
+                break
+            time.sleep(0.1)
+        self.assertEqual(s.watch.status(), {})
+        n = calls["n"]
+        time.sleep(0.3)
+        self.assertEqual(calls["n"], n)                           # poller gone with the client
+        self.assertEqual(s.api_now()["bins"]["e66118604b7c2b2a"]["d"]["in_temp_c"], 21.4)   # the pushed value, not a live one
+        self.assertEqual(s.counts["ingest"], 1)
+        pico.shutdown()
+
     def test_peer_replication_and_cloud_cycle(self):
         tok = os.path.join(self.tmp, "cloud.token")
         with open(tok, "w") as f:

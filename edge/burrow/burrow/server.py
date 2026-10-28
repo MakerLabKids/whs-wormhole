@@ -2,6 +2,8 @@
 
   Bins      POST /ingest
   Viewers   GET  /  (dashboard files)  /api/now  /api/bins  /api/history  /api/status  /live (SSE)
+            GET  /live?watch=<uid>[,<uid>]  the same stream plus `event: live` once a second
+                 for those Bins (the Burrow polls their /data while this client is connected)
   Peers     GET  /castings  /castings/<id>  /castings/<id>/meta  /health
 """
 import json
@@ -113,7 +115,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/me":
                 return self._json({"ok": True, "role": "local", "name": "classroom", "team": None, "local": True})
             if path == "/live":
-                return self._live()
+                return self._live(q)
             if path == "/castings":
                 since = q.get("since", [None])[0]
                 since = int(since) if since else None
@@ -158,9 +160,14 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"ok": True, "ts": row["ts"], "edge": self.svc.cfg["edge"],
                     "room": self.svc.cfg["room"]})
 
-    def _live(self):
+    def _live(self, params=None):
         svc = self.svc
         q = svc.bus.subscribe()
+        watched = []
+        for uid in ",".join((params or {}).get("watch") or []).split(","):
+            uid = uid.strip()
+            if uid and uid not in watched and svc.watch.add(uid):
+                watched.append(uid)
         try:
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -169,7 +176,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("X-Accel-Buffering", "no")
             self.end_headers()
             hello = {"edge": svc.cfg["edge"], "room": svc.cfg["room"], "ts": util.now(),
-                     "bins": svc.now.snapshot()}
+                     "bins": svc.now.snapshot(), "watching": watched}
             self.wfile.write(("event: hello\ndata: %s\n\n" % json.dumps(hello, separators=(",", ":"))).encode())
             self.wfile.flush()
             last = time.monotonic()
@@ -187,6 +194,8 @@ class Handler(BaseHTTPRequestHandler):
             pass
         finally:
             svc.bus.unsubscribe(q)
+            for uid in watched:
+                svc.watch.remove(uid)
             try:
                 self.close_connection = True
             except Exception:

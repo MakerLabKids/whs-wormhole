@@ -34,6 +34,11 @@ DEFAULTS = {
         "workers": 16,
     },
     "stale_s": 180,                # a Bin is "stale" after this with no row
+    "watch": {                     # 1 Hz live view: poll a watched Bin's /data while anyone watches it
+        "every_s": 1.0,
+        "timeout_s": 0.8,
+        "max_bins": 8,             # at most this many Bins watched at once per Burrow
+    },
     "snapshot_every_s": 60,
     "max_body": 65536,
 }

@@ -25,6 +25,7 @@
     lastNow: 0,             // when /api/now last succeeded (ms)
     sse: { sources: [], connected: 0, failures: 0, timer: null, wanted: false },
     liveBuf: {},            // uid -> {metric: [last 60 values]} for the live sparklines
+    watch: {},              // uid -> true: bins we asked the Burrow to poll once a second (the 1 Hz live view)
     ticker: [],             // recent rows for the live ticker (newest first)
     route: null,
     view: null,             // the current view object (has .destroy())
@@ -180,7 +181,22 @@
      each optional: a room whose Burrow is dark just stays disconnected).
      EventSource reconnects by itself, but after repeated failures we close it
      and retry with our own backoff so a dead edge is not hammered every second. */
-  function sseUrls() { return S.local ? ['/live'] : ['/live/1', '/live/2', '/live/3']; }
+  /* ?watch=<uid,...> on a stream asks that Burrow to poll those Bins' /data once a second for as
+     long as we stay connected and send each reading as `event: live` (not stored anywhere).
+     Changing the watch set reopens the streams, so the parameter always matches what we want. */
+  function watchParam(uids) { return uids.length ? '?watch=' + uids.map(encodeURIComponent).join(',') : ''; }
+  function sseUrls() {
+    var w = Object.keys(S.watch);
+    if (S.local) return ['/live' + watchParam(w)];
+    return [0, 1, 2, 3].map(function (r) {
+      return '/live/' + r + watchParam(w.filter(function (uid) { var e = S.bins[uid]; return e && String(e.room) === String(r); }));
+    });
+  }
+  function setWatch(uid, on) {
+    if (!!S.watch[uid] === !!on) return;
+    if (on) S.watch[uid] = true; else delete S.watch[uid];
+    if (S.sse.wanted) { stopSSE(true); startSSE(); }
+  }
   function startSSE() {
     S.sse.wanted = true;
     if (S.sse.sources.length || !window.EventSource) return;
@@ -194,6 +210,7 @@
         try { var h = JSON.parse(ev.data); if (h && h.bins) applyNow({ bins: Object.assign({}, S.bins, h.bins), edges: S.edges }); } catch (e) { }
       });
       es.addEventListener('row', function (ev) { try { onRow(JSON.parse(ev.data)); } catch (e) { console.warn('bad row', e); } });
+      es.addEventListener('live', function (ev) { try { onRow(JSON.parse(ev.data)); } catch (e) { console.warn('bad live row', e); } });
       es.onopen = function () { if (!es._open) { es._open = true; S.sse.connected++; } S.sse.failures = 0; renderHeader(); if (S.view && S.view.onSSE) S.view.onSSE(); };
       es.onerror = function () {
         if (es._open) { es._open = false; S.sse.connected--; }
@@ -250,7 +267,7 @@
     var live = $('#live'), st = sseState();
     live.className = 'live ' + (st === 'on' ? 'on' : '');
     live.title = st === 'on' ? 'live stream connected' : st === 'down' ? 'live stream down; polling' : st === 'connecting' ? 'connecting…' : 'polling';
-    $('#live span').textContent = st === 'on' ? 'live' : st === 'down' ? 'polling' : st === 'connecting' ? 'connecting' : 'polling';
+    $('#live span').textContent = st === 'on' ? (Object.keys(S.watch).length ? 'live 1/s' : 'live') : st === 'down' ? 'polling' : st === 'connecting' ? 'connecting' : 'polling';
     var ck = $('#clock');
     ck.innerHTML = S.lastNow ? '<b>' + clock(Math.floor(S.lastNow / 1000)) + '</b> <span>' + ago(Math.floor(S.lastNow / 1000)) + '</span>' : 'loading…';
     // nav highlights + who's signed in
@@ -460,7 +477,9 @@
   function viewBin(main, r) {
     var uid = r.uid, e = S.bins[uid], charts = [];
     var head = el('div', 'card binhead'); main.appendChild(head);
+    var watchbar = el('div', 'card watchbar'); main.appendChild(watchbar);
     var ranges = el('div', 'ranges'); main.appendChild(ranges);
+    var lastLive = 0;
     var out = el('div', 'charts'); main.appendChild(out);
     var curRange = (function () { try { return localStorage.getItem('dash.range') || '24h'; } catch (x) { return '24h'; } })();
     var roster = null;
@@ -481,6 +500,21 @@
           .filter(function (x) { return x[1] != null && x[1] !== ''; })
           .map(function (x) { return '<div class="rd"><span class="k">' + x[0] + '</span><span class="v">' + (typeof x[1] === 'number' ? f1(x[1]) : esc(x[1])) + '<small>' + x[2] + '</small></span></div>'; }).join('') +
         '</div>' + '<div class="spacer"></div><a class="btn ghost sm" href="/">← wall</a>';
+    }
+    /* the 1 Hz live view: while the button is on, this page's stream carries ?watch=<uid> and the
+       Burrow polls the bin every second; the readings above and the ticker update each second.
+       Only the status text is redrawn per reading, so the button keeps focus. */
+    function watchInfo() {
+      if (!S.watch[uid]) return 'the Burrow asks this bin for a fresh reading every second while you watch; nothing extra is stored';
+      var e = S.bins[uid];
+      if (e && e.src === 'live') return 'live reading ' + ago(e.ts) + (e.d && isNum(e.d.surface_mm) ? ' · surface ' + Math.round(e.d.surface_mm) + ' mm' : '');
+      return S.sse.connected ? 'waiting for the first live reading…' : 'connecting to the live stream…';
+    }
+    function drawWatch() {
+      var on = !!S.watch[uid];
+      watchbar.innerHTML = '<button type="button" class="btn sm ' + (on ? 'on' : 'ghost') + '" id="watch" aria-pressed="' + on + '">' +
+        (on ? '■ stop watching' : '▶ watch live (1 reading/s)') + '</button> <span class="muted" id="watchinfo">' + esc(watchInfo()) + '</span>';
+      $('#watch', watchbar).onclick = function () { setWatch(uid, !on); drawWatch(); };
     }
     function drawRanges(step, n) {
       ranges.innerHTML = RANGES.map(function (x) { return '<button type="button" data-r="' + x[0] + '" class="' + (x[0] === curRange ? 'on' : '') + '" aria-pressed="' + (x[0] === curRange) + '">' + x[0] + '</button>'; }).join('') +
@@ -548,12 +582,14 @@
       charts.push(ch);
     }
 
-    drawHead();
+    drawHead(); drawWatch();
     if (!e) api('/api/bins').then(function (b) { roster = b && b[uid]; drawHead(); }).catch(function () { });
     load();
     startPolling(); startSSE();
-    S.rowListeners.push(function (row) { if (row.uid === uid) drawHead(); });
-    return { onNow: drawHead, destroy: destroyCharts };
+    S.rowListeners.push(function (row) { if (row.uid === uid) { drawHead(); var i = $('#watchinfo', watchbar); if (i) i.textContent = watchInfo(); } });
+    var watchTick = setInterval(function () { var i = $('#watchinfo', watchbar); if (i && S.watch[uid]) i.textContent = watchInfo(); }, 1000);
+    return { onNow: drawHead, onSSE: function () { var i = $('#watchinfo', watchbar); if (i) i.textContent = watchInfo(); },
+      destroy: function () { clearInterval(watchTick); setWatch(uid, false); destroyCharts(); } };
   }
 
   /* ---- view: live ---------------------------------------------------- */

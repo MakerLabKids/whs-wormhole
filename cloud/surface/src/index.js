@@ -56,10 +56,12 @@ async function handleApi(request, env, ctx, path) {
   return err(404, "not found");
 }
 
-// GET /live/<room>: the Burrow's SSE stream, through its cloudflared tunnel,
-// with the shared header the Burrow insists on. Bytes pass straight through;
-// D1 is never touched. LIVE_BASE (optional var) replaces the tunnel host for
-// local development: "<LIVE_BASE>/burrow<room>/live".
+// GET /live/<room>[?watch=<uid,...>]: the Burrow's SSE stream, through its
+// cloudflared tunnel, with the shared header the Burrow insists on. Bytes pass
+// straight through; D1 is never touched. `watch` (uids, at most 8) is passed on:
+// the Burrow then polls those Bins once a second for this client (the 1 Hz live
+// view). LIVE_BASE (optional var) replaces the tunnel host for local
+// development: "<LIVE_BASE>/burrow<room>/live".
 async function handleLive(request, env, ctx, path) {
   if (request.method !== "GET") return err(405, "method not allowed");
   const m = path.match(/^\/live\/([0-3])$/);
@@ -67,9 +69,12 @@ async function handleLive(request, env, ctx, path) {
   const session = await getSession(request, env, ctx);
   if (!session) return err(401, "login required");
   const room = m[1];
-  const upstream = env.LIVE_BASE
+  const watch = (new URL(request.url).searchParams.get("watch") || "")
+    .split(",").map((s) => s.trim()).filter((s) => /^[0-9a-f]{8,32}$/i.test(s)).slice(0, 8);
+  const qs = watch.length ? "?watch=" + watch.join(",") : "";
+  const upstream = (env.LIVE_BASE
     ? `${env.LIVE_BASE.replace(/\/$/, "")}/burrow${room}/live`
-    : `https://burrow${room}.${env.TUNNEL_DOMAIN}/live`;
+    : `https://burrow${room}.${env.TUNNEL_DOMAIN}/live`) + qs;
   let up;
   try {
     up = await fetch(upstream, {

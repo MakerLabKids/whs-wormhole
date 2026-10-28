@@ -268,3 +268,6 @@ textarea { width: 100%; min-height: 120px; }
 /* ---- about ------------------------------------------------------------- */
 .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 10px 0; }
 .swatch { border-left: 8px solid; padding: 8px 12px; background: var(--card); border-radius: 8px; box-shadow: var(--shadow); }
+/* the 1 Hz live view toggle on the bin page */
+.watchbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; }
+.btn.on { background: var(--green); color: #FFF; border: 1px solid var(--green); }

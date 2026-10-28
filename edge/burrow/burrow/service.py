@@ -12,6 +12,7 @@ from .rollups import Rollups
 from .state import Broadcaster, Now
 from .store import Store
 from .sweep import Sweep
+from .watch import Watch
 from .util import Every, log
 
 
@@ -29,6 +30,7 @@ class Service:
         self.peers = Peers(cfg, self.store, on_mirrored=self._on_mirrored)
         self.cloud = Cloud(cfg, self.store, self.now, self.api_status_brief)
         self.sweep = Sweep(cfg, self.now, self.ingest)
+        self.watch = Watch(cfg, self.now, self.bus, clk=self.clk)
         self.live_key = Cloud._read(cfg["cloud"].get("live_key_file"))
         self.store.on_sealed.append(self._on_sealed)
         self.counts = {"ingest": 0, "push": 0, "pull": 0, "rejected": 0}
@@ -151,12 +153,14 @@ class Service:
                 "cloud_ok": self.cloud.state.get("reachable"), "cloud_last_ok": self.cloud.state.get("last_ok"),
                 "peers_ok": sum(1 for p in self.peers.state.values() if p.get("ok")),
                 "bins": len(self.now.snapshot()), "live_clients": self.bus.count(),
+                "watching": len(self.watch.status()),
                 "tunnel": self.tunnel_brief()}
 
     def api_status(self):
         b = self.api_status_brief()
         b.update({"store": self.store.stats(), "peers": self.peers.status(), "cloud": self.cloud.status(),
-                  "sweep": self.sweep.last, "counts": self.counts, "clock": clock.detail(),
+                  "sweep": self.sweep.last, "watch": self.watch.status(), "counts": self.counts,
+                  "clock": clock.detail(),
                   "tunnel": self.tunnel_state() or None,
                   "config": {k: v for k, v in self.cfg.items() if k not in ("cloud",)}})
         return b
