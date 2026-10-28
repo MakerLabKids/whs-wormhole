@@ -25,7 +25,8 @@ setup-pi.sh       one-time OS preparation on a fresh Pi OS Lite (partition, chro
 install.sh        (re)deploy the code into /opt/burrow, systemd unit
 iperf3              server always on (port 5201, ~4 MB idle). Real throughput from any Pi,
                   laptop or Bin on the LAN: `iperf3 -c 192.168.8N.10 -t 5` (Portal's Pi: .80.10).
-                  Container -> Portal cable -> burrow0 measured 710 Mbit/s on 2026-10-28.
+                  2026-10-28: laptop cable -> Portal -> burrow0 710 Mbit/s; burrow1 -> Tunnel 1 ->
+                  5 GHz WPA3 backhaul -> Portal -> burrow0 195 Mbit/s.
 tunnel-watchdog.py  every 2 min: keep this room's Opal on its best upstream (the Portal's
                   backhaul while it carries internet, else the shared failover list: phone
                   hotspot, school net, home nets), reboot it over RPC after 15 min down
