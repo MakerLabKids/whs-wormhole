@@ -47,7 +47,10 @@ fi
 say "packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq chrony parted curl ca-certificates gnupg >/dev/null
+apt-get install -y -qq chrony parted curl ca-certificates gnupg iperf3 >/dev/null
+# iperf3 server always on (port 5201, ~4 MB idle): real throughput numbers from any
+# Bin, Pi or laptop on the LAN:  iperf3 -c 192.168.8N.10
+DEBIAN_FRONTEND=noninteractive systemctl enable --now iperf3 >/dev/null 2>&1 || true
 # fake-hwclock on Trixie has a bug that reverts the clock; the Pi 5 RTC +
 # chrony cover its job.
 apt-get purge -y -qq fake-hwclock >/dev/null 2>&1 || true
