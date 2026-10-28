@@ -97,9 +97,18 @@ Files: https://dl.gl-inet.com/router/sft1200 → "DOWNLOAD FOR COMMON UPGRADE" (
 `https://fw.gl-inet.com/firmware/sft1200/release4/sft1200-4.8.3_release4-1006-0609-1780999327.tar`
 (sha256 f84630b6…ff5e1f). Keep a copy in `firmware/routers/` (gitignored).
 
-    1. POST http://<router>/upload      multipart/form-data (the panel's uploader; carries the sid)
+    1. POST http://<router>/upload      multipart/form-data, fields in this order:
+                                        sid, size (bytes), path=/tmp/firmware.img, file (the .tar)
     2. call upgrade check_firmware_local {}      -> {"version":"4.8.3", "release_note":..., verification}
     3. call upgrade upgrade_local {"keep_config":true,"keep_package":true}   -> []  then ~4 min reboot
+
+`tools/routers/upgrade_fw.py --host IP [--check-only]` does all three and waits for the box to
+come back. Gotchas seen on Tunnel 3 (4.3.28, 2026-10-28): the upload handler whitelists `path`
+(another path -> HTTP 403), and it answers HTTP 500 when the box is short of RAM (35 MB free of
+119 MB: the 21 MB tar is buffered in tmpfs twice). `call system reboot`, then upload at once.
+A failed upload leaves a stub at /tmp/firmware.img that check_firmware_local reports as
+`status 9, version "unknown"`. The panel's own JS is only served gzip-encoded
+(`curl --compressed /js/app.*.js`; views at `/views/gl-sdk4-ui-<view>.common.js`).
 
 keep_config keeps admin password, Wi-Fi, repeater and LAN. Panel view names on 4.x (hash routes
 `#/<view>`): upgrade, lanip, wireless, internet, firewallview, clients, adminpw, timezone, reset …
