@@ -1,0 +1,24 @@
+Subject: Return request, order [ORDER NUMBER]: BME280 modules are BMP280 (no humidity sensor)
+
+Hello,
+
+We are returning the sensors from order [ORDER NUMBER], sold as BME280. You asked for proof that they are defective. Attached is the proof.
+
+The modules were tested on a Raspberry Pi Pico. We read the Bosch factory chip-ID register (0xD0) directly from the sensor. The chip reports 0x58. Bosch's datasheets assign 0x58 to the BMP280 and 0x60 to the BME280. The BMP280 has no humidity sensor. Temperature and pressure on the module work; the humidity hardware is simply not there, so the part cannot do what the listing says.
+
+For comparison, a genuine BME280 was tested on the same wiring with the same code in the same minute. It reports 0x60 and its humidity reading rises when breathed on. The module from your order does not respond at all.
+
+Attached:
+- test-summary.md: one-page summary of the test and results
+- 20261028T134307Z-suspect-vs-sixpin.txt: full output, your module next to a genuine BME280
+- 20261028T132715Z-suspect-1.txt: full output, your module alone
+- three photos of the test setup
+
+The test code and all transcripts are public, so anyone can repeat the test:
+https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/bme280/evidence
+
+Please confirm the return and refund for [QUANTITY] units. The modules are unused apart from this test.
+
+Thank you,
+[NAME]
+[SCHOOL]
