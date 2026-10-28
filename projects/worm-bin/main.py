@@ -221,6 +221,13 @@ def compaction():
 
   def read(dev):
     raw = dev.ping()
+    # 0 mm is not a distance: the chip never finished a measurement (a
+    # module whose power sags when the laser fires does exactly this).
+    # Fault the part so the truth light and the screen say so, and the
+    # Sensor wrapper re-initialises it on the next retry. 8190+ is the
+    # chip's own "no target in range" code.
+    if raw == 0 or raw >= 8190:
+      raise OSError("VL53L0X no measurement (%d)" % raw)
     # Calibrated two-point (put a target at a measured distance, enter
     # it, capture near + far) via the shared engine; else the raw mm.
     surf = round(cal.apply("distance", raw, digits=0)) if "distance" in cal.data else raw
