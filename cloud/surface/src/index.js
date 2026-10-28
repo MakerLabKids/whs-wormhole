@@ -62,7 +62,7 @@ async function handleApi(request, env, ctx, path) {
 // local development: "<LIVE_BASE>/burrow<room>/live".
 async function handleLive(request, env, ctx, path) {
   if (request.method !== "GET") return err(405, "method not allowed");
-  const m = path.match(/^\/live\/([123])$/);
+  const m = path.match(/^\/live\/([0-3])$/);
   if (!m) return err(404, "not found");
   const session = await getSession(request, env, ctx);
   if (!session) return err(401, "login required");

@@ -95,5 +95,10 @@ describe("page views + live proxy", () => {
     expect((await get("/live/1")).status).toBe(401);
     expect((await get("/live/4", { cookie })).status).toBe(404);
     expect(anon.length).toBe(0);
+
+    // Room 0 is the Portal's own Burrow (burrow0): a real room for the live path.
+    const r0 = stubUpstream(() => new Response("event: hello\ndata: {}\n\n", { headers: { "content-type": "text/event-stream" } }));
+    expect((await get("/live/0", { cookie })).status).toBe(200);
+    expect(r0[0].url).toBe("https://burrow0.whs.makerlabkids.com/live");
   });
 });
