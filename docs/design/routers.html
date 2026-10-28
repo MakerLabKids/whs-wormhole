@@ -75,7 +75,7 @@
   <li><b>INTERNET → Repeater → the gear icon / Repeater Options.</b> Turn on <b>"Allow Switching to Other Saved Networks"</b>. This is the hotspot failover: when the current upstream disappears, it works down the saved list by itself. Turn on <b>"Auto-Enable Login Mode for Public Hotspots"</b> (firmware 4.6+) so the captive portal page is pushed to a client the next time the school portal re-arms. Leave <b>Band Selection</b> on Auto.</li>
   <li><b>Add the hotspots to the saved list.</b> Bring each phone next to the Portal, turn its hotspot on, then on the Portal: Repeater → Scan → join it (password) → it is now saved. Then switch back to the school network (Repeater → Switch Network → Known Networks → pick it). Do this for every phone that should be able to rescue the uplink. Phone settings:
     <ul>
-      <li>Name the hotspot <code>wormsurface</code> (iPhone: Settings → General → About → Name; Android: Hotspot name). <b>Not</b> <code>wormmaster</code>: that name is the Picos' rescue net and every Bin in range would abandon the classroom Wi-Fi for it.</li>
+      <li>Name the hotspot <code>Q-tastic</code> (iPhone: Settings → General → About → Name; Android: Hotspot name). <b>Not</b> <code>wormmaster</code>: that name is the Picos' rescue net and every Bin in range would abandon the classroom Wi-Fi for it.</li>
       <li>iPhone: turn on <b>Maximize Compatibility</b> (2.4 GHz, longer range). Android: set the hotspot band to 2.4 GHz.</li>
       <li>Give all hotspots the same password so you can type it from memory.</li>
     </ul></li>
@@ -117,8 +117,8 @@
 <hr class="rule g">
 <div class="tablewrap"><table>
 <tr><th>Router</th><th>LAN</th><th>Uplink</th><th>Wi-Fi</th><th>Extra</th></tr>
-<tr><td>Portal</td><td>192.168.80.1, DHCP .100–.199, reservations .21 .22 .23</td><td>Repeater: school (<code>BYLD</code>, 2.4 GHz) + hotspots, "Allow Switching" on, login mode on</td><td>5 GHz <code>WormHole-Core</code> ch 36/149; 2.4 off or hallway <code>WormHole</code></td><td>DNS rebinding protection off</td></tr>
-<tr><td>Tunnel 1</td><td>192.168.81.1, DHCP .100–.249</td><td>5 GHz repeater → WormHole-Core (or cable), gets .80.21</td><td>2.4 GHz <code>WormHole</code> ch 1, WPA2</td><td>fwd TCP 8080 → .81.10</td></tr>
+<tr><td>Portal</td><td>192.168.80.1, DHCP .100–.199, reservations .21 .22 .23; its own Pi <b>burrow0</b> at .10 on a LAN port</td><td>Repeater on 2.4 GHz, in this order: <code>Q-tastic</code> (phone), school <code>BYLD</code>, home <code>Loki</code> (hidden), <code>Guess</code>; "Allow Switching" on, login mode on; burrow0's watchdog re-joins it every 2 min and reboots it after 15 min down</td><td>5 GHz <code>WormHole-Core</code> ch 36, 40 MHz, WPA3, hidden; 2.4 GHz <code>WormHole</code> ch 1 ON (the worm room's Bins live on it)</td><td>DNS rebinding protection off</td></tr>
+<tr><td>Tunnel 1</td><td>192.168.81.1, DHCP .100–.249</td><td>5 GHz repeater → WormHole-Core (WPA3, hidden), gets .80.21; its Burrow's watchdog fails over to the Portal's list (<code>Q-tastic</code>, <code>BYLD</code>, <code>Loki</code>, <code>Guess</code>) when the backhaul has no internet</td><td>2.4 GHz <code>WormHole</code> ch 1, WPA2</td><td>fwd TCP 8080 → .81.10</td></tr>
 <tr><td>Tunnel 2</td><td>192.168.82.1, DHCP .100–.249</td><td>same, gets .80.22</td><td><code>WormHole</code> ch 6</td><td>fwd TCP 8080 → .82.10</td></tr>
 <tr><td>Tunnel 3</td><td>192.168.83.1, DHCP .100–.249</td><td>same, gets .80.23</td><td><code>WormHole</code> ch 11</td><td>fwd TCP 8080 → .83.10</td></tr>
 </table></div>

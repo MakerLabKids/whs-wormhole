@@ -64,6 +64,21 @@ class Upstreams(unittest.TestCase):
         up = wd.pick_upstream(self.UPS, {"BYLD", "WormHole-Core"}, current_ssid="BYLD", current_failed=True)
         self.assertEqual(up["ssid"], "WormHole-Core")
 
+    def test_hidden_upstream_is_dialed_blind(self):
+        ups = [{"ssid": "BYLD"}, {"ssid": "Loki", "hidden": True}, {"ssid": "Guess"}]
+        self.assertEqual(wd.pick_upstream(ups, {"Guess"})["ssid"], "Loki")        # hidden beats visible Guess
+        self.assertEqual(wd.pick_upstream(ups, {"BYLD", "Guess"})["ssid"], "BYLD")  # but not a visible better one
+
+    def test_missed_blind_join_moves_down_the_list(self):
+        ups = [{"ssid": "Loki", "hidden": True}, {"ssid": "Guess"}]
+        self.assertEqual(wd.pick_upstream(ups, {"Guess"}, skip_ssid="Loki")["ssid"], "Guess")
+        # nothing else visible: the caller falls back to the plain pick, which is Loki again
+        self.assertIsNone(wd.pick_upstream(ups, {"Other"}, skip_ssid="Loki"))
+        self.assertEqual(wd.pick_upstream(ups, {"Other"})["ssid"], "Loki")
+
+    def test_hidden_flag_is_not_sent_to_the_router(self):
+        self.assertNotIn("hidden", wd.connect_params({"ssid": "Loki", "key": "k", "hidden": True}))
+
     def test_open_network_sends_no_key(self):
         self.assertNotIn("key", wd.connect_params(self.UPS[0]))
         self.assertIn("key", wd.connect_params(self.UPS[1]))

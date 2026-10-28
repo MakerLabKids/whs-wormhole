@@ -23,8 +23,9 @@ burrow/           the service (python3 -m burrow)
   clock.py        clock quality from chrony (ntp | peer | free)
 setup-pi.sh       one-time OS preparation on a fresh Pi OS Lite (partition, chrony, static IP...)
 install.sh        (re)deploy the code into /opt/burrow, systemd unit
-tunnel-watchdog.py  every 2 min: keep this room's Opal on its best upstream (school net
-                  first, Portal backhaul second), reboot it over RPC after 15 min down
+tunnel-watchdog.py  every 2 min: keep this room's Opal on its best upstream (the Portal's
+                  backhaul while it carries internet, else the shared failover list: phone
+                  hotspot, school net, home nets), reboot it over RPC after 15 min down
                   (then hourly x3, then daily, forever), raise the Pi's own Wi-Fi to another
                   Opal meanwhile, and report it all under "tunnel" in /api/status and the
                   cloud snapshot. Config: etc/tunnel.json.example -> /etc/burrow/tunnel.json

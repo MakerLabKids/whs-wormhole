@@ -10,8 +10,16 @@ Each run:
   2. Healthy: record diagnostics (state, upstream, signal, clients, uptime),
      drop the Wi-Fi fallback if it was up, done.
   3. Not healthy: re-send the join to the best upstream that is visible
-     (config lists them in preference order: the school network first, the
-     Portal's backhaul second), one attempt per 90 s.
+     (config lists them in preference order), one attempt per 90 s. The rule
+     (2026-10-28): a Tunnel prefers the Portal's backhaul while it carries
+     internet; when it does not, every Tunnel walks the same failover list on
+     its own, the phone hotspot first (turning it on means the regular
+     network is broken even if it is up), then the school network, then the
+     home networks. The Portal's own Pi (room 0) runs the same list minus
+     the backhaul. Nobody waits to be rescued. An
+     upstream marked "hidden": true is dialed blind (hidden SSIDs never
+     appear in a scan); if that join does not connect, the next run moves
+     on to the next upstream instead of redialing it.
   4. Still down after 15 min: reboot the Opal over RPC. Then once an hour,
      three times, then once a DAY, forever: a router that is down for a week
      still gets its daily kick. Never more than one reboot per hour.
@@ -20,12 +28,14 @@ Each run:
      buffered castings and this report still reach the cloud. Dropped again
      when the cable is healthy.
 
-Config /etc/burrow/tunnel.json:
+Config /etc/burrow/tunnel.json (see etc/tunnel.json.example):
   {"host": "192.168.81.1", "password": "<router admin>",
-   "upstreams": [
+   "upstreams": [            # preference order; the same list on every Opal
+     {"ssid": "WormHole-Core", ...,  "device": "radio1", "band": "5g", "encryption": "sae", "hidden": true},
+     {"ssid": "Q-tastic", ...,  "device": "radio0", "band": "2g", "encryption": "psk2"},
      {"ssid": "BYLD", "device": "radio0", "band": "2g", "encryption": "none"},
-     {"ssid": "WormHole-Core", "key": "<backhaul>", "bssid": "94:83:c4:84:d2:0c",
-      "device": "radio1", "band": "5g", "encryption": "psk2"}],
+     {"ssid": "Loki", ..., "hidden": true},
+     {"ssid": "Guess", ...}],
    "wifi_fallback": {"ssid": "WormHole", "key": "<wormhole>", "iface": "wlan0"},
    "cloud_url": "https://whs.makerlabkids.com"}
 The old flat form (ssid/key/bssid/device/band/encryption at the top level) is
@@ -80,14 +90,20 @@ def connect_params(up):
     return params
 
 
-def pick_upstream(upstreams, visible_ssids, current_ssid=None, current_failed=False):
+def pick_upstream(upstreams, visible_ssids, current_ssid=None, current_failed=False, skip_ssid=None):
     """The upstream to join: the most preferred one that is visible. If the
     current one is connected but has no internet (current_failed), skip it so
-    we try the next choice instead of re-joining a dead uplink."""
+    we try the next choice instead of re-joining a dead uplink. A hidden
+    network ("hidden": true) never shows in a scan, so it always counts as
+    visible and is tried blind; skip_ssid is the upstream whose last blind
+    join did not connect, so the next run moves on down the list instead of
+    dialing the same dark network forever."""
     for up in upstreams:
         if current_failed and up.get("ssid") == current_ssid:
             continue
-        if visible_ssids is None or up.get("ssid") in visible_ssids:
+        if skip_ssid and up.get("ssid") == skip_ssid:
+            continue
+        if visible_ssids is None or up.get("hidden") or up.get("ssid") in visible_ssids:
             return up
     return None
 
@@ -357,9 +373,16 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
             visible = {x.get("ssid") for x in (scan.get("res") or scan.get("list") or []) if x.get("ssid")}
         except Exception:
             visible = None          # scan failed: try the preferred upstream blind
-        up = pick_upstream(upstreams, visible, status.get("ssid"), current_failed=(what == "switch"))
-        if up is None and what == "switch":
-            up = pick_upstream(upstreams, visible)   # nothing else visible: re-join the one we have
+        # a hidden upstream we dialed blind last time and that did not connect:
+        # move on down the list this run (visible ones are simply retried)
+        missed = None
+        if what == "join" and st.get("last_join_at"):
+            hidden = {u.get("ssid") for u in upstreams if u.get("hidden")}
+            if st.get("last_join_ssid") in hidden:
+                missed = st["last_join_ssid"]
+        up = pick_upstream(upstreams, visible, status.get("ssid"), current_failed=(what == "switch"), skip_ssid=missed)
+        if up is None:
+            up = pick_upstream(upstreams, visible)   # nothing else visible: re-try the one we have
         if up is None:
             event(st, now, "repeater %s and no configured upstream visible (%s)"
                   % (status.get("state_s"), ", ".join(sorted(visible or [])) or "scan empty"))
@@ -371,6 +394,7 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
             except Exception as e:
                 event(st, now, "join %s failed: %s" % (up.get("ssid"), str(e)[:100]))
             st["last_join_at"] = int(now)
+            st["last_join_ssid"] = up.get("ssid")
 
     reboots = st.get("reboots") or []
     if reboots and now - reboots[-1] < REBOOT_SETTLE_S:
