@@ -41,6 +41,24 @@ Note for `multi.py`: a BME280 board's address is set by its SDO pad or
 pin (SDO to GND = `0x76`, SDO to 3V3 = `0x77`). Two sensors on one bus
 need one of each.
 
+## Known boards and their quirks
+
+- **HW-413A, silkscreen "BME/BMP 280", 4 pins (VIN GND SCL SDA).** Sold as
+  BME280, but a batch bought in October 2026 carried BMP280 chips (chip ID
+  `0x58`, no humidity sensor). Run `identify.py` before trusting any new
+  batch; it asks the chip what it is. These boards also answer the Pico's
+  *hardware* I2C address probe and then fail every data byte (`OSError 5`),
+  while bit-banged `machine.SoftI2C` talks to them fine. `lib/picolab.py`
+  uses the hardware controller, so if a demo finds the sensor in the scan
+  but every read fails, this board is the first suspect.
+- **GY-BME280 / "GY-BM ME/PM 280", 6 pins (VCC GND SCL SDA CSB SDO).**
+  Genuine BME280 in the batch tested. CSB **must** be tied to 3V3 or the
+  chip wakes in SPI mode and ignores I2C. SDO picks the address (GND =
+  `0x76`, 3V3 = `0x77`); left floating it dragged SDA and SCL low and
+  silenced every other device on the bus.
+
+Evidence runs and photos for the October 2026 return are in [`evidence/`](evidence/).
+
 ## Fault tolerance (all demos work this way)
 
 - Boots and runs fine with no sensor, no display, or neither.
