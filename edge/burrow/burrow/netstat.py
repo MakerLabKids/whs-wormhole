@@ -20,6 +20,7 @@ port, because an Opal's WAN side drops ICMP while the forwarded ports answer, an
 handshake crosses exactly the path the data takes.
 """
 import json
+import os
 import re
 import socket
 import shutil
@@ -60,6 +61,32 @@ class NetStat:
             self.state["internet"] = {"host": self.inet_url.split("//")[-1], "up_mbps": None, "down_mbps": None,
                                       "ms": None, "ms_max": None, "loss_pct": None, "ttfb_ms": None,
                                       "at": None, "error": None, "history": []}
+        # a restart must not blank a day of measurements: keep them under the data dir
+        self.path = os.path.join(cfg["data_dir"], "netstat.json") if cfg.get("data_dir") else None
+        self._load()
+
+    def _load(self):
+        if not self.path:
+            return
+        try:
+            with open(self.path) as f:
+                saved = json.load(f)
+            for name, st in saved.items():
+                if name in self.state and isinstance(st, dict):
+                    self.state[name].update({k: v for k, v in st.items() if k != "host"})
+        except Exception:
+            pass
+
+    def _save(self):
+        if not self.path:
+            return
+        try:
+            tmp = self.path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(self.state, f, separators=(",", ":"))
+            os.replace(tmp, self.path)
+        except Exception as e:
+            log("net: cannot save state: %s" % e)
 
     def _iperf(self, host, reverse):
         args = ["iperf3", "-c", host, "-p", str(self.port), "-t", str(self.seconds), "-J", "--connect-timeout", "3000"]
@@ -189,6 +216,7 @@ class NetStat:
                 log("net: %s (%s): %s" % (name, st["host"], st["error"]))
             else:
                 log("net: %s (%s): up %s / down %s Mbit/s, ping %s ms (%s%% loss)" % (name, st["host"], st["up_mbps"], st["down_mbps"], st["ms"], st["loss_pct"]))
+        self._save()
         return self.brief()
 
     def brief(self):

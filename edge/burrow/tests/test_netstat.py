@@ -96,6 +96,20 @@ class NetStatTest(unittest.TestCase):
         self.assertIn("busy", st["error"])
         self.assertEqual((st["up_mbps"], st["down_mbps"]), (50.0, 60.0))
 
+    def test_state_survives_a_restart(self):
+        import tempfile, shutil
+        tmp = tempfile.mkdtemp()
+        try:
+            cfg = {"room": 1, "data_dir": tmp, "net": no_inet({"targets": {"burrow0": "192.168.80.10"}})}
+            n = NetStat(cfg, runner=lambda h, r: iperf_json(80e6), which=lambda x: "x", pinger=lambda h, c=5: PING_OK,
+                        tcp_pinger=lambda h, p, c=5, t=1.0: {"ms": 1.0, "ms_max": 1.0, "loss_pct": 0.0})
+            n.run_all()
+            again = NetStat(cfg, which=lambda x: None)
+            self.assertEqual(again.brief()["burrow0"]["up_mbps"], 80.0)
+            self.assertEqual(len(again.state["burrow0"]["history"]), 1)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     def test_missing_binary_is_reported_not_fatal(self):
         n = NetStat({"room": 3, "net": no_inet()}, runner=lambda h, r: self.fail("must not run"), which=lambda x: None, pinger=lambda h, c=5: PING_DEAD, tcp_pinger=lambda h, p, c=5, t=1.0: {"ms": None, "ms_max": None, "loss_pct": 100.0})
         b = n.run_all()
