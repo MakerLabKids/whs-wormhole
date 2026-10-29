@@ -373,8 +373,11 @@
     $('#froom', tb).onchange = function () { filter.room = this.value; draw(); };
     $('#fper', tb).onchange = function () { filter.period = this.value; draw(); };
 
-    function groupKey(e) { return 'r' + (roomOf(e) != null ? roomOf(e) : 9) + 'p' + (periodOf(e) != null ? periodOf(e) : 99); }
-    function groupLabel(e) { return 'Room ' + (roomOf(e) != null ? roomOf(e) : '?') + ' <small>Period ' + (periodOf(e) != null ? periodOf(e) : '?') + '</small>'; }
+    /* A teacher looks for a class: period first. Which Burrow a bin reports through, and which
+       room its Opal is in, is plumbing; it shows small on the tile and can be filtered, but it
+       never splits a class into two groups. */
+    function groupKey(e) { return 'p' + (periodOf(e) != null ? periodOf(e) : 99); }
+    function groupLabel(e) { return periodOf(e) != null ? 'Period ' + periodOf(e) : 'No period yet <small>(bin not on the roster)</small>'; }
     function visible(e) {
       if (filter.room && String(roomOf(e)) !== filter.room) return false;
       if (filter.period && String(periodOf(e)) !== filter.period) return false;
