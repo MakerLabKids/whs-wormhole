@@ -126,6 +126,7 @@ class QuietWatch:
     Call tick() every few seconds; it only emits on a transition."""
 
     def __init__(self, cfg, now, peers_state, cloud_state, events):
+        self.edge = cfg.get("edge")
         self.stale_s = int(cfg.get("stale_s", 180))
         self.quiet_s = int(cfg.get("quiet_alert_s", 600))   # a Bin silent this long is worth a note
         self.now, self.peers_state, self.cloud_state, self.events = now, peers_state, cloud_state, events
@@ -138,6 +139,8 @@ class QuietWatch:
         t = t or util.now()
         snap = self.now.snapshot(now=t, max_age=7 * 86400)
         for uid, e in snap.items():
+            if self.edge and e.get("edge") not in (None, self.edge):
+                continue                      # another room's Bin, known through a peer: its Burrow watches it
             age = t - (e.get("ts") or 0)
             name = e.get("team") or e.get("name") or uid
             if age > self.quiet_s and uid not in self.quiet and e.get("src") != "live":

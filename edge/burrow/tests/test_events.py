@@ -77,7 +77,7 @@ class QuietWatchTest(unittest.TestCase):
             def emit(s, kind, text, level="info", data=None): self.emitted.append((kind, level, text))
         self.peers = {"burrow2": {"ok": True, "last_try": 100}}
         self.cloud = {"reachable": True}
-        self.w = QuietWatch({"stale_s": 180, "quiet_alert_s": 600}, self.now, self.peers, self.cloud, Ev())
+        self.w = QuietWatch({"edge": "burrow1", "stale_s": 180, "quiet_alert_s": 600}, self.now, self.peers, self.cloud, Ev())
         self.now.update({"ts": 1000, "uid": "u1", "edge": "burrow1", "room": 1, "src": "push",
                          "d": {"id": "u1", "ip": "192.168.81.5", "bin": {"team": "Dirt Vader", "bin": 7}}})
 
@@ -93,6 +93,12 @@ class QuietWatchTest(unittest.TestCase):
         self.now.update({"ts": 1900, "uid": "u1", "edge": "burrow1", "room": 1, "src": "push", "d": {"id": "u1"}})
         self.w.tick(t=1905); self.w.tick(t=1910)
         self.assertEqual(self.kinds(), ["bin.quiet", "bin.back"])
+
+    def test_another_rooms_bin_is_not_ours_to_watch(self):
+        self.now.merge("u9", {"ts": 100, "edge": "burrow3", "room": 3, "src": "push", "team": "Far Away", "d": {"id": "u9"}})
+        self.w.tick(t=1800)
+        self.assertEqual(sorted(k for k, _, _ in self.emitted), ["bin.quiet"])      # u1 (ours), not u9
+        self.assertNotIn("Far Away", " ".join(t for _, _, t in self.emitted))
 
     def test_peer_down_and_back(self):
         self.w.tick(t=1000)
