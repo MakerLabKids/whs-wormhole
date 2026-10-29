@@ -100,15 +100,26 @@ class QuietWatchTest(unittest.TestCase):
         self.assertEqual(sorted(k for k, _, _ in self.emitted), ["bin.quiet"])      # u1 (ours), not u9
         self.assertNotIn("Far Away", " ".join(t for _, _, t in self.emitted))
 
-    def test_peer_down_and_back(self):
+    def test_peer_down_after_grace_is_an_alert_then_back(self):
         self.w.tick(t=1000)
         self.peers["burrow2"].update(ok=False, error="timed out")
-        self.w.tick(t=1100); self.w.tick(t=1200)
-        self.assertEqual(self.kinds("peer"), ["peer.down"])
+        self.w.tick(t=1100); self.w.tick(t=1110); self.w.tick(t=1120)
+        self.assertEqual(self.kinds("peer"), [])                 # 20 s of failure: not yet (one blip is not an outage)
+        self.w.tick(t=1130); self.w.tick(t=1140)
+        self.assertEqual(self.kinds("peer"), ["peer.down"])     # 30 s: alert, once
+        self.assertEqual([l for k, l, _ in self.emitted if k == "peer.down"], ["alert"])
         self.peers["burrow2"].update(ok=True)
         self.w.tick(t=1800)
         self.assertEqual(self.kinds("peer"), ["peer.down", "peer.back"])
-        self.assertIn("11 min", [t for k, _, t in self.emitted if k == "peer.back"][0])   # down noticed at the 1100 tick
+        self.assertIn("11 min", [t for k, _, t in self.emitted if k == "peer.back"][0])
+
+    def test_peer_blip_shorter_than_grace_is_ignored(self):
+        self.w.tick(t=1000)
+        self.peers["burrow2"].update(ok=False, error="timed out")
+        self.w.tick(t=1010); self.w.tick(t=1020)
+        self.peers["burrow2"].update(ok=True)
+        self.w.tick(t=1030)
+        self.assertEqual(self.kinds("peer"), [])
 
     def test_cloud_outage_is_reported_when_the_link_returns(self):
         self.w.tick(t=1000)

@@ -54,8 +54,32 @@ describe("events from Burrows", () => {
   });
 });
 
-describe("silent Burrow watch (the cron)", () => {
+describe("a neighbour reports a dead Burrow", () => {
   beforeAll(applySchema);
+
+  it("opens one alert per dead Burrow however many neighbours report it, and closes on peer.back", async () => {
+    for (const who of ["burrow1", "burrow3"]) {
+      const r = await edgeFetch(who, "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: who, events: [
+        { ts: T, kind: "peer.down", level: "alert", text: "burrow2 unreachable for 30 s (timed out)", data: { peer: "burrow2" } }] }) });
+      expect((await r.json()).ok).toBe(true);
+    }
+    const open = (await env.DB.prepare("SELECT key, edge FROM alerts WHERE closed_at IS NULL AND key LIKE 'edge:%'").all()).results;
+    expect(open).toEqual([{ key: "edge:burrow2", edge: "burrow2" }]);
+    await edgeFetch("burrow3", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow3", events: [
+      { ts: T + 90, kind: "peer.back", level: "info", text: "burrow2 reachable again after 1 min", data: { peer: "burrow2" } }] }) });
+    expect(await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE closed_at IS NULL").first("n")).toBe(0);
+  });
+
+  it("a bare host in ALERT_URL gets https:// in front", async () => {
+    const { alertUrl } = await import("../src/alerts.js");
+    expect(alertUrl({ ALERT_URL: "ntfy.sh/wormhole-quincy" })).toBe("https://ntfy.sh/wormhole-quincy");
+    expect(alertUrl({ ALERT_URL: " https://ntfy.sh/x " })).toBe("https://ntfy.sh/x");
+    expect(alertUrl({})).toBe(null);
+  });
+});
+
+describe("silent Burrow watch (the cron)", () => {
+  beforeAll(async () => { await applySchema(); await env.DB.prepare("UPDATE alerts SET closed_at = 1 WHERE closed_at IS NULL").run(); });
 
   it("opens an alert for a silent edge and closes it when it reports again", async () => {
     await env.DB.prepare("INSERT OR REPLACE INTO edges (edge_id, room, ts, clk, snapshot, status, updated_at) VALUES ('burrow2', 2, ?1, 'ntp', '{}', '{}', ?1)").bind(T - SILENT_S - 120).run();

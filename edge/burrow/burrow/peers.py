@@ -21,18 +21,18 @@ class Peers:
         self.peers[name] = url
         self.state.setdefault(name, {"ok": False, "last_ok": 0, "last_try": 0, "error": None, "castings": 0})
 
-    def _get(self, url, binary=False):
+    def _get(self, url, binary=False, timeout=None):
         req = urllib.request.Request(url, headers={"User-Agent": "burrow/" + self.cfg["edge"]})
-        with urllib.request.urlopen(req, timeout=self.timeout) as r:
+        with urllib.request.urlopen(req, timeout=timeout or self.timeout) as r:
             data = r.read()
             return data if binary else json.loads(data.decode("utf-8"))
 
-    def health(self, name):
+    def health(self, name, timeout=None):
         base = self.peers[name]
         st = self.state[name]
         st["last_try"] = util.now()
         try:
-            h = self._get(base + "/health")
+            h = self._get(base + "/health", timeout=timeout)
             st.update(ok=True, last_ok=util.now(), error=None, clk=h.get("clk"), ts=h.get("ts"))
             return h
         except Exception as e:
@@ -83,6 +83,12 @@ class Peers:
         if got:
             log("peers: mirrored %d castings from %s" % (got, name))
         return got
+
+    def watch(self, timeout=3):
+        """The fast check (every 20 s from the service): is each neighbour alive? Cheap GET /health
+        on the LAN; the quiet watch turns a lasting failure into a peer.down alert event."""
+        for name in list(self.peers):
+            self.health(name, timeout=timeout)
 
     def replicate_all(self):
         total = 0

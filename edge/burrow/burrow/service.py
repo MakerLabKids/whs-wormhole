@@ -206,6 +206,7 @@ class Service:
         self._loop("peers", int(c["replicate_every_s"]), self.peers.replicate_all, first_delay=15)
         self._loop("cloud", int(c["cloud"]["every_s"]), self._cloud_pass, first_delay=20)
         self._loop("quiet", 10, self.quietwatch.tick, first_delay=30)
+        self._loop("peerwatch", 20, self.peers.watch, first_delay=25)
         self._loop("sweep", int(c["sweep"]["every_s"]), self.sweep.run, first_delay=60)
         self._loop("reclaim", 3600, self.store.reclaim, first_delay=300)
         # staggered by room so two Burrows never test the same iperf3 server at once

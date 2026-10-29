@@ -17,6 +17,7 @@ from . import util
 from .util import log
 
 KEEP_LOCAL = 200          # recent events served at /api/events and in /api/status
+PEER_GRACE_S = 30         # a neighbour must fail this long (two fast checks) before it is "down"
 QUEUE_CAP = 2000          # unsent events kept across an outage
 BACKOFF = (5, 15, 30, 60, 120, 300)
 
@@ -131,7 +132,8 @@ class QuietWatch:
         self.quiet_s = int(cfg.get("quiet_alert_s", 600))   # a Bin silent this long is worth a note
         self.now, self.peers_state, self.cloud_state, self.events = now, peers_state, cloud_state, events
         self.quiet = set()
-        self.peer_down = {}
+        self.peer_down = {}        # peer -> time the alert was raised (None = up)
+        self.peer_fail_since = {}  # peer -> first failed check of the current streak
         self.cloud_was = None
         self.cloud_down_since = None
 
@@ -152,18 +154,22 @@ class QuietWatch:
                 self.events.emit("bin.back", "%s (bin %s) is reporting again" % (name, e.get("bin") if e.get("bin") is not None else "?"),
                                  "info", {"uid": uid})
         for peer, st in (self.peers_state or {}).items():
+            if not st.get("last_try"):
+                continue                                  # never checked yet
             ok = bool(st.get("ok"))
-            was = self.peer_down.get(peer)
-            if was is None:
-                self.peer_down[peer] = (None if ok else t)
-                if not ok and st.get("last_try"):
-                    self.events.emit("peer.down", "%s unreachable (%s)" % (peer, st.get("error") or "no answer"), "warn", {"peer": peer})
-            elif ok and was is not None:
-                self.peer_down[peer] = None
-                self.events.emit("peer.back", "%s reachable again after %d min" % (peer, (t - was) // 60), "info", {"peer": peer})
-            elif not ok and was is None and st.get("last_try"):
+            down_at = self.peer_down.get(peer)
+            if ok:
+                self.peer_fail_since.pop(peer, None)
+                if down_at is not None:
+                    self.peer_down[peer] = None
+                    self.events.emit("peer.back", "%s reachable again after %d min" % (peer, max(1, (t - down_at) // 60)), "info", {"peer": peer})
+                continue
+            first = self.peer_fail_since.setdefault(peer, t)
+            if down_at is None and t - first >= PEER_GRACE_S:
                 self.peer_down[peer] = t
-                self.events.emit("peer.down", "%s unreachable (%s)" % (peer, st.get("error") or "no answer"), "warn", {"peer": peer})
+                # alert: the neighbour screams the moment a Burrow dies, long before the cloud notices its silence
+                self.events.emit("peer.down", "%s unreachable for %d s (%s)" % (peer, t - first, st.get("error") or "no answer"), "alert",
+                                 {"peer": peer, "since": first})
         reach = self.cloud_state.get("reachable") if self.cloud_state else None
         if reach is not None:
             if self.cloud_was is None:

@@ -10,15 +10,23 @@
 
 import { chunks, err, isInt, json, now, readJson, safeParse } from "./util.js";
 
-export const SILENT_S = 180;           // a Burrow snapshots every 60 s; three misses is trouble
+export const SILENT_S = 120;           // a Burrow snapshots every 60 s; two misses is trouble (the
+                                       // neighbours' peer.down alert normally arrives well before this)
 const EVENT_CAP = 100;                 // per POST
 const LEVELS = new Set(["info", "warn", "alert"]);
 const RENOTIFY_S = 15 * 60;            // same alert key again only after this
 
+export function alertUrl(env) {
+  const u = (env.ALERT_URL || "").trim();
+  if (!u) return null;
+  return /^https?:\/\//i.test(u) ? u : "https://" + u;      // "ntfy.sh/topic" is what people type
+}
+
 export async function notify(env, title, text, priority = "high", tags = "warning") {
-  if (!env.ALERT_URL) return { ok: false, error: "no ALERT_URL" };
+  const url = alertUrl(env);
+  if (!url) return { ok: false, error: "no ALERT_URL" };
   try {
-    const r = await fetch(env.ALERT_URL, {
+    const r = await fetch(url, {
       method: "POST", body: text,
       headers: { Title: title, Priority: priority, Tags: tags, "Content-Type": "text/plain" },
     });
@@ -77,13 +85,24 @@ export async function postEvents(request, env, edge) {
   if (stmts.length) await env.DB.batch(stmts);
   let notified = 0;
   for (const r of rows) {
+    const data = r.data ? safeParse(r.data, {}) : {};
+    // a dead Burrow is reported by every neighbour: one alert per dead Burrow, whoever saw it first
+    if (r.kind === "peer.down" && data?.peer) {
+      const res = await openAlert(env, `edge:${data.peer}`, data.peer, `${data.peer} down`, `${data.peer} is not answering ${edge} (${r.text}).`, "high", "rotating_light");
+      if (res.notified) notified++;
+      continue;
+    }
+    if (r.kind === "peer.back" && data?.peer) {
+      await closeAlert(env, `edge:${data.peer}`, `${data.peer} back`, `${data.peer} answers ${edge} again.`);
+      continue;
+    }
     const wantsHuman = r.level === "alert" || (r.kind === "bin.quiet" && env.ALERT_BINS === "1");
     if (!wantsHuman) continue;
     const res = await openAlert(env, `event:${edge}:${r.kind}`, edge, `${edge}: ${r.kind}`, r.text,
       r.level === "alert" ? "high" : "default", r.level === "alert" ? "rotating_light" : "warning");
     if (res.notified) notified++;
-    if (r.kind === "bin.back" || r.kind === "peer.back" || r.kind === "cloud.back") {
-      await closeAlert(env, `event:${edge}:${r.kind.replace(".back", ".quiet")}`, `${edge}: back`, r.text);
+    if (r.kind === "bin.back" || r.kind === "cloud.back") {
+      await closeAlert(env, `event:${edge}:${r.kind.replace(".back", r.kind === "bin.back" ? ".quiet" : ".down")}`, `${edge}: back`, r.text);
     }
   }
   return json({ ok: true, n: rows.length, notified });
