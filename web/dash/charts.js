@@ -28,7 +28,7 @@
   }
 
   /* time ticks: pick an interval that yields 4-8 labels, aligned to local wall time */
-  var TIME_STEPS = [300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400, 2 * 86400, 7 * 86400];
+  var TIME_STEPS = [10, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400, 2 * 86400, 7 * 86400];
   function timeTicks(t0, t1) {
     var span = t1 - t0, step = TIME_STEPS[TIME_STEPS.length - 1];
     for (var i = 0; i < TIME_STEPS.length; i++) { if (span / TIME_STEPS[i] <= 8) { step = TIME_STEPS[i]; break; } }
@@ -39,15 +39,17 @@
     for (; t <= t1; t += step) out.push(t);
     return { ticks: out, step: step };
   }
+  function hhmmss(d) { return hhmm(d) + ':' + pad2(d.getSeconds()); }
   function tickLabel(t, step) {
     var d = new Date(t * 1000);
     if (step >= 86400) return mmdd(d);
     if (d.getHours() === 0 && d.getMinutes() === 0 && step >= 3600) return mmdd(d);
+    if (step < 60) return hhmmss(d);          // the live view: seconds matter
     return hhmm(d);
   }
-  function fullTime(t) {
+  function fullTime(t, seconds) {
     var d = new Date(t * 1000);
-    return mmdd(d) + ' ' + hhmm(d);
+    return mmdd(d) + ' ' + (seconds ? hhmmss(d) : hhmm(d));
   }
   function fmt(v, unit, decimals) {
     if (v === null || v === undefined || isNaN(v)) return '–';
@@ -207,7 +209,7 @@
       var x = Math.round(layout.X(bt)) + 0.5;
       ctx.strokeStyle = cssVar('--muted', '#6B7280'); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
       ctx.beginPath(); ctx.moveTo(x, layout.padT); ctx.lineTo(x, layout.padT + layout.ph); ctx.stroke(); ctx.setLineDash([]);
-      var html = '<div class="t">' + fullTime(bt) + '</div>';
+      var html = '<div class="t">' + fullTime(bt, layout.t1 - layout.t0 < 3600) + '</div>';
       series.forEach(function (s) {
         var p = null;
         for (var i = 0; i < s.points.length; i++) if (s.points[i].t === bt) { p = s.points[i]; break; }

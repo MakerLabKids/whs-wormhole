@@ -458,7 +458,8 @@
   }
   function prettyMetric(m) {
     var names = { in_temp_c: 'air temp', out_temp_c: 'room temp', in_hum_pct: 'air humidity', out_hum_pct: 'room humidity', moist1_pct: 'soil moisture 1', moist2_pct: 'soil moisture 2',
-      light_pct: 'light', lux: 'lux', in_press_hpa: 'air pressure', sound_pct: 'sound', surface_mm: 'surface', rssi: 'Wi-Fi signal' };
+      light_pct: 'light', lux: 'lux', in_press_hpa: 'air pressure', in_press_raw_hpa: 'air pressure (raw)', out_press_hpa: 'room pressure', out_press_raw_hpa: 'room pressure (raw)',
+      sound_pct: 'sound', surface_mm: 'surface', surface_raw_mm: 'surface (raw)', moist1_v: 'soil probe 1 volts', moist2_v: 'soil probe 2 volts', rssi: 'Wi-Fi signal' };
     if (names[m]) return names[m];
     var pm = m.match(/^probe_temps_c_(\d+)$/); if (pm) return 'soil temp ' + (parseInt(pm[1], 10) + 1);
     return m.replace(/_/g, ' ');
@@ -468,14 +469,18 @@
     { title: 'Temperature', unit: '°C', match: function (m) { return /^(in_temp_c|out_temp_c|probe_temps_c_\d+)$/.test(m); } },
     { title: 'Air humidity', unit: '%', min0: true, match: function (m) { return /^(in_hum_pct|out_hum_pct)$/.test(m); } },
     { title: 'Soil moisture', unit: '%', min0: true, match: function (m) { return /^moist\d_pct$/.test(m); } },
-    { title: 'Air pressure', unit: ' hPa', match: function (m) { return /^in_press_hpa$/.test(m); } },
+    { title: 'Air pressure', unit: ' hPa', match: function (m) { return /^(in|out)_press_hpa$/.test(m); } },
     { title: 'Light', unit: '', min0: true, match: function (m) { return /^(light_pct|lux)$/.test(m); } }
   ];
   var SERIES_COLORS = ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6'];
   function seriesColor(i) { return getComputedStyle(document.documentElement).getPropertyValue(SERIES_COLORS[i % SERIES_COLORS.length]).trim() || '#2E7DBC'; }
 
   function viewBin(main, r) {
-    var uid = r.uid, e = S.bins[uid], charts = [];
+    var uid = r.uid, e = S.bins[uid], charts = [];      // [{ch, ms, card}]
+    /* the live range: readings from the 1 Hz watch stream (and the 60 s pushes) kept for the
+       last LIVE_WINDOW_S and drawn with the same charts as the history ranges, one point per
+       second instead of one bucket per 5 minutes. Kept only while this page is open. */
+    var LIVE_WINDOW_S = 600, liveRows = [], liveSig = null;
     var head = el('div', 'card binhead'); main.appendChild(head);
     var watchbar = el('div', 'card watchbar'); main.appendChild(watchbar);
     var ranges = el('div', 'ranges'); main.appendChild(ranges);
@@ -514,14 +519,67 @@
       var on = !!S.watch[uid];
       watchbar.innerHTML = '<button type="button" class="btn sm ' + (on ? 'on' : 'ghost') + '" id="watch" aria-pressed="' + on + '">' +
         (on ? '■ stop watching' : '▶ watch live (1 reading/s)') + '</button> <span class="muted" id="watchinfo">' + esc(watchInfo()) + '</span>';
-      $('#watch', watchbar).onclick = function () { setWatch(uid, !on); drawWatch(); };
+      $('#watch', watchbar).onclick = function () { selectRange(on ? ((function () { try { return localStorage.getItem('dash.range') || '24h'; } catch (x) { return '24h'; } })()) : 'live'); };
     }
     function drawRanges(step, n) {
-      ranges.innerHTML = RANGES.map(function (x) { return '<button type="button" data-r="' + x[0] + '" class="' + (x[0] === curRange ? 'on' : '') + '" aria-pressed="' + (x[0] === curRange) + '">' + x[0] + '</button>'; }).join('') +
-        '<span class="step">' + (step ? 'step ' + esc(step) + ' · ' + n + ' buckets' : '') + '</span>';
-      Array.prototype.forEach.call(ranges.querySelectorAll('button'), function (b) { b.onclick = function () { curRange = b.dataset.r; try { localStorage.setItem('dash.range', curRange); } catch (x) { } load(); }; });
+      ranges.innerHTML = [['live', 'live 1/s']].concat(RANGES).map(function (x) { return '<button type="button" data-r="' + x[0] + '" class="' + (x[0] === curRange ? 'on' : '') + '" aria-pressed="' + (x[0] === curRange) + '">' + (x[0] === 'live' ? x[1] : x[0]) + '</button>'; }).join('') +
+        '<span class="step">' + (step === 'live' ? 'one point per second · ' + n + ' readings · last 10 min' : step ? 'step ' + esc(step) + ' · ' + n + ' buckets' : '') + '</span>';
+      Array.prototype.forEach.call(ranges.querySelectorAll('button'), function (b) { b.onclick = function () { if (b.dataset.r !== curRange) selectRange(b.dataset.r); }; });
     }
-    function destroyCharts() { charts.forEach(function (c) { c.destroy(); }); charts = []; out.innerHTML = ''; }
+    function destroyCharts() { charts.forEach(function (c) { c.ch.destroy(); }); charts = []; out.innerHTML = ''; liveSig = null; }
+    function flattenNumeric(d) {
+      var f = {};
+      Object.keys(d || {}).forEach(function (k) {
+        var v = d[k];
+        if (isNum(v) && typeof v !== 'boolean') f[k] = v;
+        else if (Array.isArray(v)) v.forEach(function (x, i) { if (isNum(x)) f[k + '_' + i] = x; });
+      });
+      return f;
+    }
+    function selectRange(rname) {
+      var wasLive = curRange === 'live';
+      curRange = rname;
+      if (rname === 'live') { setWatch(uid, true); drawLive(); }
+      else { try { localStorage.setItem('dash.range', curRange); } catch (x) { } if (wasLive) setWatch(uid, false); load(); }
+      drawWatch();
+    }
+    function drawLive() {
+      var now = nowS();
+      while (liveRows.length && liveRows[0].t < now - LIVE_WINDOW_S) liveRows.shift();
+      // the window starts at the first reading we have (at least a minute wide) and grows to
+      // 10 minutes, then scrolls: eight readings fill the chart instead of hugging its right edge
+      var from = Math.min(liveRows.length ? liveRows[0].t : now, now - 60);
+      var byMetric = {};
+      liveRows.forEach(function (r) {
+        Object.keys(r.f).forEach(function (m) {
+          if (SKIP_METRICS[m] || /^probe_ok/.test(m)) return;
+          var v = r.f[m];
+          (byMetric[m] = byMetric[m] || []).push({ t: r.t, min: v, avg: v, max: v, n: 1 });
+        });
+      });
+      var metrics = Object.keys(byMetric).sort(), sig = metrics.join(',');
+      drawRanges('live', liveRows.length);
+      if (!metrics.length) {
+        if (!charts.length) out.innerHTML = '<div class="card empty">Waiting for the first live reading…<br><span class="muted">one point per second for the last 10 minutes; the Burrow polls the bin while you watch</span></div>';
+        return;
+      }
+      if (sig !== liveSig) {            // first reading, or a part appeared/vanished: rebuild the cards
+        destroyCharts(); liveSig = sig;
+        var used = {};
+        GROUPS.forEach(function (g) {
+          var ms = metrics.filter(g.match); if (!ms.length) return;
+          ms.forEach(function (m) { used[m] = 1; });
+          addChart(g.title, g.unit, ms, false, g.min0, from, now, 1, byMetric);
+        });
+        metrics.filter(function (m) { return !used[m]; }).forEach(function (m) { addChart(prettyMetric(m), unitFor(m), [m], true, false, from, now, 1, byMetric); });
+        return;
+      }
+      charts.forEach(function (h) {       // same parts as last second: refresh in place
+        var series = seriesFor(h.ms, byMetric);
+        $('.legend', h.card).innerHTML = legendFor(series);
+        h.ch.set(series, { from: from, to: now });
+      });
+    }
 
     function load() {
       drawRanges(null, 0);
@@ -564,29 +622,42 @@
       points.forEach(function (p) { if (p.min < lo) lo = p.min; if (p.max > hi) hi = p.max; sum += p.avg * p.n; n += p.n; });
       return { min: lo, max: hi, avg: n ? sum / n : NaN };
     }
-    function addChart(title, unit, ms, small, min0, from, to, stepS, byMetric) {
-      var card = el('div', 'chart-card' + (small ? ' small' : ''));
-      var series = ms.map(function (m, i) {
+    function seriesFor(ms, byMetric) {
+      return ms.map(function (m, i) {
         // probes dashed, "room" (out_*) dotted-ish, so lines differ by more than hue
-        return { name: prettyMetric(m), color: seriesColor(i), dash: /^probe_|^out_/.test(m), points: byMetric[m] };
+        return { name: prettyMetric(m), color: seriesColor(i), dash: /^probe_|^out_/.test(m), points: byMetric[m] || [] };
       });
-      var legend = series.map(function (s) {
+    }
+    function legendFor(series) {
+      return series.map(function (s) {
         var sm = summary(s.points);
         return '<span class="li"><span class="sw ' + (s.dash ? 'dash' : '') + '" style="border-color:' + s.color + '"></span>' + esc(s.name) +
           ' <span class="mm">min ' + f1(sm.min) + ' · avg ' + f1(sm.avg) + ' · max ' + f1(sm.max) + '</span></span>';
       }).join('');
-      card.innerHTML = '<h3>' + esc(title) + ' <small>' + esc(unit.trim()) + '</small></h3><div class="legend">' + legend + '</div><div class="chartbox"></div>';
+    }
+    function addChart(title, unit, ms, small, min0, from, to, stepS, byMetric) {
+      var card = el('div', 'chart-card' + (small ? ' small' : ''));
+      var series = seriesFor(ms, byMetric);
+      card.innerHTML = '<h3>' + esc(title) + ' <small>' + esc(unit.trim()) + '</small></h3><div class="legend">' + legendFor(series) + '</div><div class="chartbox"></div>';
       out.appendChild(card);
-      var ch = LineChart($('.chartbox', card), { unit: unit, gapS: stepS * 1.5, min0: min0 });
+      // a live chart breaks its line after a 5 s hole (a missed poll); a rollup chart after 1.5 buckets
+      var ch = LineChart($('.chartbox', card), { unit: unit, gapS: stepS === 1 ? 5 : stepS * 1.5, min0: min0 });
       ch.set(series, { from: from, to: to });
-      charts.push(ch);
+      charts.push({ ch: ch, ms: ms, card: card });
     }
 
     drawHead(); drawWatch();
     if (!e) api('/api/bins').then(function (b) { roster = b && b[uid]; drawHead(); }).catch(function () { });
     load();
     startPolling(); startSSE();
-    S.rowListeners.push(function (row) { if (row.uid === uid) { drawHead(); var i = $('#watchinfo', watchbar); if (i) i.textContent = watchInfo(); } });
+    S.rowListeners.push(function (row) {
+      if (row.uid !== uid) return;
+      drawHead(); var i = $('#watchinfo', watchbar); if (i) i.textContent = watchInfo();
+      if (S.watch[uid] || row.src === 'live') {          // every reading while watching feeds the live range
+        liveRows.push({ t: row.ts, f: flattenNumeric(row.d) });
+        if (curRange === 'live') drawLive();
+      }
+    });
     var watchTick = setInterval(function () { var i = $('#watchinfo', watchbar); if (i && S.watch[uid]) i.textContent = watchInfo(); }, 1000);
     return { onNow: drawHead, onSSE: function () { var i = $('#watchinfo', watchbar); if (i) i.textContent = watchInfo(); },
       destroy: function () { clearInterval(watchTick); setWatch(uid, false); destroyCharts(); } };
