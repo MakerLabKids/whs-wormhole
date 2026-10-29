@@ -298,6 +298,7 @@
     if ((m = path.match(/^\/bin\/([^/]+)\/?$/))) return { name: 'bin', uid: decodeURIComponent(m[1]) };
     // the live page lives at /feed: on a Burrow GET /live IS the SSE stream (server.py), so it can't be a page there
     if (path === '/feed' || path === '/feed/' || path === '/live/') return { name: 'live' };
+    if ((m = path.match(/^\/signal(?:\/([0-3]))?\/?$/))) return { name: 'signal', room: m[1] != null ? Number(m[1]) : null };
     if (path === '/login') return { name: 'login' };
     if (path.indexOf('/admin') === 0) return { name: 'admin', tab: path.split('/')[2] || 'edges' };
     if (path === '/about') return { name: 'about' };
@@ -325,7 +326,7 @@
     if (!S.local && !S.me.ok) { S.view = viewLogin(main); renderHeader(); return; }
     S.route = r;
     startPolling();   // the header (counts, edges, clock) is on every page
-    var v = { wall: viewWall, bin: viewBin, live: viewLive, login: viewLogin, admin: viewAdmin, about: viewAbout }[r.name];
+    var v = { wall: viewWall, bin: viewBin, live: viewLive, signal: viewSignal, login: viewLogin, admin: viewAdmin, about: viewAbout }[r.name];
     S.view = v(main, r);
     renderHeader();
   }
@@ -795,6 +796,68 @@
     return { destroy: function () { } };
   }
 
+  /* ---- view: signal meter -------------------------------------------------
+     For walking around with a phone while placing the Opals: this Burrow's Opal
+     reports the signal of its own upstream hop twice a second (a Tunnel: the 5 GHz
+     link to the Portal; the Portal: the school/home network). On the Surface the
+     same page reads any room through /api/edge/<room>/signal. */
+  function sigClass(dbm) { return !isNum(dbm) ? 'none' : dbm >= -50 ? 'great' : dbm >= -62 ? 'good' : dbm >= -72 ? 'fair' : 'weak'; }
+  function sigWord(dbm) { return { great: 'excellent', good: 'good', fair: 'fair', weak: 'weak', none: 'no link' }[sigClass(dbm)]; }
+  function viewSignal(main, r) {
+    var room = r.room != null ? r.room : (S.local ? null : 1);
+    var samples = [], timer = null, alive = true, lastAt = 0, errors = 0;
+    var box = el('div', 'card signal'); main.appendChild(box);
+    box.innerHTML = (S.local ? '' : '<div class="toolbar"><label for="sroom">room</label><select id="sroom">' + [0, 1, 2, 3].map(function (n) { return '<option value="' + n + '"' + (n === room ? ' selected' : '') + '>' + (n === 0 ? '0 · Portal (worm room)' : n + ' · Tunnel ' + n) + '</option>'; }).join('') + '</select></div>') +
+      '<div class="big"><div class="dbm">–</div><div class="word">connecting…</div></div>' +
+      '<div class="bar"><i></i></div>' +
+      '<canvas class="spark" height="70"></canvas>' +
+      '<div class="meta" id="smeta"></div><div class="clients" id="sclients"></div>' +
+      '<p class="muted small">Twice a second. Green is −50 dBm or better, orange below −62, red below −72. The line is the last minute. Walk, pause two seconds, read.</p>';
+    if (!S.local) $('#sroom', box).onchange = function () { navigate('/signal/' + this.value); };
+    var dbmEl = $('.dbm', box), wordEl = $('.word', box), bar = $('.bar i', box), canvas = $('.spark', box), meta = $('#smeta', box), clients = $('#sclients', box);
+    function draw() {
+      var W = canvas.width = canvas.clientWidth || 320, H = canvas.height, ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
+      var lo = -90, hi = -30, n = 120, pts = samples.slice(-n);
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--line').trim() || '#ddd'; ctx.lineWidth = 1;
+      [-50, -62, -72].forEach(function (v) { var y = H - (v - lo) / (hi - lo) * H; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); });
+      ctx.strokeStyle = '#2E7DBC'; ctx.lineWidth = 2; ctx.beginPath();
+      var started = false;
+      pts.forEach(function (s, i) {
+        if (!isNum(s)) { started = false; return; }
+        var x = i / (n - 1) * W, y = H - (Math.max(lo, Math.min(hi, s)) - lo) / (hi - lo) * H;
+        if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+    function show(j) {
+      var dbm = j && isNum(j.signal) ? j.signal : null, cls = sigClass(dbm);
+      samples.push(dbm); if (samples.length > 240) samples.shift();
+      box.className = 'card signal ' + cls;
+      dbmEl.textContent = isNum(dbm) ? dbm + ' dBm' : (j && j.error ? 'no answer' : '–');
+      wordEl.textContent = isNum(dbm) ? sigWord(dbm) + (j.ssid ? ' · ' + j.ssid : '') : (j && j.error ? j.error : (j && j.state) || 'no link');
+      bar.style.width = (isNum(dbm) ? Math.max(0, Math.min(100, (dbm + 90) / 60 * 100)) : 0) + '%';
+      meta.innerHTML = (j && j.host ? 'Opal <span class="mono">' + esc(j.host) + '</span> · ' : '') + (j && j.state ? esc(j.state) : '') + (j && j.band ? ' · ' + esc(j.band) : '') + (j && j.ip ? ' · got <span class="mono">' + esc(j.ip) + '</span>' : '') +
+        ' · <span id="sage"></span>' + (errors ? ' · <span class="bad">' + errors + ' misses</span>' : '');
+      if (j && Array.isArray(j.clients)) {
+        var cs = j.clients.filter(function (c) { return isNum(c.signal); });
+        clients.innerHTML = cs.length ? '<h3>Seen from the Portal</h3>' + cs.sort(function (a, b) { return b.signal - a.signal; }).map(function (c) {
+          return '<div class="cl ' + sigClass(c.signal) + '"><b>' + esc(c.name || c.mac) + '</b> <span class="mono">' + esc(c.ip || '') + '</span> <span class="v">' + c.signal + ' dBm</span>' + (c.band ? ' <span class="muted">' + esc(c.band) + '</span>' : '') + '</div>';
+        }).join('') : '';
+      }
+      draw();
+    }
+    function tick() {
+      if (!alive) return;
+      var url = S.local ? '/api/signal' : '/api/edge/' + room + '/signal';
+      api(url).then(function (j) { lastAt = Date.now(); show(j); }).catch(function (e) { errors++; if (e.message !== 'not signed in') show({ error: e.message }); })
+        .then(function () { if (alive) timer = setTimeout(tick, 500); });
+    }
+    var ageT = setInterval(function () { var a = $('#sage', box); if (a) a.textContent = lastAt ? 'updated ' + ((Date.now() - lastAt) / 1000).toFixed(1) + ' s ago' : 'no sample yet'; }, 200);
+    tick();
+    return { destroy: function () { alive = false; clearTimeout(timer); clearInterval(ageT); } };
+  }
+
   /* ---- view: admin (Surface, teacher/admin) --------------------------- */
   var TABS = [['edges', 'Devices'], ['sessions', "Who's looking"], ['visits', 'Visits'], ['teams', 'Teams'], ['castings', 'Castings'], ['stats', 'Stats']];
 
@@ -825,7 +888,9 @@
       if (n.error && !isNum(n.up_mbps)) return '<div><b>' + esc(p) + '</b> <span class="bad">' + esc(n.error) + '</span>' + ping + loss + ' <span class="muted">' + ago(n.at) + '</span></div>';
       return '<div><b>' + esc(p) + '</b> ↑ ' + mbps(n.up_mbps) + ' ↓ ' + mbps(n.down_mbps) + ' Mbit/s' + ping + loss + ' <span class="muted">' + ago(n.at) + (n.error ? ' · last try failed: ' + esc(n.error) : '') + '</span></div>';
     }).join('') || '<span class="muted">no throughput targets</span>';
-    return '<div class="card device ' + cls + '"><h3><span class="lamp tile-' + cls + '"></span>' + esc(name) + ' <small class="muted">room ' + esc(meta.room != null ? meta.room : s.room) + ' · v' + esc(s.version || '?') + '</small></h3>' +
+    var roomNo = meta.room != null ? meta.room : s.room;
+    return '<div class="card device ' + cls + '"><h3><span class="lamp tile-' + cls + '"></span>' + esc(name) + ' <small class="muted">room ' + esc(roomNo) + ' · v' + esc(s.version || '?') + '</small>' +
+      (isNum(roomNo) ? '<a class="btn ghost sm" href="' + (S.local ? '/signal' : '/signal/' + roomNo) + '">signal meter</a>' : '') + '</h3>' +
       '<dl class="kv">' +
       '<dt>seen</dt><dd>' + (isNum(seen) ? esc(ago(seen)) + ' <span class="muted">(' + esc(dateTime(seen)) + ')</span>' : '–') + '</dd>' +
       '<dt>up</dt><dd>' + dur(s.up_s) + ' <span class="muted">· clock ' + esc(s.clk || '?') + ' · disk ' + (isNum(s.disk_pct) ? s.disk_pct + '%' : '–') + '</span></dd>' +

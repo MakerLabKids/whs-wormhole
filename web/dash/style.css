@@ -290,3 +290,21 @@ textarea { width: 100%; min-height: 120px; }
 .events li.alert { background: rgba(214, 69, 65, 0.07); }
 .events li.warn { background: rgba(230, 126, 34, 0.06); }
 .devices-wrap details summary { cursor: pointer; margin-top: 6px; }
+/* the walk-around signal meter */
+.signal .big { text-align: center; padding: 18px 0 6px; }
+.signal .dbm { font-size: 76px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.signal .word { font-size: 20px; margin-top: 6px; color: var(--muted); }
+.signal .bar { height: 14px; border-radius: 7px; background: var(--line); overflow: hidden; margin: 10px 0; }
+.signal .bar i { display: block; height: 100%; width: 0; background: var(--muted); transition: width 0.25s; }
+.signal.great .dbm, .signal.great .bar i { color: var(--green); background-color: var(--green); }
+.signal.great .dbm { background: none; }
+.signal.good .dbm { color: #4E7F1F; } .signal.good .bar i { background: #8BC34A; }
+.signal.fair .dbm { color: var(--orange); } .signal.fair .bar i { background: var(--orange); }
+.signal.weak .dbm { color: var(--red); } .signal.weak .bar i { background: var(--red); }
+.signal .spark { width: 100%; display: block; }
+.signal .meta { margin-top: 8px; font-size: 14px; color: var(--muted); }
+.signal .clients h3 { margin: 14px 0 4px; font-size: 15px; }
+.signal .cl { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--line); }
+.signal .cl .v { font-weight: bold; margin-left: auto; font-variant-numeric: tabular-nums; }
+.signal .cl.great .v { color: var(--green); } .signal .cl.good .v { color: #4E7F1F; } .signal .cl.fair .v { color: var(--orange); } .signal .cl.weak .v { color: var(--red); }
+.device h3 .btn { margin-left: auto; }

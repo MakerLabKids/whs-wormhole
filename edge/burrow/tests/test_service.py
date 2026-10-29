@@ -209,6 +209,30 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(s.api_status_brief()["events"]["sent"], 2)
         fs.close()
 
+    def test_signal_endpoint_reads_the_opal_with_one_session(self):
+        import burrow.opal as opal
+        calls = {"login": 0, "status": 0}
+        class FakeRouter:
+            def __init__(self, host, timeout=3): self.host = host
+            def login(self, pw): calls["login"] += 1; assert pw == "pw"
+            def call(self, obj, method, params=None):
+                calls["status"] += 1
+                return {"state_s": "connected", "ssid": "WormHole-Core", "signal": -41, "band": "5g", "ipv4": {"ip": "192.168.80.21/24"}}
+        tj = os.path.join(self.tmp, "tunnel.json"); json.dump({"host": "192.168.81.1", "password": "pw"}, open(tj, "w"))
+        s = self.svc("burrow1", 1)
+        s.opal = opal.OpalLink({"room": 1, "tunnel_json": tj}, router_factory=FakeRouter)
+        code, j = http("GET", s.url + "/api/signal")
+        self.assertEqual((code, j["signal"], j["ssid"], j["ip"], j["error"]), (200, -41, "WormHole-Core", "192.168.80.21/24", None))
+        http("GET", s.url + "/api/signal"); http("GET", s.url + "/api/signal")
+        self.assertEqual(calls["login"], 1)              # one session, and the 300 ms cache absorbed the burst
+        self.assertEqual(calls["status"], 1)
+        time.sleep(0.35)
+        http("GET", s.url + "/api/signal")
+        self.assertEqual(calls["status"], 2)
+        s.opal = opal.OpalLink({"room": 1, "tunnel_json": os.path.join(self.tmp, "missing.json")}, router_factory=FakeRouter)
+        code, j = http("GET", s.url + "/api/signal")
+        self.assertEqual(code, 200); self.assertIn("No such file", j["error"])
+
     def test_peer_replication_and_cloud_cycle(self):
         tok = os.path.join(self.tmp, "cloud.token")
         with open(tok, "w") as f:

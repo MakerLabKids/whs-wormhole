@@ -24,6 +24,10 @@ fi
 cp "$HERE/burrow-lock.sh" "$HERE/burrow-unlock.sh" "$HERE/install-cloudflared.sh" /opt/burrow/ 2>/dev/null || true
 cp "$HERE/tunnel-watchdog.py" /opt/burrow/
 [ -f "$REPO/tools/routers/glinet.py" ] && cp "$REPO/tools/routers/glinet.py" /opt/burrow/
+# the service (user burrow) reads the Opal's address and password for /api/signal
+if [ -f /etc/burrow/tunnel.json ]; then
+  getent group burrow >/dev/null && chgrp burrow /etc/burrow/tunnel.json && chmod 640 /etc/burrow/tunnel.json
+fi
 chown -R root:root /opt/burrow
 chmod -R a+rX /opt/burrow
 install -m 644 "$HERE/systemd/burrow.service" /etc/systemd/system/burrow.service

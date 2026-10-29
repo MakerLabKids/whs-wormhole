@@ -102,3 +102,13 @@ describe("page views + live proxy", () => {
     expect(r0[0].url).toBe("https://burrow0.whs.makerlabkids.com/live");
   });
 });
+
+describe("edge passthrough (/api/edge/<room>/signal)", () => {
+  it("needs a login, knows only rooms 0-3 and the three read-only paths", async () => {
+    const { SELF } = await import("cloudflare:test");
+    expect((await SELF.fetch("https://example.com/api/edge/1/signal")).status).toBe(401);
+    expect((await SELF.fetch("https://example.com/api/edge/7/signal")).status).toBe(404);
+    expect((await SELF.fetch("https://example.com/api/edge/1/ingest")).status).toBe(404);
+    expect((await SELF.fetch("https://example.com/api/edge/1/signal", { method: "POST" })).status).toBe(405);
+  });
+});

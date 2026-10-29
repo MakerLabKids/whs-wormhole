@@ -14,6 +14,7 @@ from .state import Broadcaster, Now
 from .store import Store
 from .sweep import Sweep
 from .netstat import NetStat
+from .opal import OpalLink
 from .watch import Watch
 from .util import Every, log
 
@@ -34,6 +35,7 @@ class Service:
         self.sweep = Sweep(cfg, self.now, self.ingest)
         self.watch = Watch(cfg, self.now, self.bus, clk=self.clk)
         self.net = NetStat(cfg)
+        self.opal = OpalLink(cfg)
         self.events = Events(cfg, send=self.cloud.send_events)
         self.quietwatch = QuietWatch(cfg, self.now, self.peers.state, self.cloud.state, self.events)
         self.live_key = Cloud._read(cfg["cloud"].get("live_key_file"))

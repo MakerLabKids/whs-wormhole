@@ -6,6 +6,7 @@
                  for those Bins (the Burrow polls their /data while this client is connected)
   Peers     GET  /castings  /castings/<id>  /castings/<id>/meta  /health
   Local     GET  /api/events (recent)   POST /api/event (the Opal watchdog reports in; LAN only)
+            GET  /api/signal  this Opal's upstream link right now (for the walk-around meter)
 """
 import json
 import mimetypes
@@ -115,6 +116,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(svc.api_status())
             if path == "/api/history":
                 return self._json(svc.api_history(q))
+            if path == "/api/signal":
+                return self._json(svc.opal.signal())
             if path == "/api/events":
                 return self._json({"edge": svc.cfg["edge"], "events": svc.events.recent[-100:], "state": svc.events.state})
             if path == "/api/me":

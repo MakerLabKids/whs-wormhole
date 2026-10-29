@@ -33,6 +33,7 @@ async function route(request, env, ctx) {
 
   if (path.startsWith("/v1/edge/")) return handleEdge(request, env, ctx, path);
   if (path.startsWith("/v1/")) return err(404, "not found");
+  if (path.startsWith("/api/edge/")) return handleEdgeProxy(request, env, ctx, path);
   if (path.startsWith("/api/")) return handleApi(request, env, ctx, path);
   if (path.startsWith("/live/")) return handleLive(request, env, ctx, path);
   if (path === "/live") return err(404, "not found");
@@ -59,6 +60,28 @@ async function handleApi(request, env, ctx, path) {
   if (path === "/api/bins") return apiBins(env);
   if (path === "/api/history") return apiHistory(request, env);
   return err(404, "not found");
+}
+
+// GET /api/edge/<room>/(signal|status|events): read-only passthrough to a Burrow
+// through its tunnel, for logged-in viewers: the walk-around signal meter polls
+// /signal twice a second; the Devices page may read status/events live.
+async function handleEdgeProxy(request, env, ctx, path) {
+  if (request.method !== "GET") return err(405, "method not allowed");
+  const m = path.match(/^\/api\/edge\/([0-3])\/(signal|status|events)$/);
+  if (!m) return err(404, "not found");
+  const session = await getSession(request, env, ctx);
+  if (!session) return err(401, "login required");
+  const upstream = env.LIVE_BASE
+    ? `${env.LIVE_BASE.replace(/\/$/, "")}/burrow${m[1]}/api/${m[2]}`
+    : `https://burrow${m[1]}.${env.TUNNEL_DOMAIN}/api/${m[2]}`;
+  let up;
+  try {
+    up = await fetch(upstream, { headers: { "x-burrow-key": env.LIVE_KEY || "", accept: "application/json" }, signal: AbortSignal.timeout(6000) });
+  } catch (e) {
+    return err(503, "edge offline");
+  }
+  if (!up.ok) return err(503, "edge offline", { status: up.status });
+  return new Response(up.body, { status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }
 
 // GET /live/<room>[?watch=<uid,...>]: the Burrow's SSE stream, through its
