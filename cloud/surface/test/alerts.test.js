@@ -151,6 +151,17 @@ describe("test alert from the Devices page", () => {
     expect(notifierKind("https://ntfy.sh/x")).toBe("ntfy");
     expect(describeTarget({ ALERT_URL: "https://discord.com/api/webhooks/1/abc" })).toBe("Discord webhook (38 chars)");
     expect(describeTarget({ ALERT_URL: "https://api.telegram.org/botTOK/sendMessage?chat_id=42" })).toBe("Telegram bot, chat 42");
+    const { fingerprint, ntfyAccount } = await import("../src/alerts.js");
+    expect(fingerprint("tk_abcdefghijklmnopqrstuvwxyz")).toBe("tk_a…xyz (29 chars)");
+    expect(fingerprint(" short ")).toBe("… (5 chars)");
+    expect(fingerprint("")).toBe(null);
+    const seen = [];
+    const fake = async (u, init) => { seen.push([u, init.headers.Authorization]); return new Response(JSON.stringify({ username: "quincy", role: "user", tier: { code: "free", name: "Free" }, stats: { messages: 3, messages_remaining: 247 }, limits: { messages: 250 } }), { status: 200 }); };
+    expect(await ntfyAccount({ ALERT_URL: "ntfy.sh/wormhole-quincy", ALERT_TOKEN: "tk_1" }, fake))
+      .toEqual({ status: 200, username: "quincy", role: "user", tier: "Free", messages: 3, messages_remaining: 247, messages_limit: 250 });
+    expect(seen).toEqual([["https://ntfy.sh/v1/account", "Bearer tk_1"]]);
+    expect(await ntfyAccount({ ALERT_URL: "ntfy.sh/x", ALERT_TOKEN: "bad" }, async () => new Response("unauthorized", { status: 401 }))).toEqual({ status: 401, error: "unauthorized" });
+    expect(await ntfyAccount({ ALERT_URL: "https://discord.com/api/webhooks/1/a", ALERT_TOKEN: "x" }, fake)).toBe(null);
     expect(describeTarget({ ALERT_URL: "ntfy.sh/wormhole-quincy" })).toBe("https://ntfy.sh/w…ncy (15 chars)");
     expect(describeTarget({ ALERT_URL: "https://ntfy.sh/abc" })).toBe("https://ntfy.sh/… (3 chars)");
     expect(describeTarget({})).toBe(null);
@@ -162,6 +173,6 @@ describe("test alert from the Devices page", () => {
     expect([401, 403]).toContain(r.status);
     r = await postJson("/api/admin/alerts/test", {}, { cookie });
     expect(r.status).toBe(200);
-    expect(await r.json()).toMatchObject({ ok: false, error: "no ALERT_URL", target: null, auth: "none" });
+    expect(await r.json()).toMatchObject({ ok: false, error: "no ALERT_URL", target: null, auth: "none", stored: { url: "", token: null, account: null } });
   });
 });

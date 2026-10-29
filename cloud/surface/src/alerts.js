@@ -101,10 +101,34 @@ export function describeTarget(env) {
 }
 // POST /api/admin/alerts/test: send one notification now and report exactly what the
 // notifier answered, so a dead phone can be debugged from the Devices page.
+// "tk_abc…xyz (32 chars)": enough to compare with the ntfy account page, not enough to use.
+export function fingerprint(secret) {
+  const v = (secret || "").trim();
+  if (!v) return null;
+  return (v.length > 10 ? v.slice(0, 4) + "…" + v.slice(-3) : "…") + ` (${v.length} chars)`;
+}
+// Ask the ntfy server who the stored token is (GET /v1/account): a wrong token is a 401,
+// a right one returns the username, tier and the day's message count and remainder.
+export async function ntfyAccount(env, fetcher = fetch) {
+  const url = alertUrl(env);
+  const tok = (env.ALERT_TOKEN || "").trim();
+  if (!url || !tok || notifierKind(url) !== "ntfy") return null;
+  try {
+    const r = await fetcher(new URL(url).origin + "/v1/account", { headers: { Authorization: "Bearer " + tok } });
+    if (!r.ok) return { status: r.status, error: (await r.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 100) };
+    const a = await r.json();
+    return { status: 200, username: a.username, role: a.role, tier: a.tier?.name || a.tier?.code || null,
+             messages: a.stats?.messages, messages_remaining: a.stats?.messages_remaining, messages_limit: a.limits?.messages };
+  } catch (e) {
+    return { status: 0, error: String(e?.message || e).slice(0, 100) };
+  }
+}
 export async function testNotify(env) {
   const t = now();
   const n = await notify(env, "Wormhole test", "Test alert from the Surface. If you read this on your phone, alerts work.", "default", "white_check_mark");
-  return json({ ok: n.ok, target: describeTarget(env), kind: notifierKind(alertUrl(env) || ""), auth: env.ALERT_TOKEN ? "token" : (/^https?:\/\/[^/]*@/.test(alertUrl(env) || "") ? "basic" : "none"), error: n.error || null, ts: t });
+  const url = alertUrl(env) || "";
+  const stored = { url, url_raw_length: (env.ALERT_URL || "").length, token: fingerprint(env.ALERT_TOKEN), account: await ntfyAccount(env) };
+  return json({ ok: n.ok, target: describeTarget(env), stored, kind: notifierKind(alertUrl(env) || ""), auth: env.ALERT_TOKEN ? "token" : (/^https?:\/\/[^/]*@/.test(alertUrl(env) || "") ? "basic" : "none"), error: n.error || null, ts: t });
 }
 
 // Open (or refresh) an alert under `key`; notifies on open and when RENOTIFY_S has passed.
