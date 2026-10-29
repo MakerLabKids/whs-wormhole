@@ -126,6 +126,20 @@ describe("test alert from the Devices page", () => {
     } finally {
       globalThis.fetch = real;
     }
+    // ALERT_TOKEN rides along as a Bearer header; a 5xx is retried once, a 4xx is not
+    const calls = [];
+    let status = 503;
+    globalThis.fetch = async (url, init) => { calls.push({ url, auth: init.headers.Authorization }); return new Response("bad gateway", { status: status++ }); };
+    try {
+      expect(await notify({ ALERT_URL: "ntfy.sh/t", ALERT_TOKEN: "tk_abc" }, "t", "x", "high", "warning", async () => {}))
+        .toEqual({ ok: false, error: "HTTP 504 bad gateway" });
+      expect(calls).toEqual([{ url: "https://ntfy.sh/t", auth: "Bearer tk_abc" }, { url: "https://ntfy.sh/t", auth: "Bearer tk_abc" }]);
+      calls.length = 0; status = 429;
+      await notify({ ALERT_URL: "https://me:pw@ntfy.sh/t" }, "t", "x", "high", "warning", async () => {});
+      expect(calls).toEqual([{ url: "https://ntfy.sh/t", auth: "Basic " + btoa("me:pw") }]);
+    } finally {
+      globalThis.fetch = real;
+    }
     expect(describeTarget({ ALERT_URL: "ntfy.sh/wormhole-quincy" })).toBe("https://ntfy.sh/w…ncy (15 chars)");
     expect(describeTarget({ ALERT_URL: "https://ntfy.sh/abc" })).toBe("https://ntfy.sh/… (3 chars)");
     expect(describeTarget({})).toBe(null);
@@ -137,6 +151,6 @@ describe("test alert from the Devices page", () => {
     expect([401, 403]).toContain(r.status);
     r = await postJson("/api/admin/alerts/test", {}, { cookie });
     expect(r.status).toBe(200);
-    expect(await r.json()).toMatchObject({ ok: false, error: "no ALERT_URL", target: null });
+    expect(await r.json()).toMatchObject({ ok: false, error: "no ALERT_URL", target: null, auth: "none" });
   });
 });

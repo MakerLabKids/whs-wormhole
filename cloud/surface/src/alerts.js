@@ -24,20 +24,41 @@ export function alertUrl(env) {
   return "https://" + u;                                               // "ntfy.sh/topic" is what people type
 }
 
-export async function notify(env, title, text, priority = "high", tags = "warning") {
-  const url = alertUrl(env);
-  if (!url) return { ok: false, error: "no ALERT_URL" };
-  try {
-    const r = await fetch(url, {
-      method: "POST", body: text,
-      headers: { Title: title, Priority: priority, Tags: tags, "Content-Type": "text/plain" },
-    });
-    if (r.ok) return { ok: true };
-    const body = (await r.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 100);
-    return { ok: false, error: `HTTP ${r.status}${body ? " " + body : ""}` };
-  } catch (e) {
-    return { ok: false, error: String(e?.message || e).slice(0, 120) };
+// ALERT_TOKEN (secret, optional): an ntfy access token. ntfy.sh counts anonymous
+// messages per source IP, and a Worker shares its IPs with everyone else's Workers, so
+// the free anonymous quota is gone before we send a thing (seen 2026-10-29: "daily
+// message quota reached"). A signed-in account has its own quota. "https://user:pass@host/topic"
+// in ALERT_URL works too (Basic auth).
+export function alertHeaders(env, title, priority, tags) {
+  const h = { Title: title, Priority: priority, Tags: tags, "Content-Type": "text/plain" };
+  const tok = (env.ALERT_TOKEN || "").trim();
+  if (tok) h.Authorization = "Bearer " + tok;
+  return h;
+}
+function stripUserinfo(url) {
+  const m = url.match(/^(https?:\/\/)([^/@]+)@(.*)$/);
+  return m ? { url: m[1] + m[3], basic: "Basic " + btoa(decodeURIComponent(m[2])) } : { url, basic: null };
+}
+export async function notify(env, title, text, priority = "high", tags = "warning", sleep = (ms) => new Promise((r) => setTimeout(r, ms))) {
+  const raw = alertUrl(env);
+  if (!raw) return { ok: false, error: "no ALERT_URL" };
+  const { url, basic } = stripUserinfo(raw);
+  const headers = alertHeaders(env, title, priority, tags);
+  if (basic && !headers.Authorization) headers.Authorization = basic;
+  let last = null;
+  for (let attempt = 0; attempt < 2; attempt++) {          // one retry: ntfy.sh's front door gave a 522 once
+    if (attempt) await sleep(2000);
+    try {
+      const r = await fetch(url, { method: "POST", body: text, headers });
+      if (r.ok) return { ok: true };
+      const body = (await r.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 100);
+      last = { ok: false, error: `HTTP ${r.status}${body ? " " + body : ""}` };
+      if (r.status < 500) return last;
+    } catch (e) {
+      last = { ok: false, error: String(e?.message || e).slice(0, 120) };
+    }
   }
+  return last;
 }
 // Where alerts go, with the topic mostly hidden (anyone who knows it can subscribe):
 // "https://ntfy.sh/w…ncy (15 chars)".
@@ -55,7 +76,7 @@ export function describeTarget(env) {
 export async function testNotify(env) {
   const t = now();
   const n = await notify(env, "Wormhole test", "Test alert from the Surface. If you read this on your phone, alerts work.", "default", "white_check_mark");
-  return json({ ok: n.ok, target: describeTarget(env), error: n.error || null, ts: t });
+  return json({ ok: n.ok, target: describeTarget(env), auth: env.ALERT_TOKEN ? "token" : (/^https?:\/\/[^/]*@/.test(alertUrl(env) || "") ? "basic" : "none"), error: n.error || null, ts: t });
 }
 
 // Open (or refresh) an alert under `key`; notifies on open and when RENOTIFY_S has passed.

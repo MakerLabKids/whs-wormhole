@@ -124,8 +124,17 @@ that stopped reporting for 3 minutes. Both can notify a human through any ntfy-s
 
 1. Install the ntfy app (Android/iOS) and subscribe to a private topic, e.g.
    `whs-wormhole-<something random>`.
-2. `npx wrangler secret put ALERT_URL` and paste `https://ntfy.sh/<that topic>`.
-3. `npx wrangler deploy`. The Devices page shows "notifier configured" and lists open alerts.
+2. `npx wrangler secret put ALERT_URL` and paste `https://ntfy.sh/<that topic>` (a bare
+   `ntfy.sh/<topic>` or just `<topic>` is accepted too).
+3. **Sign in to ntfy and use a token.** ntfy.sh counts anonymous messages per source IP, and
+   a Worker shares its IPs with everyone else's Workers, so the free anonymous quota is
+   already spent ("daily message quota reached", HTTP 429). Make a free ntfy.sh account
+   (app: Settings > Manage users, or https://ntfy.sh/account), create an access token
+   (Account > Access tokens) and `npx wrangler secret put ALERT_TOKEN`. A free account has
+   its own daily quota (plenty for alerts). `https://user:pass@ntfy.sh/<topic>` in ALERT_URL
+   works as well.
+4. `npx wrangler deploy`. The Devices page shows "notifier configured" and lists open alerts;
+   its "send a test alert to the phone" button (admin) shows exactly what ntfy answered.
 
 `ALERT_BINS=1` (a var in wrangler.jsonc) also notifies every bin that goes quiet; off by
 default, since unplugged bins are normal. After changing schema.sql run
