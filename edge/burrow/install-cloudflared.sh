@@ -15,11 +15,15 @@ fi
 systemctl stop cloudflared 2>/dev/null || true
 cloudflared service uninstall 2>/dev/null || true
 cloudflared service install "$TOKEN"
+# the unit `service install` writes keeps the token in /etc/cloudflared/token (newer builds) or in
+# the unit itself (older); keep our own copy so the override below works on either
+install -d -m 755 /etc/cloudflared
+[ -s /etc/cloudflared/token ] || { umask 077; printf '%s' "$TOKEN" > /etc/cloudflared/token; }
 mkdir -p /etc/systemd/system/cloudflared.service.d
 cat > /etc/systemd/system/cloudflared.service.d/override.conf <<'OVR'
 [Service]
 ExecStart=
-ExecStart=/usr/bin/cloudflared --no-autoupdate --protocol http2 tunnel run
+ExecStart=/usr/bin/cloudflared --no-autoupdate --protocol http2 tunnel run --token-file /etc/cloudflared/token
 Restart=always
 RestartSec=10
 OVR
