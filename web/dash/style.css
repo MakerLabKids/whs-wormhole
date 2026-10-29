@@ -282,3 +282,11 @@ textarea { width: 100%; min-height: 120px; }
 .device .small { font-size: 12px; }
 .device .good { color: var(--green); } .device .bad { color: var(--red); }
 .legend .trend { color: var(--text); font-weight: bold; }
+.devices-wrap > .card { margin-bottom: 12px; }
+.events { list-style: none; margin: 6px 0 0; padding: 0; font-size: 14px; }
+.events li { padding: 4px 0; border-top: 1px solid var(--line); }
+.events li .t { font-variant-numeric: tabular-nums; font-weight: bold; }
+.events li .kind { color: var(--muted); font-family: monospace; font-size: 12px; }
+.events li.alert { background: rgba(214, 69, 65, 0.07); }
+.events li.warn { background: rgba(230, 126, 34, 0.06); }
+.devices-wrap details summary { cursor: pointer; margin-top: 6px; }

@@ -26,6 +26,7 @@
     "SESSION_SECRET": "local-dev-session-secret-not-for-production",
     "EDGE_TOKENS": "{\"burrow1\":\"tok1\",\"burrow2\":\"tok2\",\"burrow3\":\"tok3\"}",
     "LIVE_KEY": "local-live-key",
-    "ADMIN_BOOTSTRAP": "bootstrap-me"
+    "ADMIN_BOOTSTRAP": "bootstrap-me",
+    "ALERT_BINS": "0"
   }
 }

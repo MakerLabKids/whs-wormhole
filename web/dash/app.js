@@ -831,10 +831,34 @@
       '<dt>up</dt><dd>' + dur(s.up_s) + ' <span class="muted">· clock ' + esc(s.clk || '?') + ' · disk ' + (isNum(s.disk_pct) ? s.disk_pct + '%' : '–') + '</span></dd>' +
       '<dt>links</dt><dd>' + (s.cloud_ok ? '<span class="good">cloud ok</span>' : '<span class="bad">cloud down</span>') + (isNum(s.peers_ok) ? ' · peers ' + s.peers_ok : '') +
         ' · bins ' + (s.bins != null ? s.bins : '–') + (s.live_clients ? ' · ' + s.live_clients + ' live viewers' : '') + (s.watching ? ' · watching ' + s.watching : '') + '</dd>' +
+      ((s.quiet && s.quiet.length) ? '<dt>quiet</dt><dd><span class="bad">' + s.quiet.length + ' bin' + (s.quiet.length > 1 ? 's' : '') + ' silent over 10 min</span></dd>' : '') +
+      ((s.events && s.events.queued) ? '<dt>events</dt><dd><span class="bad">' + s.events.queued + ' queued, not yet delivered</span>' + (s.events.last_error ? ' <span class="muted">' + esc(s.events.last_error) + '</span>' : '') + '</dd>' : '') +
       '<dt>Opal</dt><dd>' + tun + '</dd>' +
       '<dt>throughput</dt><dd>' + links + '</dd>' +
       (isNum(s.castings) ? '<dt>castings</dt><dd>' + s.castings + (s.unverified ? ' <span class="bad">(' + s.unverified + ' unverified)</span>' : '') + '</dd>' : '') +
       '</dl></div>';
+  }
+  var LEVEL_ICON = { alert: '🔴', warn: '🟠', info: '·' };
+  function eventsHTML(events, title) {
+    if (!events || !events.length) return '<h3>' + esc(title || 'Recent events') + '</h3><div class="empty">nothing has happened yet</div>';
+    return '<h3>' + esc(title || 'Recent events') + ' <small class="muted">(' + events.length + ')</small></h3><ul class="events">' + events.map(function (e) {
+      return '<li class="' + esc(e.level || 'info') + '"><span class="t" title="' + esc(dateTime(e.ts)) + '">' + esc(clock(e.ts)) + '</span> <span class="muted">' + esc(ago(e.ts)) + '</span> ' +
+        '<b>' + esc(e.edge || '') + '</b> <span class="kind">' + esc(e.kind || '') + '</span> ' + (LEVEL_ICON[e.level] || '') + ' ' + esc(e.text || '') + '</li>';
+    }).join('') + '</ul>';
+  }
+  function alertsHTML(a) {
+    if (!a) return '';
+    var open = a.open || [];
+    var html = '<h3>Alerts' + (open.length ? ' <span class="bad">' + open.length + ' open</span>' : ' <small class="good">none open</small>') +
+      ' <small class="muted">· notifier ' + esc(a.notifier || '?') + '</small></h3>';
+    if (open.length) html += '<ul class="events">' + open.map(function (x) {
+      return '<li class="alert">🔴 <b>' + esc(x.edge || x.key) + '</b> ' + esc(x.text) + ' <span class="muted">since ' + esc(clock(x.opened_at)) + ' (' + esc(ago(x.opened_at)) + ')' + (x.notify_error ? ' · not delivered: ' + esc(x.notify_error) : '') + '</span></li>';
+    }).join('') + '</ul>';
+    var closed = (a.closed || []).slice(0, 8);
+    if (closed.length) html += '<details><summary class="muted">recently cleared (' + closed.length + ')</summary><ul class="events">' + closed.map(function (x) {
+      return '<li>✅ <b>' + esc(x.edge || x.key) + '</b> ' + esc(x.text) + ' <span class="muted">' + esc(clock(x.opened_at)) + ' → ' + esc(clock(x.closed_at)) + '</span></li>';
+    }).join('') + '</ul></details>';
+    return html;
   }
   function devicesHTML(list) {
     if (!list.length) return '<div class="empty">no Burrows have reported yet</div>';
@@ -871,9 +895,11 @@
       var box = el('div'); main.appendChild(box);
       var t = setInterval(load, 60000);
       function load() {
-        api('/api/status').then(function (s) {
+        Promise.all([api('/api/status'), api('/api/events').catch(function () { return null; })]).then(function (r) {
+          var s = r[0], ev = (r[1] && r[1].events) || s.recent_events || [];
           box.innerHTML = devicesHTML([{ name: s.edge, status: s, meta: { room: s.room, last_seen: s.ts } }]) +
-            '<p class="muted">This is the Burrow\'s own view. The Surface\'s Devices page shows every room side by side.</p>';
+            '<div class="card">' + eventsHTML(ev.slice().reverse(), 'This Burrow\'s recent events') + '</div>' +
+            '<p class="muted">This is the Burrow\'s own view. The Surface\'s Devices page shows every room side by side, with alerts.</p>';
         }).catch(function (e) { box.innerHTML = '<div class="notice err">' + esc(e.message) + '</div>'; });
       }
       load();
@@ -895,11 +921,13 @@
     function every(ms, fn) { fn(); timers.push(setInterval(fn, ms)); }
 
     if (tab === 'edges') every(60000, function () {
-      api('/api/admin/edges').then(function (j) {
-        var rows = Array.isArray(j) ? j : (j && (j.edges || j.rows)) || [];
+      Promise.all([api('/api/admin/edges'), api('/api/admin/alerts').catch(function () { return null; }), api('/api/admin/events?limit=60').catch(function () { return null; })]).then(function (r) {
+        var j = r[0], rows = Array.isArray(j) ? j : (j && (j.edges || j.rows)) || [];
         body.className = 'devices-wrap';
-        body.innerHTML = '<h3>Devices <small class="muted">(refreshes every 60 s)</small></h3>' +
-          devicesHTML(rows.map(function (r) { return { name: r.edge, status: r.status || {}, meta: { room: r.room, last_seen: r.last_seen } }; }));
+        body.innerHTML = '<div class="card">' + alertsHTML(r[1]) + '</div>' +
+          '<h3>Devices <small class="muted">(refreshes every 60 s)</small></h3>' +
+          devicesHTML(rows.map(function (x) { return { name: x.edge, status: x.status || {}, meta: { room: x.room, last_seen: x.last_seen } }; })) +
+          '<div class="card">' + eventsHTML((r[2] && r[2].events) || [], 'Recent events, all rooms') + '</div>';
       }).catch(fail);
     });
 

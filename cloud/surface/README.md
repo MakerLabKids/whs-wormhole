@@ -115,3 +115,19 @@ rate limit, visits on page views, the `/live` proxy, admin roles.
   the CSV import is capped at 60 rows per request for that reason.
 - Castings are never parsed by the Worker, only hashed; `verified_at` is set
   only by `/v1/edge/verify` after reading the object back from R2.
+
+## Alerts to your phone (optional, 2 minutes)
+
+The Burrows push events the moment they happen (a bin silent 10 min, an Opal rebooted by
+its watchdog, the cloud link back after an outage) and a cron in the Worker notices a Burrow
+that stopped reporting for 3 minutes. Both can notify a human through any ntfy-style URL:
+
+1. Install the ntfy app (Android/iOS) and subscribe to a private topic, e.g.
+   `whs-wormhole-<something random>`.
+2. `npx wrangler secret put ALERT_URL` and paste `https://ntfy.sh/<that topic>`.
+3. `npx wrangler deploy`. The Devices page shows "notifier configured" and lists open alerts.
+
+`ALERT_BINS=1` (a var in wrangler.jsonc) also notifies every bin that goes quiet; off by
+default, since unplugged bins are normal. After changing schema.sql run
+`npx wrangler d1 execute wormhole --remote --file schema.sql` once (idempotent) to add the
+`events` and `alerts` tables.

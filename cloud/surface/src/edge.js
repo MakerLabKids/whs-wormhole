@@ -1,6 +1,7 @@
 // Burrow -> Surface: /v1/edge/*  (PROTOCOL.md "Burrow -> Surface").
 // Auth: Authorization: Bearer <token>; EDGE_TOKENS is a JSON map edge -> token.
 
+import { postEvents } from "./alerts.js";
 import { chunks, err, hex, isInt, json, now, readJson, safeParse, timingSafeEqual } from "./util.js";
 
 const CASTING_CAP = 8 * 1024 * 1024;   // gz bytes per PUT
@@ -32,6 +33,7 @@ export async function handleEdge(request, env, ctx, path) {
 
   if (path === "/v1/edge/ping" && m === "GET") return json({ ok: true, ts: now() });
   if (path === "/v1/edge/snapshot" && m === "POST") return snapshot(request, env, edge);
+  if (path === "/v1/edge/events" && m === "POST") return postEvents(request, env, edge);
   if (path === "/v1/edge/rollups" && m === "POST") return rollups(request, env);
   if (path === "/v1/edge/verify" && m === "POST") return verify(request, env);
   if (path.startsWith("/v1/edge/castings/")) {
@@ -39,7 +41,7 @@ export async function handleEdge(request, env, ctx, path) {
     if (m === "PUT") return putCasting(request, env, edge, id);
     return err(405, "method not allowed");
   }
-  if (["/v1/edge/ping", "/v1/edge/snapshot", "/v1/edge/rollups", "/v1/edge/verify"].includes(path)) {
+  if (["/v1/edge/ping", "/v1/edge/snapshot", "/v1/edge/events", "/v1/edge/rollups", "/v1/edge/verify"].includes(path)) {
     return err(405, "method not allowed");
   }
   return err(404, "not found");

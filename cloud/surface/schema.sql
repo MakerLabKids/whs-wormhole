@@ -99,3 +99,32 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   n            INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (ip_hash, window_start)
 );
+
+-- Events: what a Burrow reports the moment it happens (bin quiet/back, Opal rebooted,
+-- cloud back after an outage, service start). level: info | warn | alert.
+CREATE TABLE IF NOT EXISTS events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts          INTEGER,          -- the Burrow's clock when it happened
+  edge        TEXT,
+  kind        TEXT,
+  level       TEXT,
+  text        TEXT,
+  data        TEXT,             -- JSON, optional
+  received_at INTEGER           -- Worker clock
+);
+CREATE INDEX IF NOT EXISTS events_received ON events (received_at);
+CREATE INDEX IF NOT EXISTS events_edge_ts ON events (edge, ts);
+
+-- Alerts: one row per condition the Surface itself watches (a silent Burrow) or an
+-- alert-level event it relayed; closed_at is set when the condition clears.
+CREATE TABLE IF NOT EXISTS alerts (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  key           TEXT NOT NULL,  -- edge:burrow1 | event:burrow1:opal ...
+  edge          TEXT,
+  text          TEXT,
+  opened_at     INTEGER,
+  closed_at     INTEGER,
+  last_notified INTEGER,
+  notify_error  TEXT
+);
+CREATE INDEX IF NOT EXISTS alerts_key_open ON alerts (key, closed_at);

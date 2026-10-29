@@ -5,12 +5,17 @@
 //   everything else: the dashboard SPA from static assets (+ one visits row per HTML page view)
 
 import { handleAdmin } from "./admin.js";
+import { watchEdges } from "./alerts.js";
 import { getSession, listTeams, login, logout, meBody } from "./auth.js";
 import { handleEdge } from "./edge.js";
 import { HttpError, err, ipHash, json, now } from "./util.js";
 import { apiBins, apiHistory, apiNow, apiPublicNow } from "./viewer.js";
 
 export default {
+  // cron (wrangler.jsonc triggers): a Burrow that went silent, or came back -> alert
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(watchEdges(env).catch((e) => console.error("watchEdges", e?.stack || e)));
+  },
   async fetch(request, env, ctx) {
     try {
       return await route(request, env, ctx);

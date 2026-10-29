@@ -1,0 +1,76 @@
+import { env } from "cloudflare:test";
+import { beforeAll, describe, expect, it } from "vitest";
+import { applySchema, bootstrapAdmin, edgeFetch, get } from "./helpers.js";
+import { SILENT_S, watchEdges } from "../src/alerts.js";
+
+const T = Math.floor(Date.now() / 1000);
+
+describe("events from Burrows", () => {
+  beforeAll(applySchema);
+
+  it("stores a batch and rejects bad ones", async () => {
+    let r = await edgeFetch("burrow1", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow1", events: [
+      { ts: T - 5, kind: "bin.quiet", level: "warn", text: "Dirt Vader (bin 7) silent for 10 min", data: { uid: "abc" } },
+      { ts: T - 1, kind: "burrow.start", level: "info", text: "burrow1 v0.1.0 started" },
+    ] }) });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ ok: true, n: 2, notified: 0 });
+    const rows = (await env.DB.prepare("SELECT edge, kind, level, text, data FROM events ORDER BY id").all()).results;
+    expect(rows.length).toBe(2);
+    expect(rows[0]).toMatchObject({ edge: "burrow1", kind: "bin.quiet", level: "warn" });
+    expect(JSON.parse(rows[0].data)).toEqual({ uid: "abc" });
+    r = await edgeFetch("burrow2", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow1", events: [] }) });
+    expect(r.status).toBe(403);
+    r = await edgeFetch("burrow1", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow1", events: [{ kind: "x" }] }) });
+    expect(r.status).toBe(400);
+  });
+
+  it("an alert-level event opens an alert row (unnotified without ALERT_URL) and a .back closes it", async () => {
+    let r = await edgeFetch("burrow1", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow1", events: [
+      { ts: T, kind: "opal", level: "alert", text: "down 15 min: rebooted the Opal (#1)" }] }) });
+    expect((await r.json()).ok).toBe(true);
+    let open = (await env.DB.prepare("SELECT key, edge, text, closed_at, notify_error FROM alerts WHERE closed_at IS NULL").all()).results;
+    expect(open.length).toBe(1);
+    expect(open[0]).toMatchObject({ key: "event:burrow1:opal", edge: "burrow1", notify_error: "no ALERT_URL" });
+    // same alert again within 15 min: no second row
+    await edgeFetch("burrow1", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow1", events: [
+      { ts: T + 60, kind: "opal", level: "alert", text: "down 16 min: rebooted the Opal (#2)" }] }) });
+    expect((await env.DB.prepare("SELECT COUNT(*) n FROM alerts").first("n"))).toBe(1);
+  });
+
+  it("admin can list events and alerts; teams cannot", async () => {
+    const admin = (await bootstrapAdmin()).cookie;
+    let r = await get("/api/admin/events?edge=burrow1", { cookie: admin });
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.events.length).toBeGreaterThanOrEqual(3);
+    expect(j.events[0].data === null || typeof j.events[0].data === "object").toBe(true);
+    r = await get("/api/admin/alerts", { cookie: admin });
+    const a = await r.json();
+    expect(a.notifier).toBe("not configured");
+    expect(a.open.length).toBe(1);
+    r = await get("/api/admin/alerts");
+    expect(r.status).toBe(401);
+  });
+});
+
+describe("silent Burrow watch (the cron)", () => {
+  beforeAll(applySchema);
+
+  it("opens an alert for a silent edge and closes it when it reports again", async () => {
+    await env.DB.prepare("INSERT OR REPLACE INTO edges (edge_id, room, ts, clk, snapshot, status, updated_at) VALUES ('burrow2', 2, ?1, 'ntp', '{}', '{}', ?1)").bind(T - SILENT_S - 120).run();
+    await env.DB.prepare("INSERT OR REPLACE INTO edges (edge_id, room, ts, clk, snapshot, status, updated_at) VALUES ('burrow3', 3, ?1, 'ntp', '{}', '{}', ?1)").bind(T - 30).run();
+    let out = await watchEdges(env, T);
+    expect(out.silent).toEqual(["burrow2"]);
+    expect(out.opened).toEqual(["burrow2"]);
+    out = await watchEdges(env, T + 60);                 // still silent: no second alert row
+    expect(out.opened).toEqual([]);
+    expect((await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE key = 'edge:burrow2'").first("n"))).toBe(1);
+    await env.DB.prepare("UPDATE edges SET updated_at = ?1 WHERE edge_id = 'burrow2'").bind(T + 600).run();
+    out = await watchEdges(env, T + 610);
+    expect(out.closed[0].edge).toBe("burrow2");
+    expect(out.closed[0].minutes).toBeGreaterThanOrEqual(9);
+    const row = await env.DB.prepare("SELECT closed_at FROM alerts WHERE key = 'edge:burrow2'").first();
+    expect(row.closed_at).toBeTruthy();
+  });
+});

@@ -1,5 +1,6 @@
 // Wormhole "Surface": the Cloudflare Worker. Wrangler v4.
-// Secrets (wrangler secret put): SESSION_SECRET, EDGE_TOKENS, LIVE_KEY, ADMIN_BOOTSTRAP.
+// Secrets (wrangler secret put): SESSION_SECRET, EDGE_TOKENS, LIVE_KEY, ADMIN_BOOTSTRAP,
+// ALERT_URL (optional: an ntfy-style URL that is POSTed alert text, e.g. https://ntfy.sh/<topic>).
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "wormhole-surface",
@@ -26,8 +27,11 @@
     { "binding": "CASTINGS", "bucket_name": "wormhole-castings" }
   ],
   "vars": {
-    "TUNNEL_DOMAIN": "whs.makerlabkids.com"
+    "TUNNEL_DOMAIN": "whs.makerlabkids.com",
+    "ALERT_BINS": "0"
   },
+  // every minute: notice a Burrow that stopped reporting (src/alerts.js watchEdges)
+  "triggers": { "crons": ["* * * * *"] },
   "routes": [
     { "pattern": "whs.makerlabkids.com", "custom_domain": true }
   ]
