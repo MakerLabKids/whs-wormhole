@@ -56,6 +56,31 @@
     var d = decimals !== undefined ? decimals : (Math.abs(v) >= 1000 ? 0 : 1);
     return v.toFixed(d) + (unit || '');
   }
+  /* least-squares line through the bucket averages: {a, b, n} with v = a + b * t (t in seconds).
+     Needs two distinct times; weights buckets by their sample count so a sparse hour does
+     not outvote a busy one. Exposed as window.linearFit so the legend can quote the slope. */
+  function linearFit(points) {
+    var n = 0, st = 0, sv = 0, stt = 0, stv = 0, t0 = points.length ? points[0].t : 0;
+    points.forEach(function (p) {
+      var w = p.n || 1, t = p.t - t0;
+      n += w; st += w * t; sv += w * p.avg; stt += w * t * t; stv += w * t * p.avg;
+    });
+    var den = n * stt - st * st;
+    if (n < 2 || den <= 0) return null;
+    var b = (n * stv - st * sv) / den, a = (sv - b * st) / n;
+    return { a: a - b * t0, b: b, n: n };
+  }
+  /* "+0.4 °C/h" or "−1.2 %/day": slope in the unit that gives a readable number for the span */
+  function trendLabel(fit, spanS, unit) {
+    if (!fit) return '';
+    var perHour = fit.b * 3600, perDay = fit.b * 86400, useDay = spanS > 2 * 86400;
+    var v = useDay ? perDay : perHour, abs = Math.abs(v);
+    var dec = abs >= 10 ? 0 : abs >= 1 ? 1 : 2;
+    return (v >= 0 ? '+' : '−') + abs.toFixed(dec) + (unit || '').trim() + (useDay ? '/day' : '/h');
+  }
+  window.linearFit = linearFit;
+  window.trendLabel = trendLabel;
+
   /* axis labels need as many decimals as the tick step has (1009.05 vs 1009.10), no more */
   function stepDecimals(step) { return Math.max(0, Math.min(3, -Math.floor(Math.log10(step) + 1e-9))); }
 
@@ -177,6 +202,17 @@
           if (alone) { ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(X(p.t), Y(p.avg), 3, 0, 7); ctx.fill(); }
         });
       });
+      // trend: a thin dashed least-squares line across the whole range, one per series
+      if (opts.trend !== false) {
+        series.forEach(function (s) {
+          var fit = linearFit(s.points); if (!fit) return;
+          var ta = s.points[0].t, tb = s.points[s.points.length - 1].t; if (tb <= ta) return;
+          ctx.save();
+          ctx.strokeStyle = s.color; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.5; ctx.setLineDash([2, 5]);
+          ctx.beginPath(); ctx.moveTo(X(ta), Y(fit.a + fit.b * ta)); ctx.lineTo(X(tb), Y(fit.a + fit.b * tb)); ctx.stroke();
+          ctx.restore();
+        });
+      }
       // direct label at each line's end, so identity is never color alone
       if (series.length > 1) {
         ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.font = 'bold 11px Arial, Helvetica, sans-serif';

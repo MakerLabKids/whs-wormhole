@@ -281,3 +281,4 @@ textarea { width: 100%; min-height: 120px; }
 .device .kv dt { min-width: 84px; }
 .device .small { font-size: 12px; }
 .device .good { color: var(--green); } .device .bad { color: var(--red); }
+.legend .trend { color: var(--text); font-weight: bold; }

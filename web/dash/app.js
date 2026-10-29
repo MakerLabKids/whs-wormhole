@@ -576,7 +576,7 @@
       }
       charts.forEach(function (h) {       // same parts as last second: refresh in place
         var series = seriesFor(h.ms, byMetric);
-        $('.legend', h.card).innerHTML = legendFor(series);
+        $('.legend', h.card).innerHTML = legendFor(series, h.unit);
         h.ch.set(series, { from: from, to: now });
       });
     }
@@ -628,22 +628,24 @@
         return { name: prettyMetric(m), color: seriesColor(i), dash: /^probe_|^out_/.test(m), points: byMetric[m] || [] };
       });
     }
-    function legendFor(series) {
+    function legendFor(series, unit) {
       return series.map(function (s) {
-        var sm = summary(s.points);
+        var sm = summary(s.points), pts = s.points || [];
+        var span = pts.length > 1 ? pts[pts.length - 1].t - pts[0].t : 0;
+        var trend = span > 0 && window.linearFit ? window.trendLabel(window.linearFit(pts), span, unit) : '';
         return '<span class="li"><span class="sw ' + (s.dash ? 'dash' : '') + '" style="border-color:' + s.color + '"></span>' + esc(s.name) +
-          ' <span class="mm">min ' + f1(sm.min) + ' · avg ' + f1(sm.avg) + ' · max ' + f1(sm.max) + '</span></span>';
+          ' <span class="mm">min ' + f1(sm.min) + ' · avg ' + f1(sm.avg) + ' · max ' + f1(sm.max) + (trend ? ' · <span class="trend" title="least-squares trend over what is on the chart">trend ' + esc(trend) + '</span>' : '') + '</span></span>';
       }).join('');
     }
     function addChart(title, unit, ms, small, min0, from, to, stepS, byMetric) {
       var card = el('div', 'chart-card' + (small ? ' small' : ''));
       var series = seriesFor(ms, byMetric);
-      card.innerHTML = '<h3>' + esc(title) + ' <small>' + esc(unit.trim()) + '</small></h3><div class="legend">' + legendFor(series) + '</div><div class="chartbox"></div>';
+      card.innerHTML = '<h3>' + esc(title) + ' <small>' + esc(unit.trim()) + '</small></h3><div class="legend">' + legendFor(series, unit) + '</div><div class="chartbox"></div>';
       out.appendChild(card);
       // a live chart breaks its line after a 5 s hole (a missed poll); a rollup chart after 1.5 buckets
       var ch = LineChart($('.chartbox', card), { unit: unit, gapS: stepS === 1 ? 5 : stepS * 1.5, min0: min0 });
       ch.set(series, { from: from, to: to });
-      charts.push({ ch: ch, ms: ms, card: card });
+      charts.push({ ch: ch, ms: ms, card: card, unit: unit });
     }
 
     drawHead(); drawWatch();
