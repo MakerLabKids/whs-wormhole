@@ -140,6 +140,17 @@ describe("test alert from the Devices page", () => {
     } finally {
       globalThis.fetch = real;
     }
+    // Discord webhooks and Telegram bots get JSON bodies
+    const { buildRequest, notifierKind } = await import("../src/alerts.js");
+    const d = buildRequest("https://discord.com/api/webhooks/1/abc", {}, "burrow2 down", "burrow2 is not answering");
+    expect(d.url).toBe("https://discord.com/api/webhooks/1/abc");
+    expect(JSON.parse(d.body)).toEqual({ content: "**burrow2 down**\nburrow2 is not answering" });
+    const tg = buildRequest("https://api.telegram.org/botTOK/sendMessage?chat_id=42", {}, "t", "x");
+    expect(tg.url).toBe("https://api.telegram.org/botTOK/sendMessage");
+    expect(JSON.parse(tg.body)).toEqual({ chat_id: "42", text: "t\nx" });
+    expect(notifierKind("https://ntfy.sh/x")).toBe("ntfy");
+    expect(describeTarget({ ALERT_URL: "https://discord.com/api/webhooks/1/abc" })).toBe("Discord webhook (38 chars)");
+    expect(describeTarget({ ALERT_URL: "https://api.telegram.org/botTOK/sendMessage?chat_id=42" })).toBe("Telegram bot, chat 42");
     expect(describeTarget({ ALERT_URL: "ntfy.sh/wormhole-quincy" })).toBe("https://ntfy.sh/w…ncy (15 chars)");
     expect(describeTarget({ ALERT_URL: "https://ntfy.sh/abc" })).toBe("https://ntfy.sh/… (3 chars)");
     expect(describeTarget({})).toBe(null);

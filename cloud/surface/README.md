@@ -126,13 +126,18 @@ that stopped reporting for 3 minutes. Both can notify a human through any ntfy-s
    `whs-wormhole-<something random>`.
 2. `npx wrangler secret put ALERT_URL` and paste `https://ntfy.sh/<that topic>` (a bare
    `ntfy.sh/<topic>` or just `<topic>` is accepted too).
-3. **Sign in to ntfy and use a token.** ntfy.sh counts anonymous messages per source IP, and
-   a Worker shares its IPs with everyone else's Workers, so the free anonymous quota is
-   already spent ("daily message quota reached", HTTP 429). Make a free ntfy.sh account
-   (app: Settings > Manage users, or https://ntfy.sh/account), create an access token
-   (Account > Access tokens) and `npx wrangler secret put ALERT_TOKEN`. A free account has
-   its own daily quota (plenty for alerts). `https://user:pass@ntfy.sh/<topic>` in ALERT_URL
-   works as well.
+3. **ntfy.sh needs a paid tier from a Worker.** ntfy.sh meters anonymous posts, and posts
+   from free accounts, per source IP; a Worker shares its IPs with everyone else's Workers, so
+   the quota is already spent ("daily message quota reached", HTTP 429, seen 2026-10-29 even
+   with a free account's token). A Supporter tier ($5/month, 2 500 messages/day) is metered per
+   user: create an access token (ntfy.sh/account > Access tokens) and
+   `npx wrangler secret put ALERT_TOKEN` (or `https://user:pass@ntfy.sh/<topic>` in ALERT_URL).
+   **Free alternatives** that work from a Worker, same ALERT_URL secret:
+   - Discord: make a server, channel > Edit > Integrations > Webhooks > New, copy the URL
+     (`https://discord.com/api/webhooks/...`). The Discord phone app buzzes on each message.
+   - Telegram: talk to @BotFather (`/newbot`), get the bot token; start a chat with the bot and
+     read your chat id from `https://api.telegram.org/bot<token>/getUpdates`; set ALERT_URL to
+     `https://api.telegram.org/bot<token>/sendMessage?chat_id=<id>`.
 4. `npx wrangler deploy`. The Devices page shows "notifier configured" and lists open alerts;
    its "send a test alert to the phone" button (admin) shows exactly what ntfy answered.
 

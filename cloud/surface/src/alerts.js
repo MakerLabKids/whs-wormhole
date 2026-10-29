@@ -39,17 +39,42 @@ function stripUserinfo(url) {
   const m = url.match(/^(https?:\/\/)([^/@]+)@(.*)$/);
   return m ? { url: m[1] + m[3], basic: "Basic " + btoa(decodeURIComponent(m[2])) } : { url, basic: null };
 }
+// Three notifier shapes, told apart by the URL (ntfy.sh's free tier meters anonymous AND
+// free-account posts per source IP, and a Worker's IPs are shared, so ntfy.sh only works
+// from here with a paid tier; Discord and Telegram are free):
+//   ntfy      https://ntfy.sh/<topic>                      text body + Title/Priority/Tags headers
+//   Discord   https://discord.com/api/webhooks/<id>/<tok>   {"content": "**title**\ntext"}
+//   Telegram  https://api.telegram.org/bot<tok>/sendMessage?chat_id=<id>   {"chat_id", "text"}
+export function notifierKind(url) {
+  if (/^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//i.test(url)) return "discord";
+  if (/^https:\/\/api\.telegram\.org\/bot/i.test(url)) return "telegram";
+  return "ntfy";
+}
+export function buildRequest(url, headers, title, text) {
+  const kind = notifierKind(url);
+  if (kind === "discord") {
+    return { url, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: `**${title}**\n${text}`.slice(0, 1900) }) };
+  }
+  if (kind === "telegram") {
+    const u = new URL(url);
+    const chat_id = u.searchParams.get("chat_id");
+    u.search = "";
+    return { url: u.toString(), headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id, text: `${title}\n${text}`.slice(0, 4000) }) };
+  }
+  return { url, headers, body: text };
+}
 export async function notify(env, title, text, priority = "high", tags = "warning", sleep = (ms) => new Promise((r) => setTimeout(r, ms))) {
   const raw = alertUrl(env);
   if (!raw) return { ok: false, error: "no ALERT_URL" };
   const { url, basic } = stripUserinfo(raw);
   const headers = alertHeaders(env, title, priority, tags);
   if (basic && !headers.Authorization) headers.Authorization = basic;
+  const req = buildRequest(url, headers, title, text);
   let last = null;
   for (let attempt = 0; attempt < 2; attempt++) {          // one retry: ntfy.sh's front door gave a 522 once
     if (attempt) await sleep(2000);
     try {
-      const r = await fetch(url, { method: "POST", body: text, headers });
+      const r = await fetch(req.url, { method: "POST", body: req.body, headers: req.headers });
       if (r.ok) return { ok: true };
       const body = (await r.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 100);
       last = { ok: false, error: `HTTP ${r.status}${body ? " " + body : ""}` };
@@ -65,6 +90,9 @@ export async function notify(env, title, text, priority = "high", tags = "warnin
 export function describeTarget(env) {
   const url = alertUrl(env);
   if (!url) return null;
+  const kind = notifierKind(url);
+  if (kind === "discord") return "Discord webhook (" + url.length + " chars)";
+  if (kind === "telegram") return "Telegram bot, chat " + (new URL(url).searchParams.get("chat_id") || "?");
   const m = url.match(/^(https?:\/\/[^/]+\/)(.*)$/);
   if (!m) return url.slice(0, 12) + "…";
   const topic = m[2];
@@ -76,7 +104,7 @@ export function describeTarget(env) {
 export async function testNotify(env) {
   const t = now();
   const n = await notify(env, "Wormhole test", "Test alert from the Surface. If you read this on your phone, alerts work.", "default", "white_check_mark");
-  return json({ ok: n.ok, target: describeTarget(env), auth: env.ALERT_TOKEN ? "token" : (/^https?:\/\/[^/]*@/.test(alertUrl(env) || "") ? "basic" : "none"), error: n.error || null, ts: t });
+  return json({ ok: n.ok, target: describeTarget(env), kind: notifierKind(alertUrl(env) || ""), auth: env.ALERT_TOKEN ? "token" : (/^https?:\/\/[^/]*@/.test(alertUrl(env) || "") ? "basic" : "none"), error: n.error || null, ts: t });
 }
 
 // Open (or refresh) an alert under `key`; notifies on open and when RENOTIFY_S has passed.
