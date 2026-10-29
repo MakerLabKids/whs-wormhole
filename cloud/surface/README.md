@@ -128,8 +128,9 @@ that stopped reporting for 3 minutes. Both can notify a human through any ntfy-s
    `ntfy.sh/<topic>` or just `<topic>` is accepted too).
 3. **ntfy.sh needs a paid tier from a Worker.** ntfy.sh meters anonymous posts, and posts
    from free accounts, per source IP; a Worker shares its IPs with everyone else's Workers, so
-   the quota is already spent ("daily message quota reached", HTTP 429, seen 2026-10-29 even
-   with a free account's token). A Supporter tier ($5/month, 2 500 messages/day) is metered per
+   the quota is already spent ("daily message quota reached", HTTP 429). Proven 2026-10-29:
+   the same free account's token showed 250/250 used when asked from the Worker and 8/250
+   when asked from a laptop two minutes earlier - the counter is per IP, not per account. A Supporter tier ($5/month, 2 500 messages/day) is metered per
    user: create an access token (ntfy.sh/account > Access tokens) and
    `npx wrangler secret put ALERT_TOKEN` (or `https://user:pass@ntfy.sh/<topic>` in ALERT_URL).
    **Free alternatives** that work from a Worker, same ALERT_URL secret:
