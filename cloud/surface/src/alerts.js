@@ -30,10 +30,30 @@ export async function notify(env, title, text, priority = "high", tags = "warnin
       method: "POST", body: text,
       headers: { Title: title, Priority: priority, Tags: tags, "Content-Type": "text/plain" },
     });
-    return r.ok ? { ok: true } : { ok: false, error: `HTTP ${r.status}` };
+    if (r.ok) return { ok: true };
+    const body = (await r.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 100);
+    return { ok: false, error: `HTTP ${r.status}${body ? " " + body : ""}` };
   } catch (e) {
     return { ok: false, error: String(e?.message || e).slice(0, 120) };
   }
+}
+// Where alerts go, with the topic mostly hidden (anyone who knows it can subscribe):
+// "https://ntfy.sh/w…ncy (15 chars)".
+export function describeTarget(env) {
+  const url = alertUrl(env);
+  if (!url) return null;
+  const m = url.match(/^(https?:\/\/[^/]+\/)(.*)$/);
+  if (!m) return url.slice(0, 12) + "…";
+  const topic = m[2];
+  const shown = topic.length > 6 ? topic[0] + "…" + topic.slice(-3) : "…";
+  return `${m[1]}${shown} (${topic.length} chars)`;
+}
+// POST /api/admin/alerts/test: send one notification now and report exactly what the
+// notifier answered, so a dead phone can be debugged from the Devices page.
+export async function testNotify(env) {
+  const t = now();
+  const n = await notify(env, "Wormhole test", "Test alert from the Surface. If you read this on your phone, alerts work.", "default", "white_check_mark");
+  return json({ ok: n.ok, target: describeTarget(env), error: n.error || null, ts: t });
 }
 
 // Open (or refresh) an alert under `key`; notifies on open and when RENOTIFY_S has passed.

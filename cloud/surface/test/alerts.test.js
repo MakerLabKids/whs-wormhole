@@ -1,6 +1,6 @@
 import { env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
-import { applySchema, bootstrapAdmin, edgeFetch, get } from "./helpers.js";
+import { applySchema, bootstrapAdmin, edgeFetch, get, postJson } from "./helpers.js";
 import { SILENT_S, watchEdges } from "../src/alerts.js";
 
 const T = Math.floor(Date.now() / 1000);
@@ -109,5 +109,33 @@ describe("silent Burrow watch (the cron)", () => {
     expect(open.text).toContain("530");
     out = await watchEdges(env, T + 700, async () => ({ ok: true, status: 200 }));
     expect(out.closed.map((c) => c.edge)).toContain("burrow3:tunnel");
+  });
+});
+
+describe("test alert from the Devices page", () => {
+  beforeAll(applySchema);
+
+  it("notify() reports the notifier's answer, and the target is shown masked", async () => {
+    const { notify, describeTarget } = await import("../src/alerts.js");
+    const real = globalThis.fetch;
+    globalThis.fetch = async () => new Response('{"code":40301,"http":403,"error":"forbidden"}', { status: 403 });
+    try {
+      expect(await notify({ ALERT_URL: "https://ntfy.sh/wormhole-quincy" }, "t", "x"))
+        .toEqual({ ok: false, error: 'HTTP 403 {"code":40301,"http":403,"error":"forbidden"}' });
+    } finally {
+      globalThis.fetch = real;
+    }
+    expect(describeTarget({ ALERT_URL: "ntfy.sh/wormhole-quincy" })).toBe("https://ntfy.sh/w…ncy (15 chars)");
+    expect(describeTarget({ ALERT_URL: "https://ntfy.sh/abc" })).toBe("https://ntfy.sh/… (3 chars)");
+    expect(describeTarget({})).toBe(null);
+  });
+
+  it("POST /api/admin/alerts/test needs an admin and says what happened", async () => {
+    const { cookie } = await bootstrapAdmin();
+    let r = await postJson("/api/admin/alerts/test", {});
+    expect([401, 403]).toContain(r.status);
+    r = await postJson("/api/admin/alerts/test", {}, { cookie });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ ok: false, error: "no ALERT_URL", target: null });
   });
 });

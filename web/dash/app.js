@@ -918,7 +918,8 @@
     if (!a) return '';
     var open = a.open || [];
     var html = '<h3>Alerts' + (open.length ? ' <span class="bad">' + open.length + ' open</span>' : ' <small class="good">none open</small>') +
-      ' <small class="muted">· notifier ' + esc(a.notifier || '?') + '</small></h3>';
+      ' <small class="muted">· notifier ' + esc(a.notifier || '?') + '</small>' +
+      (S.me && S.me.role === 'admin' ? ' <button type="button" id="alert-test">send a test alert to the phone</button> <span id="alert-test-out" class="muted"></span>' : '') + '</h3>';
     if (open.length) html += '<ul class="events">' + open.map(function (x) {
       return '<li class="alert">🔴 <b>' + esc(x.edge || x.key) + '</b> ' + esc(x.text) + ' <span class="muted">since ' + esc(clock(x.opened_at)) + ' (' + esc(ago(x.opened_at)) + ')' + (x.notify_error ? ' · not delivered: ' + esc(x.notify_error) : '') + '</span></li>';
     }).join('') + '</ul>';
@@ -996,6 +997,13 @@
           '<h3>Devices <small class="muted">(refreshes every 60 s)</small></h3>' +
           devicesHTML(rows.map(function (x) { return { name: x.edge, status: x.status || {}, meta: { room: x.room, last_seen: x.last_seen } }; })) +
           '<div class="card">' + eventsHTML((r[2] && r[2].events) || [], 'Recent events, all rooms') + '</div>';
+        var tb = body.querySelector('#alert-test');
+        if (tb) tb.onclick = function () {
+          var out = body.querySelector('#alert-test-out'); out.textContent = 'sending…'; tb.disabled = true;
+          api('/api/admin/alerts/test', { method: 'POST', body: {} }).then(function (j) {
+            out.innerHTML = (j.ok ? '<span class="good">delivered</span>' : '<span class="bad">not delivered: ' + esc(j.error || '?') + '</span>') + ' → ' + esc(j.target || 'no ALERT_URL');
+          }).catch(function (e) { out.innerHTML = '<span class="bad">' + esc(e.message || String(e)) + '</span>'; }).then(function () { tb.disabled = false; });
+        };
       }).catch(fail);
     });
 

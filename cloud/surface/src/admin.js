@@ -2,7 +2,7 @@
 // and the one-time bootstrap. Roles are enforced here.
 // teacher: read-only endpoints. admin: everything.
 
-import { listAlerts, listEvents } from "./alerts.js";
+import { listAlerts, listEvents, testNotify } from "./alerts.js";
 import { hashPassword, normalizePassphrase } from "./auth.js";
 import { HttpError, err, json, now, readJson, safeParse, timingSafeEqual, toInt } from "./util.js";
 
@@ -51,6 +51,7 @@ export async function handleAdmin(request, env, ctx, path, session) {
   if (sub === "/sessions" && m === "GET") return readOnly || sessions(env);
   if (sub === "/stats" && m === "GET") return readOnly || stats(env);
   if (sub === "/alerts" && m === "GET") return readOnly || listAlerts(env);
+  if (sub === "/alerts/test" && m === "POST") return adminOnly || testNotify(env);
   if (sub === "/events" && m === "GET") return readOnly || listEvents(request, env);
 
   if (sub === "/teams" && m === "GET") return adminOnly || listTeams(env);
