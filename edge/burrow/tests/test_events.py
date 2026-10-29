@@ -102,7 +102,7 @@ class QuietWatchTest(unittest.TestCase):
         self.peers["burrow2"].update(ok=True)
         self.w.tick(t=1800)
         self.assertEqual(self.kinds("peer"), ["peer.down", "peer.back"])
-        self.assertIn("13 min", [t for k, _, t in self.emitted if k == "peer.back"][0])
+        self.assertIn("11 min", [t for k, _, t in self.emitted if k == "peer.back"][0])   # down noticed at the 1100 tick
 
     def test_cloud_outage_is_reported_when_the_link_returns(self):
         self.w.tick(t=1000)
