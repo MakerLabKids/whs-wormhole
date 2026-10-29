@@ -271,3 +271,13 @@ textarea { width: 100%; min-height: 120px; }
 /* the 1 Hz live view toggle on the bin page */
 .watchbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; }
 .btn.on { background: var(--green); color: #FFF; border: 1px solid var(--green); }
+/* admin Devices page */
+.devices-wrap { background: none; box-shadow: none; padding: 0; }
+.devices-wrap > h3, .devices-wrap > p { padding: 0 4px; }
+.cards.devices { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-top: 8px; }
+.device h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.device h3 .lamp { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #9AA3AE; }
+.device.ok h3 .lamp { background: var(--ok); } .device.warn h3 .lamp { background: var(--warn); }
+.device .kv dt { min-width: 84px; }
+.device .small { font-size: 12px; }
+.device .good { color: var(--green); } .device .bad { color: var(--red); }

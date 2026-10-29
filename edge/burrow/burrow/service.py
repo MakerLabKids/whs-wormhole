@@ -12,6 +12,7 @@ from .rollups import Rollups
 from .state import Broadcaster, Now
 from .store import Store
 from .sweep import Sweep
+from .netstat import NetStat
 from .watch import Watch
 from .util import Every, log
 
@@ -31,6 +32,7 @@ class Service:
         self.cloud = Cloud(cfg, self.store, self.now, self.api_status_brief)
         self.sweep = Sweep(cfg, self.now, self.ingest)
         self.watch = Watch(cfg, self.now, self.bus, clk=self.clk)
+        self.net = NetStat(cfg)
         self.live_key = Cloud._read(cfg["cloud"].get("live_key_file"))
         self.store.on_sealed.append(self._on_sealed)
         self.counts = {"ingest": 0, "push": 0, "pull": 0, "rejected": 0}
@@ -153,13 +155,13 @@ class Service:
                 "cloud_ok": self.cloud.state.get("reachable"), "cloud_last_ok": self.cloud.state.get("last_ok"),
                 "peers_ok": sum(1 for p in self.peers.state.values() if p.get("ok")),
                 "bins": len(self.now.snapshot()), "live_clients": self.bus.count(),
-                "watching": len(self.watch.status()),
+                "watching": len(self.watch.status()), "net": self.net.brief(),
                 "tunnel": self.tunnel_brief()}
 
     def api_status(self):
         b = self.api_status_brief()
         b.update({"store": self.store.stats(), "peers": self.peers.status(), "cloud": self.cloud.status(),
-                  "sweep": self.sweep.last, "watch": self.watch.status(), "counts": self.counts,
+                  "sweep": self.sweep.last, "watch": self.watch.status(), "net": self.net.state, "counts": self.counts,
                   "clock": clock.detail(),
                   "tunnel": self.tunnel_state() or None,
                   "config": {k: v for k, v in self.cfg.items() if k not in ("cloud",)}})
@@ -191,6 +193,9 @@ class Service:
         self._loop("cloud", int(c["cloud"]["every_s"]), self.cloud.pass_once, first_delay=20)
         self._loop("sweep", int(c["sweep"]["every_s"]), self.sweep.run, first_delay=60)
         self._loop("reclaim", 3600, self.store.reclaim, first_delay=300)
+        # staggered by room so two Burrows never test the same iperf3 server at once
+        if self.net.every_s > 0:
+            self._loop("net", self.net.every_s, self.net.run_all, first_delay=120 + 200 * int(c["room"]))
         log("service: %s (room %s) v%s up" % (c["edge"], c["room"], VERSION))
 
     def stop(self):

@@ -34,6 +34,12 @@ DEFAULTS = {
         "workers": 16,
     },
     "stale_s": 180,                # a Bin is "stale" after this with no row
+    "net": {                       # measured throughput to the other Burrows (iperf3, see netstat.py)
+        "every_s": 900,
+        "seconds": 3,              # per direction, per target
+        "port": 5201,
+        "targets": None,           # None = burrow0 at 192.168.80.10 + the other Tunnels' WAN 192.168.80.2N
+    },
     "watch": {                     # 1 Hz live view: poll a watched Bin's /data while anyone watches it
         "every_s": 1.0,
         "timeout_s": 0.8,

@@ -6,9 +6,9 @@
 What a Tunnel is (the template is Tunnel 2, captured 2026-10-28):
   firmware 4.8.3; 2.4 GHz WormHole (WPA2, room channel 1/6/11, width auto) for the Bins;
   5 GHz radio repeating the Portal's hidden WPA3 WormHole-Core (auto-switch OFF, smart
-  reconnect on); TCP 8080 and 22 forwarded to the room's Burrow at 192.168.8N.10 (dashboard
-  and ssh reachable from the Portal LAN at 192.168.80.2N, so no cable turn is needed to
-  maintain a Pi); LAN 192.168.8N.1.
+  reconnect on); TCP 8080, 22 and 5201 forwarded to the room's Burrow at 192.168.8N.10
+  (dashboard, ssh and iperf3 reachable from the Portal LAN at 192.168.80.2N, so no cable
+  turn is needed to maintain a Pi and Burrows can measure each other); LAN 192.168.8N.1.
 
 Order matters and the script keeps it: a factory box gets its admin password first; the LAN
 address goes LAST because the box moves and the laptop's lease is stale afterwards. Every
@@ -46,6 +46,9 @@ def desired(room, wormhole_key, backhaul_key):
                       "enabled": True},
                      {"name": "BurrowSSH", "proto": "tcp", "src": "wan", "src_dport": "22",
                       "dest": "lan", "dest_ip": "192.168.8%d.10" % room, "dest_port": "22",
+                      "enabled": True},
+                     {"name": "BurrowIperf", "proto": "tcp", "src": "wan", "src_dport": "5201",
+                      "dest": "lan", "dest_ip": "192.168.8%d.10" % room, "dest_port": "5201",
                       "enabled": True}],
     }
 

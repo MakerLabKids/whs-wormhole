@@ -794,7 +794,48 @@
   }
 
   /* ---- view: admin (Surface, teacher/admin) --------------------------- */
-  var TABS = [['edges', 'Edges'], ['sessions', "Who's looking"], ['visits', 'Visits'], ['teams', 'Teams'], ['castings', 'Castings'], ['stats', 'Stats']];
+  var TABS = [['edges', 'Devices'], ['sessions', "Who's looking"], ['visits', 'Visits'], ['teams', 'Teams'], ['castings', 'Castings'], ['stats', 'Stats']];
+
+  /* ---- Devices: the Burrows and their Opals, as machines (not the worm data) ----------
+     One card per Burrow from its status brief: the same object a Burrow serves at
+     /api/status and uploads in every snapshot, so the Surface shows it remotely. */
+  function mbps(v) { return isNum(v) ? (v >= 100 ? Math.round(v) : v.toFixed(1)) : '–'; }
+  function dur(s) { if (!isNum(s)) return '–'; if (s < 3600) return Math.floor(s / 60) + ' min'; if (s < 86400) return (s / 3600).toFixed(1) + ' h'; return (s / 86400).toFixed(1) + ' d'; }
+  function deviceCard(name, s, meta) {
+    s = s || {}; meta = meta || {};
+    var now = nowS(), seen = meta.last_seen || s.ts, up = isNum(seen) && now - seen < 300;
+    // the snapshot carries the watchdog's brief (upstream/signal/last_event flattened); a Burrow's own
+    // /api/status carries the full state (repeater{}, events[], reboots[]): read either
+    var t = s.tunnel || {}, rep = t.repeater || {}, ev = (t.events || []).slice(-1)[0] || [];
+    var upstream = t.upstream || rep.ssid, signal = isNum(t.signal) ? t.signal : rep.signal;
+    var reboots = Array.isArray(t.reboots) ? t.reboots.length : t.reboots, lastEvent = t.last_event || ev[1], lastEventAt = t.last_event_at || ev[0];
+    var net = s.net || {}, cls = up ? (t.state && t.state !== 'ok' ? 'warn' : 'ok') : 'stale';
+    var tun = t.state ? esc(t.state) + (upstream ? ' · on <b>' + esc(upstream) + '</b>' : '') + (isNum(signal) ? ' ' + signal + ' dBm' : '') +
+      (isNum(t.clients) ? ' · ' + t.clients + ' clients' : '') + (reboots ? ' · ' + reboots + ' reboots' : '') +
+      (t.down_since ? ' · <span class="bad">down since ' + esc(clock(t.down_since)) + '</span>' : '') +
+      (lastEvent ? '<div class="muted small">' + esc(lastEvent) + (lastEventAt ? ' (' + ago(lastEventAt) + ')' : '') + '</div>' : '') : '<span class="muted">no Opal watchdog</span>';
+    var links = Object.keys(net).sort().map(function (p) {
+      var n = net[p] || {};
+      if (!n.at) return '<div><b>' + esc(p) + '</b> <span class="muted">not measured yet</span></div>';
+      if (n.error && !isNum(n.up_mbps)) return '<div><b>' + esc(p) + '</b> <span class="bad">' + esc(n.error) + '</span> <span class="muted">' + ago(n.at) + '</span></div>';
+      return '<div><b>' + esc(p) + '</b> ↑ ' + mbps(n.up_mbps) + ' ↓ ' + mbps(n.down_mbps) + ' Mbit/s <span class="muted">' + ago(n.at) + (n.error ? ' · last try failed: ' + esc(n.error) : '') + '</span></div>';
+    }).join('') || '<span class="muted">no throughput targets</span>';
+    return '<div class="card device ' + cls + '"><h3><span class="lamp tile-' + cls + '"></span>' + esc(name) + ' <small class="muted">room ' + esc(meta.room != null ? meta.room : s.room) + ' · v' + esc(s.version || '?') + '</small></h3>' +
+      '<dl class="kv">' +
+      '<dt>seen</dt><dd>' + (isNum(seen) ? esc(ago(seen)) + ' <span class="muted">(' + esc(dateTime(seen)) + ')</span>' : '–') + '</dd>' +
+      '<dt>up</dt><dd>' + dur(s.up_s) + ' <span class="muted">· clock ' + esc(s.clk || '?') + ' · disk ' + (isNum(s.disk_pct) ? s.disk_pct + '%' : '–') + '</span></dd>' +
+      '<dt>links</dt><dd>' + (s.cloud_ok ? '<span class="good">cloud ok</span>' : '<span class="bad">cloud down</span>') + (isNum(s.peers_ok) ? ' · peers ' + s.peers_ok : '') +
+        ' · bins ' + (s.bins != null ? s.bins : '–') + (s.live_clients ? ' · ' + s.live_clients + ' live viewers' : '') + (s.watching ? ' · watching ' + s.watching : '') + '</dd>' +
+      '<dt>Opal</dt><dd>' + tun + '</dd>' +
+      '<dt>throughput</dt><dd>' + links + '</dd>' +
+      (isNum(s.castings) ? '<dt>castings</dt><dd>' + s.castings + (s.unverified ? ' <span class="bad">(' + s.unverified + ' unverified)</span>' : '') + '</dd>' : '') +
+      '</dl></div>';
+  }
+  function devicesHTML(list) {
+    if (!list.length) return '<div class="empty">no Burrows have reported yet</div>';
+    return '<p class="muted">Each Burrow reports this with every snapshot (about once a minute): its Opal through the watchdog, and measured iperf3 throughput to the other Burrows every 15 minutes. Signal is what the radio says; throughput is what the link actually carried.</p>' +
+      '<div class="cards devices">' + list.map(function (x) { return deviceCard(x.name, x.status, x.meta); }).join('') + '</div>';
+  }
   function isTime(k, v) { return isNum(v) && v > 1e9 && /(^|_)(ts|at|seen|time|created|t0|t1|last_ok|expires)$/.test(k); }
   function fmtCell(k, v) {
     if (v == null) return '<span class="muted">–</span>';
@@ -820,8 +861,21 @@
 
   function viewAdmin(main, r) {
     var role = S.me && S.me.role, isAdmin = role === 'admin';
-    if (S.local || !(role === 'teacher' || isAdmin)) {
-      main.appendChild(el('div', 'card empty', S.local ? 'There is no admin page on a classroom Burrow: everything here is open, and teams live in the cloud.' : 'This page is for teachers.'));
+    if (S.local) {
+      // a Burrow has no teams or sessions, but it can show itself as a device
+      var box = el('div'); main.appendChild(box);
+      var t = setInterval(load, 60000);
+      function load() {
+        api('/api/status').then(function (s) {
+          box.innerHTML = devicesHTML([{ name: s.edge, status: s, meta: { room: s.room, last_seen: s.ts } }]) +
+            '<p class="muted">This is the Burrow\'s own view. The Surface\'s Devices page shows every room side by side.</p>';
+        }).catch(function (e) { box.innerHTML = '<div class="notice err">' + esc(e.message) + '</div>'; });
+      }
+      load();
+      return { destroy: function () { clearInterval(t); } };
+    }
+    if (!(role === 'teacher' || isAdmin)) {
+      main.appendChild(el('div', 'card empty', 'This page is for teachers.'));
       return { destroy: function () { } };
     }
     var tab = r.tab, timers = [];
@@ -835,10 +889,14 @@
     function fail(e) { body.innerHTML = '<div class="notice err">' + esc(e.message) + '</div>'; }
     function every(ms, fn) { fn(); timers.push(setInterval(fn, ms)); }
 
-    if (tab === 'edges') api('/api/admin/edges').then(function (j) {
-      var rows = Array.isArray(j) ? j : (j && (j.edges || j.rows)) || j;
-      body.innerHTML = '<h3>Burrows</h3>' + table(rows);
-    }).catch(fail);
+    if (tab === 'edges') every(60000, function () {
+      api('/api/admin/edges').then(function (j) {
+        var rows = Array.isArray(j) ? j : (j && (j.edges || j.rows)) || [];
+        body.className = 'devices-wrap';
+        body.innerHTML = '<h3>Devices <small class="muted">(refreshes every 60 s)</small></h3>' +
+          devicesHTML(rows.map(function (r) { return { name: r.edge, status: r.status || {}, meta: { room: r.room, last_seen: r.last_seen } }; }));
+      }).catch(fail);
+    });
 
     else if (tab === 'sessions') every(30000, function () {
       api('/api/admin/sessions').then(function (j) {

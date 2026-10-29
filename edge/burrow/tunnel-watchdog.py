@@ -328,12 +328,13 @@ def opal_facts(r):
     return facts
 
 
-FORWARDS = (("Burrow", "8080"), ("BurrowSSH", "22"))
+FORWARDS = (("Burrow", "8080"), ("BurrowSSH", "22"), ("BurrowIperf", "5201"))
 
 
 def ensure_forwards(r, host, room):
-    """Keep this Pi reachable from the Portal LAN without a cable turn: TCP 8080 (dashboard)
-    and 22 (ssh) on the Tunnel's WAN side forward to the Pi at .10. Never on the Portal
+    """Keep this Pi reachable from the Portal LAN without a cable turn: TCP 8080 (dashboard),
+    22 (ssh) and 5201 (iperf3, throughput tests) on the Tunnel's WAN side forward to the Pi
+    at .10. Never on the Portal
     itself (room 0): its WAN is the school net. Returns the ports added this run."""
     if room not in (1, 2, 3):
         return []

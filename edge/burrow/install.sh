@@ -9,6 +9,11 @@ REPO="$(cd "$HERE/../.." && pwd)"
 if grep -q 'boot=overlay' /proc/cmdline; then
   echo "root is read-only (overlay active). Run burrow-unlock.sh, reboot, then install."; exit 1
 fi
+# iperf3 server always on (port 5201): the Burrows measure each other (netstat.py)
+if ! command -v iperf3 >/dev/null; then
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iperf3 >/dev/null 2>&1 || echo "iperf3 install failed (offline?); throughput tests will report it"
+fi
+systemctl enable --now iperf3 >/dev/null 2>&1 || true
 mkdir -p /opt/burrow/www
 rm -rf /opt/burrow/burrow
 cp -r "$HERE/burrow" /opt/burrow/burrow

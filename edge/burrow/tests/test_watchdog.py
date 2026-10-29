@@ -241,11 +241,12 @@ class Runs(unittest.TestCase):
         self.run_at(1000)
         adds = self.calls("firewall", "add_port_forward")
         self.assertEqual([(a["src_dport"], a["dest_ip"], a["dest_port"]) for a in adds],
-                         [("8080", "192.168.81.10", "8080"), ("22", "192.168.81.10", "22")])
+                         [("8080", "192.168.81.10", "8080"), ("22", "192.168.81.10", "22"), ("5201", "192.168.81.10", "5201")])
         self.assertIn("port forward added: tcp 22 -> Pi", [e[1] for e in self.state()["events"]])
         # next run: the Opal has them, nothing is added again
         FakeRouter.NEXT_FORWARDS = [{"src_dport": "8080", "dest_ip": "192.168.81.10", "proto": "tcp"},
-                                    {"src_dport": "22", "dest_ip": "192.168.81.10", "proto": "tcp"}]
+                                    {"src_dport": "22", "dest_ip": "192.168.81.10", "proto": "tcp"},
+                                    {"src_dport": "5201", "dest_ip": "192.168.81.10", "proto": "tcp"}]
         FakeRouter.LOG = []
         self.run_at(1120)
         self.assertEqual(self.calls("firewall", "add_port_forward"), [])

@@ -95,7 +95,7 @@ plus `"team","period","bin","room"` lifted out of `d.bin` for convenience.
 | `GET /api/history?uid=&from=&to=&step=5m\|1h` | `{"uid","step","points":[[ts, {metric:[min,avg,max,n]}], ...]}` |
 | `GET /live` (Burrow) / `GET /live/<room>` (Surface) | SSE. `event: hello` on connect with `{edge, room, ts, bins, watching}` (the now-table); then `event: row` per ingest with `{"uid", "entry"}` where `entry` is that Bin's now-table entry (`ts, clk, src, edge, room, name, team, period, bin, home_room, d`). Surface replies 503 when the room's tunnel is down; the page falls back to polling |
 | `GET /live?watch=<uid>[,<uid>]` | the 1 Hz live view: for as long as this client is connected the Burrow polls each listed Bin's `/data` once a second (config `watch.every_s`) and sends `event: live` with the same `{"uid", "entry"}` shape, `src: "live"`. Nothing is stored, the now-table and the cloud keep the 60 s push cadence; one poller per Bin however many viewers; unknown Bins are ignored (`hello.watching` lists the accepted ones); at most `watch.max_bins` (8) per Burrow. The Surface passes `watch` through on `/live/<room>` |
-| `GET /api/status` (Burrow) | peers, cloud, disk, clock, counts, `tunnel` (the Opal watchdog's full state: repeater, cloud_ok, clients, uptime_s, reboots[], wifi_fallback, events[]) |
+| `GET /api/status` (Burrow) | peers, cloud, disk, clock, counts, `tunnel` (the Opal watchdog's full state: repeater, cloud_ok, clients, uptime_s, reboots[], wifi_fallback, events[]), `net` (iperf3 throughput to each other Burrow: host, up_mbps, down_mbps, at, error, history[[at, up, down]]), `watch` (1 Hz pollers) |
 
 ## Rollups
 
