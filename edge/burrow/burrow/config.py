@@ -39,6 +39,9 @@ DEFAULTS = {
         "seconds": 3,              # per direction, per target
         "port": 5201,
         "targets": None,           # None = burrow0 at 192.168.80.10 + the other Tunnels' WAN 192.168.80.2N
+        "internet_url": "https://speed.cloudflare.com",   # timed download/upload + latency; 0 bytes = off
+        "internet_bytes_down": 8000000,
+        "internet_bytes_up": 2000000,
     },
     "watch": {                     # 1 Hz live view: poll a watched Bin's /data while anyone watches it
         "every_s": 1.0,

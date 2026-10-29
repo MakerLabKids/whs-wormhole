@@ -810,15 +810,16 @@
     var upstream = t.upstream || rep.ssid, signal = isNum(t.signal) ? t.signal : rep.signal;
     var reboots = Array.isArray(t.reboots) ? t.reboots.length : t.reboots, lastEvent = t.last_event || ev[1], lastEventAt = t.last_event_at || ev[0];
     var net = s.net || {}, cls = up ? (t.state && t.state !== 'ok' ? 'warn' : 'ok') : 'stale';
+    var netNames = Object.keys(net).sort(function (a, b) { return (a === 'internet') - (b === 'internet') || a.localeCompare(b); });   // peers first, internet last
     var tun = t.state ? esc(t.state) + (upstream ? ' · on <b>' + esc(upstream) + '</b>' : '') + (isNum(signal) ? ' ' + signal + ' dBm' : '') +
       (isNum(t.clients) ? ' · ' + t.clients + ' clients' : '') + (reboots ? ' · ' + reboots + ' reboots' : '') +
       (t.down_since ? ' · <span class="bad">down since ' + esc(clock(t.down_since)) + '</span>' : '') +
       (lastEvent ? '<div class="muted small">' + esc(lastEvent) + (lastEventAt ? ' (' + ago(lastEventAt) + ')' : '') + '</div>' : '') : '<span class="muted">no Opal watchdog</span>';
-    var links = Object.keys(net).sort().map(function (p) {
+    var links = netNames.map(function (p) {
       var n = net[p] || {};
       if (!n.at) return '<div><b>' + esc(p) + '</b> <span class="muted">not measured yet</span></div>';
       if (n.error && !isNum(n.up_mbps)) return '<div><b>' + esc(p) + '</b> <span class="bad">' + esc(n.error) + '</span> <span class="muted">' + ago(n.at) + '</span></div>';
-      return '<div><b>' + esc(p) + '</b> ↑ ' + mbps(n.up_mbps) + ' ↓ ' + mbps(n.down_mbps) + ' Mbit/s <span class="muted">' + ago(n.at) + (n.error ? ' · last try failed: ' + esc(n.error) : '') + '</span></div>';
+      return '<div><b>' + esc(p) + '</b> ↑ ' + mbps(n.up_mbps) + ' ↓ ' + mbps(n.down_mbps) + ' Mbit/s' + (isNum(n.ms) ? ' · ' + n.ms + ' ms' : '') + ' <span class="muted">' + ago(n.at) + (n.error ? ' · last try failed: ' + esc(n.error) : '') + '</span></div>';
     }).join('') || '<span class="muted">no throughput targets</span>';
     return '<div class="card device ' + cls + '"><h3><span class="lamp tile-' + cls + '"></span>' + esc(name) + ' <small class="muted">room ' + esc(meta.room != null ? meta.room : s.room) + ' · v' + esc(s.version || '?') + '</small></h3>' +
       '<dl class="kv">' +
@@ -833,7 +834,7 @@
   }
   function devicesHTML(list) {
     if (!list.length) return '<div class="empty">no Burrows have reported yet</div>';
-    return '<p class="muted">Each Burrow reports this with every snapshot (about once a minute): its Opal through the watchdog, and measured iperf3 throughput to the other Burrows every 15 minutes. Signal is what the radio says; throughput is what the link actually carried.</p>' +
+    return '<p class="muted">Each Burrow reports this with every snapshot (about once a minute): its Opal through the watchdog, and every 15 minutes measured throughput: iperf3 to the other Burrows, and a timed download, upload and latency sample to the internet (speed.cloudflare.com). Signal is what the radio says; throughput is what the link actually carried.</p>' +
       '<div class="cards devices">' + list.map(function (x) { return deviceCard(x.name, x.status, x.meta); }).join('') + '</div>';
   }
   function isTime(k, v) { return isNum(v) && v > 1e9 && /(^|_)(ts|at|seen|time|created|t0|t1|last_ok|expires)$/.test(k); }

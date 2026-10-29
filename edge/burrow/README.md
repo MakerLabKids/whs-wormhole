@@ -23,7 +23,9 @@ burrow/           the service (python3 -m burrow)
   netstat.py      measured throughput to the other Burrows: iperf3 3 s up + 3 s down against
                   burrow0 (192.168.80.10) and the other Tunnels' WAN (192.168.80.2N, where each
                   Tunnel forwards 5201 to its Pi) every 15 min, staggered by room. Latest
-                  numbers in the status brief -> cloud snapshot -> admin Devices page
+                  numbers in the status brief -> cloud snapshot -> admin Devices page. The same
+                  run times an 8 MB download / 2 MB upload + latency to speed.cloudflare.com
+                  ("internet" row; net.internet_bytes_* = 0 turns it off)
   watch.py        the 1 Hz live view: while a viewer's stream carries ?watch=<uid> the Burrow
                   polls that Bin's /data every second and fans it out as `event: live`
                   (not stored: the archive stays at the Bins' 60 s push). One poller per
