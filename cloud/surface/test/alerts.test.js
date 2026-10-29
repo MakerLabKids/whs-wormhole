@@ -60,17 +60,29 @@ describe("silent Burrow watch (the cron)", () => {
   it("opens an alert for a silent edge and closes it when it reports again", async () => {
     await env.DB.prepare("INSERT OR REPLACE INTO edges (edge_id, room, ts, clk, snapshot, status, updated_at) VALUES ('burrow2', 2, ?1, 'ntp', '{}', '{}', ?1)").bind(T - SILENT_S - 120).run();
     await env.DB.prepare("INSERT OR REPLACE INTO edges (edge_id, room, ts, clk, snapshot, status, updated_at) VALUES ('burrow3', 3, ?1, 'ntp', '{}', '{}', ?1)").bind(T - 30).run();
-    let out = await watchEdges(env, T);
+    const fine = async () => ({ ok: true, status: 200 });
+    let out = await watchEdges(env, T, fine);
     expect(out.silent).toEqual(["burrow2"]);
     expect(out.opened).toEqual(["burrow2"]);
-    out = await watchEdges(env, T + 60);                 // still silent: no second alert row
+    out = await watchEdges(env, T + 60, fine);           // still silent: no second alert row
     expect(out.opened).toEqual([]);
     expect((await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE key = 'edge:burrow2'").first("n"))).toBe(1);
     await env.DB.prepare("UPDATE edges SET updated_at = ?1 WHERE edge_id = 'burrow2'").bind(T + 600).run();
-    out = await watchEdges(env, T + 610);
+    out = await watchEdges(env, T + 610, fine);
     expect(out.closed[0].edge).toBe("burrow2");
     expect(out.closed[0].minutes).toBeGreaterThanOrEqual(9);
     const row = await env.DB.prepare("SELECT closed_at FROM alerts WHERE key = 'edge:burrow2'").first();
     expect(row.closed_at).toBeTruthy();
+  });
+
+  it("a live Burrow whose tunnel answers 530 gets its own alert, closed when the tunnel is back", async () => {
+    const dead = async (env, id) => (id === "burrow3" ? { ok: false, status: 530 } : { ok: true, status: 200 });
+    let out = await watchEdges(env, T + 620, dead);
+    expect(out.tunnel_down).toEqual(["burrow3"]);
+    expect(out.opened).toContain("burrow3:tunnel");
+    const open = await env.DB.prepare("SELECT text FROM alerts WHERE key = 'tunnel:burrow3' AND closed_at IS NULL").first();
+    expect(open.text).toContain("530");
+    out = await watchEdges(env, T + 700, async () => ({ ok: true, status: 200 }));
+    expect(out.closed.map((c) => c.edge)).toContain("burrow3:tunnel");
   });
 });

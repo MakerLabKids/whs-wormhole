@@ -89,13 +89,40 @@ export async function postEvents(request, env, edge) {
   return json({ ok: true, n: rows.length, notified });
 }
 
-// The cron: a Burrow that stopped reporting, and one that came back.
-export async function watchEdges(env, t = now()) {
+// Is this Burrow's Cloudflare tunnel answering? (The Live page, the signal meter and the
+// 1 Hz view all ride on it; snapshots do not, so a dead tunnel is otherwise invisible.)
+export async function probeTunnel(env, edgeId) {
+  const room = (edgeId.match(/(\d)$/) || [])[1];
+  if (room === undefined || !env.TUNNEL_DOMAIN || env.TUNNEL_PROBE === "0") return null;
+  try {
+    const r = await fetch(`https://burrow${room}.${env.TUNNEL_DOMAIN}/health`,
+      { headers: { "x-burrow-key": env.LIVE_KEY || "" }, signal: AbortSignal.timeout(8000) });
+    return { ok: r.ok, status: r.status };
+  } catch (e) {
+    return { ok: false, status: 0, error: String(e?.message || e).slice(0, 80) };
+  }
+}
+
+// The cron: a Burrow that stopped reporting, and one that came back; a tunnel that died.
+export async function watchEdges(env, t = now(), probe = probeTunnel) {
   const { results } = await env.DB.prepare("SELECT edge_id, room, updated_at FROM edges").all();
-  const out = { opened: [], closed: [], silent: [] };
+  const out = { opened: [], closed: [], silent: [], tunnel_down: [] };
   for (const r of results) {
     const age = t - (r.updated_at || 0);
     const key = `edge:${r.edge_id}`;
+    if (age <= SILENT_S) {                       // only a live Burrow can have a dead tunnel worth a call
+      const p = await probe(env, r.edge_id);
+      if (p && !p.ok) {
+        out.tunnel_down.push(r.edge_id);
+        const res = await openAlert(env, `tunnel:${r.edge_id}`, r.edge_id, `${r.edge_id} tunnel down`,
+          `${r.edge_id} (room ${r.room}) reports fine but its Cloudflare tunnel answers ${p.status || p.error}: no Live page, signal meter or 1/s view for that room.`,
+          "default", "warning", t);
+        if (res.opened) out.opened.push(r.edge_id + ":tunnel");
+      } else if (p && p.ok) {
+        const res = await closeAlert(env, `tunnel:${r.edge_id}`, `${r.edge_id} tunnel back`, `${r.edge_id} (room ${r.room}) tunnel answers again.`, t);
+        if (res) out.closed.push({ edge: r.edge_id + ":tunnel", minutes: res.minutes });
+      }
+    }
     if (age > SILENT_S) {
       out.silent.push(r.edge_id);
       const last = r.updated_at ? new Date(r.updated_at * 1000).toISOString().slice(11, 16) + " UTC" : "never";
