@@ -19,7 +19,9 @@ const RENOTIFY_S = 15 * 60;            // same alert key again only after this
 export function alertUrl(env) {
   const u = (env.ALERT_URL || "").trim();
   if (!u) return null;
-  return /^https?:\/\//i.test(u) ? u : "https://" + u;      // "ntfy.sh/topic" is what people type
+  if (/^https?:\/\//i.test(u)) return u;
+  if (!u.includes("/") && !u.includes(".")) return "https://ntfy.sh/" + u;   // just a topic name: ntfy.sh is the default server
+  return "https://" + u;                                               // "ntfy.sh/topic" is what people type
 }
 
 export async function notify(env, title, text, priority = "high", tags = "warning") {

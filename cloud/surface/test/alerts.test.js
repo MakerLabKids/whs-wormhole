@@ -74,6 +74,7 @@ describe("a neighbour reports a dead Burrow", () => {
     const { alertUrl } = await import("../src/alerts.js");
     expect(alertUrl({ ALERT_URL: "ntfy.sh/wormhole-quincy" })).toBe("https://ntfy.sh/wormhole-quincy");
     expect(alertUrl({ ALERT_URL: " https://ntfy.sh/x " })).toBe("https://ntfy.sh/x");
+    expect(alertUrl({ ALERT_URL: "wormhole-quincy" })).toBe("https://ntfy.sh/wormhole-quincy");   // a bare topic (what was in the secret tonight)
     expect(alertUrl({})).toBe(null);
   });
 });
