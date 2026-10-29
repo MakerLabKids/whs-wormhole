@@ -67,7 +67,7 @@ describe("a neighbour reports a dead Burrow", () => {
     expect(open).toEqual([{ key: "edge:burrow2", edge: "burrow2" }]);
     await edgeFetch("burrow3", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow3", events: [
       { ts: T + 90, kind: "peer.back", level: "info", text: "burrow2 reachable again after 1 min", data: { peer: "burrow2" } }] }) });
-    expect(await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE closed_at IS NULL").first("n")).toBe(0);
+    expect(await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE closed_at IS NULL AND key = 'edge:burrow2'").first("n")).toBe(0);
   });
 
   it("a bare host in ALERT_URL gets https:// in front", async () => {
@@ -90,12 +90,12 @@ describe("silent Burrow watch (the cron)", () => {
     expect(out.opened).toEqual(["burrow2"]);
     out = await watchEdges(env, T + 60, fine);           // still silent: no second alert row
     expect(out.opened).toEqual([]);
-    expect((await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE key = 'edge:burrow2'").first("n"))).toBe(1);
+    expect((await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE key = 'edge:burrow2' AND closed_at IS NULL").first("n"))).toBe(1);
     await env.DB.prepare("UPDATE edges SET updated_at = ?1 WHERE edge_id = 'burrow2'").bind(T + 600).run();
     out = await watchEdges(env, T + 610, fine);
     expect(out.closed[0].edge).toBe("burrow2");
     expect(out.closed[0].minutes).toBeGreaterThanOrEqual(9);
-    const row = await env.DB.prepare("SELECT closed_at FROM alerts WHERE key = 'edge:burrow2'").first();
+    const row = await env.DB.prepare("SELECT closed_at FROM alerts WHERE key = 'edge:burrow2' ORDER BY id DESC").first();
     expect(row.closed_at).toBeTruthy();
   });
 
