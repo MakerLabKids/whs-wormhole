@@ -76,6 +76,7 @@ describe("silent Burrow watch (the cron)", () => {
   });
 
   it("a live Burrow whose tunnel answers 530 gets its own alert, closed when the tunnel is back", async () => {
+    await env.DB.prepare("UPDATE edges SET updated_at = ?1 WHERE edge_id = 'burrow3'").bind(T + 600).run();   // alive: worth a probe
     const dead = async (env, id) => (id === "burrow3" ? { ok: false, status: 530 } : { ok: true, status: 200 });
     let out = await watchEdges(env, T + 620, dead);
     expect(out.tunnel_down).toEqual(["burrow3"]);
