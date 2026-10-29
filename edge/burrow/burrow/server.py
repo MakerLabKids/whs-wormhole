@@ -5,6 +5,7 @@
             GET  /live?watch=<uid>[,<uid>]  the same stream plus `event: live` once a second
                  for those Bins (the Burrow polls their /data while this client is connected)
   Peers     GET  /castings  /castings/<id>  /castings/<id>/meta  /health
+  Local     GET  /api/events (recent)   POST /api/event (the Opal watchdog reports in; LAN only)
 """
 import json
 import mimetypes
@@ -91,6 +92,8 @@ class Handler(BaseHTTPRequestHandler):
         path = urllib.parse.urlsplit(self.path).path
         if path == "/ingest":
             return self._ingest()
+        if path == "/api/event":
+            return self._event()
         self._json({"error": "not found"}, 404)
 
     def do_GET(self):
@@ -112,6 +115,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(svc.api_status())
             if path == "/api/history":
                 return self._json(svc.api_history(q))
+            if path == "/api/events":
+                return self._json({"edge": svc.cfg["edge"], "events": svc.events.recent[-100:], "state": svc.events.state})
             if path == "/api/me":
                 return self._json({"ok": True, "role": "local", "name": "classroom", "team": None, "local": True})
             if path == "/live":
@@ -159,6 +164,22 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": False, "error": "no id"}, 400)
         self._json({"ok": True, "ts": row["ts"], "edge": self.svc.cfg["edge"],
                     "room": self.svc.cfg["room"]})
+
+    def _event(self):
+        """The tunnel watchdog (a separate root process on this Pi) hands its events in here."""
+        if self._via_tunnel() or not self.client_address[0].startswith("127."):
+            return self._json({"ok": False, "error": "local only"}, 403)
+        body = self._read_body()
+        try:
+            d = json.loads((body or b"{}").decode("utf-8"))
+            kind, text = str(d.get("kind") or "opal"), str(d.get("text") or "")
+            level = d.get("level") if d.get("level") in ("info", "warn", "alert") else "info"
+        except Exception as e:
+            return self._json({"ok": False, "error": "bad json: %s" % e}, 400)
+        if not text:
+            return self._json({"ok": False, "error": "text required"}, 400)
+        self.svc.events.emit(kind, text, level, d.get("data") if isinstance(d.get("data"), dict) else None)
+        self._json({"ok": True})
 
     def _live(self, params=None):
         svc = self.svc

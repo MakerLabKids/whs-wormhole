@@ -34,6 +34,7 @@ DEFAULTS = {
         "workers": 16,
     },
     "stale_s": 180,                # a Bin is "stale" after this with no row
+    "quiet_alert_s": 600,          # ...and an event goes to the cloud when it has been silent this long
     "net": {                       # measured throughput to the other Burrows (iperf3, see netstat.py)
         "every_s": 900,
         "seconds": 3,              # per direction, per target

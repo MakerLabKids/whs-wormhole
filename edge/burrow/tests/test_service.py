@@ -190,6 +190,25 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual(s.counts["ingest"], 1)
         pico.shutdown()
 
+    def test_events_reach_the_surface_and_the_watchdog_can_report(self):
+        fs = FakeSurface(token="tok1")
+        tf = os.path.join(self.tmp, "tok1"); open(tf, "w").write("tok1")
+        s = self.svc("burrow1", 1, cloud_url=fs.url, token_file=tf)
+        for _ in range(50):           # the start event goes out on its own
+            if fs.events: break
+            time.sleep(0.05)
+        self.assertEqual(fs.events[0]["kind"], "burrow.start")
+        code, j = http("POST", s.url + "/api/event", {"kind": "opal", "level": "alert", "text": "down 15 min: rebooted the Opal (#1)"})
+        self.assertEqual((code, j["ok"]), (200, True))
+        for _ in range(50):
+            if len(fs.events) >= 2: break
+            time.sleep(0.05)
+        self.assertEqual((fs.events[1]["kind"], fs.events[1]["level"]), ("opal", "alert"))
+        code, j = http("GET", s.url + "/api/events")
+        self.assertEqual([e["kind"] for e in j["events"]], ["burrow.start", "opal"])
+        self.assertEqual(s.api_status_brief()["events"]["sent"], 2)
+        fs.close()
+
     def test_peer_replication_and_cloud_cycle(self):
         tok = os.path.join(self.tmp, "cloud.token")
         with open(tok, "w") as f:

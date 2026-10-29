@@ -204,6 +204,13 @@ class Cloud:
                 break
         return True
 
+    def send_events(self, events):
+        """POST a batch of events; True when the Surface took them."""
+        if not self.enabled():
+            return False
+        j, _ = self._call("POST", "/v1/edge/events", {"edge": self.cfg["edge"], "events": events})
+        return bool(isinstance(j, dict) and j.get("ok"))
+
     def status(self):
         s = dict(self.state)
         s["enabled"] = self.enabled()

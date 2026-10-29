@@ -15,6 +15,8 @@ class FakeSurface:
         self.castings = {}       # id -> meta (+verified_at, rollups_at)
         self.rollups = {}        # (uid, step, ts) -> data
         self.snapshots = []
+        self.events = []
+        self.reject_events = False
         self.calls = []
         self.lock = threading.Lock()
         outer = self
@@ -59,6 +61,11 @@ class FakeSurface:
                     if self.path == "/v1/edge/snapshot":
                         outer.snapshots.append(body)
                         return self._send(200, {"ok": True})
+                    if self.path == "/v1/edge/events":
+                        if outer.reject_events:
+                            return self._send(503, {"ok": False, "error": "try later"})
+                        outer.events.extend(body.get("events") or [])
+                        return self._send(200, {"ok": True, "n": len(body.get("events") or [])})
                     if self.path == "/v1/edge/rollups":
                         cid = body.get("casting")
                         for r in body.get("rows", []):

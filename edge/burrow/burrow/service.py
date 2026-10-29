@@ -7,6 +7,7 @@ import time
 
 from . import VERSION, clock, config, server, util
 from .cloud import Cloud
+from .events import Events, QuietWatch
 from .peers import Peers
 from .rollups import Rollups
 from .state import Broadcaster, Now
@@ -33,6 +34,8 @@ class Service:
         self.sweep = Sweep(cfg, self.now, self.ingest)
         self.watch = Watch(cfg, self.now, self.bus, clk=self.clk)
         self.net = NetStat(cfg)
+        self.events = Events(cfg, send=self.cloud.send_events)
+        self.quietwatch = QuietWatch(cfg, self.now, self.peers.state, self.cloud.state, self.events)
         self.live_key = Cloud._read(cfg["cloud"].get("live_key_file"))
         self.store.on_sealed.append(self._on_sealed)
         self.counts = {"ingest": 0, "push": 0, "pull": 0, "rejected": 0}
@@ -156,12 +159,14 @@ class Service:
                 "peers_ok": sum(1 for p in self.peers.state.values() if p.get("ok")),
                 "bins": len(self.now.snapshot()), "live_clients": self.bus.count(),
                 "watching": len(self.watch.status()), "net": self.net.brief(),
+                "events": self.events.state, "quiet": sorted(self.quietwatch.quiet),
                 "tunnel": self.tunnel_brief()}
 
     def api_status(self):
         b = self.api_status_brief()
         b.update({"store": self.store.stats(), "peers": self.peers.status(), "cloud": self.cloud.status(),
                   "sweep": self.sweep.last, "watch": self.watch.status(), "net": self.net.state, "counts": self.counts,
+                  "recent_events": self.events.recent[-50:],
                   "clock": clock.detail(),
                   "tunnel": self.tunnel_state() or None,
                   "config": {k: v for k, v in self.cfg.items() if k not in ("cloud",)}})
@@ -184,13 +189,21 @@ class Service:
         t.start()
         return t
 
+    def _cloud_pass(self):
+        if self.cloud.pass_once():
+            self.events.kick()          # the link is proven: push anything still queued
+
     def start(self):
         self.httpd = server.serve(self)
         c = self.cfg
+        self.events.start()
+        self.events.emit("burrow.start", "%s v%s started (room %s)" % (c["edge"], VERSION, c["room"]), "info",
+                         {"version": VERSION, "queued": self.events.state["queued"]})
         self._loop("fsync", int(c["fsync_s"]), self.store.fsync)
         self._loop("seal", 10, self.store.seal)
         self._loop("peers", int(c["replicate_every_s"]), self.peers.replicate_all, first_delay=15)
-        self._loop("cloud", int(c["cloud"]["every_s"]), self.cloud.pass_once, first_delay=20)
+        self._loop("cloud", int(c["cloud"]["every_s"]), self._cloud_pass, first_delay=20)
+        self._loop("quiet", 10, self.quietwatch.tick, first_delay=30)
         self._loop("sweep", int(c["sweep"]["every_s"]), self.sweep.run, first_delay=60)
         self._loop("reclaim", 3600, self.store.reclaim, first_delay=300)
         # staggered by room so two Burrows never test the same iperf3 server at once
@@ -200,6 +213,7 @@ class Service:
 
     def stop(self):
         self._stop.set()
+        self.events.stop()
         try:
             self.store.fsync()
             self.httpd.shutdown()

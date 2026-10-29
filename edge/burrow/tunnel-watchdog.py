@@ -287,11 +287,30 @@ def save_state(st):
         pass
 
 
+ALERT_WORDS = ("rebooted", "no configured upstream", "reboot request failed", "fallback")
+
+
+def tell_burrow(text, now):
+    """Hand the event to the Burrow on this Pi so it reaches the Surface now, not at the next
+    snapshot. Level: alert when the Opal is being rebooted or nothing is reachable, else warn."""
+    import urllib.request
+    level = "alert" if any(w in text for w in ALERT_WORDS) else "warn"
+    body = json.dumps({"kind": "opal", "level": level, "text": text, "data": {"at": int(now)}}).encode()
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8080/api/event", data=body, method="POST",
+                                     headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=2).read()
+    except Exception:
+        pass
+
+
 def event(st, now, text):
     """Append to the short event log; a repeat of the last line is folded into
     it with a count, so a join every 90 s cannot push a reboot out of view."""
     print(text)
     ev = st.setdefault("events", [])
+    if not (ev and ev[-1][1] == text[:160]):
+        tell_burrow(text, now)
     if ev and ev[-1][1] == text[:160]:
         ev[-1] = [int(now), text[:160], ev[-1][2] + 1 if len(ev[-1]) > 2 else 2]
     else:
