@@ -13,12 +13,15 @@ The same run also measures the way OUT: a timed download and upload against Clou
 speed-test endpoint (speed.cloudflare.com, no account needed), so the "internet" row on the
 Devices page says what the school uplink really gives this room.
 
-Every row also gets a real ping: 5 ICMP echoes (ms = average round trip, ms_max, loss_pct) to
-the peer, and to 1.1.1.1 for the internet row (ttfb_ms keeps the HTTPS first-byte time, which
-includes the TLS handshake and so runs about three times the ping).
+Every row also gets a round-trip time: for the internet row 5 ICMP echoes to 1.1.1.1 (ms =
+average, ms_max, loss_pct; ttfb_ms keeps the HTTPS first-byte time, which includes the TLS
+handshake and so runs about ten times the ping); for the peers 5 TCP connects to the iperf3
+port, because an Opal's WAN side drops ICMP while the forwarded ports answer, and the TCP
+handshake crosses exactly the path the data takes.
 """
 import json
 import re
+import socket
 import shutil
 import subprocess
 import time
@@ -35,7 +38,7 @@ def default_targets(room):
 
 
 class NetStat:
-    def __init__(self, cfg, runner=None, which=shutil.which, http=None, pinger=None):
+    def __init__(self, cfg, runner=None, which=shutil.which, http=None, pinger=None, tcp_pinger=None):
         n = cfg.get("net") or {}
         self.every_s = int(n.get("every_s", 900))
         self.seconds = int(n.get("seconds", 3))
@@ -48,6 +51,7 @@ class NetStat:
         self.inet_up = int(n.get("internet_bytes_up", 2_000_000))
         self.http = http or self._http
         self.pinger = pinger or self._ping
+        self.tcp_pinger = tcp_pinger or self._tcp_ping
         self.ping_host = n.get("ping_host", "1.1.1.1")
         self.state = {name: {"host": host, "up_mbps": None, "down_mbps": None, "ms": None, "ms_max": None, "loss_pct": None,
                              "at": None, "error": None, "history": []}
@@ -80,7 +84,7 @@ class NetStat:
         st = self.state[name]
         st["at"] = util.now()
         st["error"] = None
-        self.ping(st, st["host"])
+        self.ping(st, st["host"], self.port)
         if not self.which("iperf3"):
             st["error"] = "iperf3 not installed"
             return st
@@ -111,9 +115,27 @@ class NetStat:
             out["ms_max"] = round(float(rtt.group(3)), 1)
         return out
 
-    def ping(self, st, host):
+    @staticmethod
+    def _tcp_ping(host, port, count=5, timeout=1.0):
+        """Round trip of a TCP handshake, count times: {'ms', 'ms_max', 'loss_pct'} like parse_ping."""
+        rtts = []
+        for _ in range(count):
+            t0 = time.monotonic()
+            try:
+                s = socket.create_connection((host, port), timeout=timeout)
+                rtts.append((time.monotonic() - t0) * 1000)
+                s.close()
+            except OSError:
+                pass
+            time.sleep(0.2)
+        if not rtts:
+            return {"ms": None, "ms_max": None, "loss_pct": 100.0}
+        return {"ms": round(sum(rtts) / len(rtts), 1), "ms_max": round(max(rtts), 1),
+                "loss_pct": round(100.0 * (count - len(rtts)) / count, 1)}
+
+    def ping(self, st, host, port=None):
         try:
-            st.update(self.parse_ping(self.pinger(host)))
+            st.update(self.tcp_pinger(host, port) if port else self.parse_ping(self.pinger(host)))
         except Exception as e:
             st.update(ms=None, ms_max=None, loss_pct=100.0)
             st["error"] = (st.get("error") or "") or "ping: %s" % str(e)[:80]
