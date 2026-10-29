@@ -65,9 +65,10 @@ class WatchTest(unittest.TestCase):
         pico = FakePico()
         w = Watch(cfg(), self.now, self.bus, fetch=pico)
         self.assertTrue(w.add(UID))
+        t1 = w.bins[UID]["thread"]
         self.assertTrue(w.add(UID))
         self.assertEqual(w.status()[UID]["viewers"], 2)
-        self.assertEqual(sum(1 for t in threading.enumerate() if t.name.startswith("watch-")), 1)
+        self.assertIs(w.bins[UID]["thread"], t1)                 # the second viewer shares the poller
         w.remove(UID)
         self.assertEqual(w.status()[UID]["viewers"], 1)         # still polling for the other viewer
         w.remove(UID)

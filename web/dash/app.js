@@ -820,8 +820,10 @@
     var links = netNames.map(function (p) {
       var n = net[p] || {};
       if (!n.at) return '<div><b>' + esc(p) + '</b> <span class="muted">not measured yet</span></div>';
-      if (n.error && !isNum(n.up_mbps)) return '<div><b>' + esc(p) + '</b> <span class="bad">' + esc(n.error) + '</span> <span class="muted">' + ago(n.at) + '</span></div>';
-      return '<div><b>' + esc(p) + '</b> ↑ ' + mbps(n.up_mbps) + ' ↓ ' + mbps(n.down_mbps) + ' Mbit/s' + (isNum(n.ms) ? ' · ' + n.ms + ' ms' : '') + ' <span class="muted">' + ago(n.at) + (n.error ? ' · last try failed: ' + esc(n.error) : '') + '</span></div>';
+      var ping = isNum(n.ms) ? ' · ping ' + n.ms + ' ms' + (isNum(n.ms_max) && n.ms_max > 3 * n.ms ? ' <span class="muted">(max ' + n.ms_max + ')</span>' : '') : (isNum(n.loss_pct) ? ' · <span class="bad">no ping reply</span>' : '');
+      var loss = isNum(n.loss_pct) && n.loss_pct > 0 && n.loss_pct < 100 ? ' · <span class="bad">' + n.loss_pct + '% loss</span>' : '';
+      if (n.error && !isNum(n.up_mbps)) return '<div><b>' + esc(p) + '</b> <span class="bad">' + esc(n.error) + '</span>' + ping + loss + ' <span class="muted">' + ago(n.at) + '</span></div>';
+      return '<div><b>' + esc(p) + '</b> ↑ ' + mbps(n.up_mbps) + ' ↓ ' + mbps(n.down_mbps) + ' Mbit/s' + ping + loss + ' <span class="muted">' + ago(n.at) + (n.error ? ' · last try failed: ' + esc(n.error) : '') + '</span></div>';
     }).join('') || '<span class="muted">no throughput targets</span>';
     return '<div class="card device ' + cls + '"><h3><span class="lamp tile-' + cls + '"></span>' + esc(name) + ' <small class="muted">room ' + esc(meta.room != null ? meta.room : s.room) + ' · v' + esc(s.version || '?') + '</small></h3>' +
       '<dl class="kv">' +
