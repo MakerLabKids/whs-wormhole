@@ -29,8 +29,9 @@
 # read SHORT, worse the dimmer they are (a module read 900 mm against a
 # wall at 1120 mm). Calibrate once per module against a plain wall at a
 # tape-measured distance, then pass the kcps figure to every init:
-#   tof = VL53L1X(i2c, roi=8, xtalk=2900)
-#   kcps = tof.calibrate_xtalk(1120)   # wall at 1120 mm, 50 samples, same roi
+#   tof = VL53L1X(i2c, roi=8, xtalk=2900, offset=15)
+#   mm = tof.calibrate_offset(100)      # first: wall at 100 mm
+#   kcps = tof.calibrate_xtalk(1120)    # then: wall at 1120 mm, same roi
 
 import time
 
@@ -57,11 +58,12 @@ VALID_STATUSES = (9, 8)
 
 
 class VL53L1X:
-  def __init__(self, i2c, address=0x29, roi=16, xtalk=0):
+  def __init__(self, i2c, address=0x29, roi=16, xtalk=0, offset=0):
     self.i2c = i2c
     self.address = address
     self.roi = 16
     self.xtalk = 0
+    self.offset = 0
     if address not in i2c.scan():
       raise OSError("VL53L1X not found at 0x29")
 
@@ -90,10 +92,53 @@ class VL53L1X:
     # outer offset = inner offset * 4
     self._write16(0x001E, self._read16(0x0022) * 4)
     time.sleep_ms(200)
+    if offset:
+      self.set_offset(offset)
     if xtalk:
       self.set_xtalk(xtalk)
     if roi != 16:
       self.set_roi(roi)
+
+  def set_offset(self, mm):
+    """Zero offset in mm, added to every reading (ST VL53L1X_SetOffset).
+    Replaces the factory part-to-part value the init copied in."""
+    mm = int(mm)
+    self._write8(0x0087, 0x00)
+    time.sleep_ms(30)
+    self._write16(0x001E, (mm * 4) & 0xFFFF)   # ALGO__PART_TO_PART_RANGE_OFFSET_MM
+    self._write16(0x0020, 0)                   # MM_CONFIG__INNER_OFFSET_MM
+    self._write16(0x0022, 0)                   # MM_CONFIG__OUTER_OFFSET_MM
+    self._write8(0x0086, 0x01)
+    self._write8(0x0087, 0x40)
+    self.offset = mm
+
+  def _average_range(self, samples, timeout_ms=30000):
+    n = total = 0
+    prev = None
+    deadline = time.ticks_add(time.ticks_ms(), timeout_ms)
+    while n < samples and time.ticks_diff(time.ticks_ms(), deadline) < 0:
+      d = self.i2c.readfrom_mem(self.address, 0x0089, 17, addrsize=16)
+      k = bytes(d)
+      if k != prev:
+        prev = k
+        if d[0] & 0x1F == 9:
+          n += 1
+          total += (d[13] << 8) | d[14]
+      time.sleep_ms(20)
+    if n < 10:
+      raise OSError("only %d valid samples" % n)
+    return total / n
+
+  def calibrate_offset(self, target_mm, samples=50):
+    """ST VL53L1X_CalibrateOffset: plain target square to the sensor at a
+    known SHORT distance (ST uses 140 mm) where crosstalk cannot matter.
+    Do this BEFORE calibrate_xtalk. Applies and returns the offset in mm
+    for VL53L1X(..., offset=mm)."""
+    self.set_offset(0)
+    time.sleep_ms(300)
+    mm = int(round(target_mm - self._average_range(samples)))
+    self.set_offset(mm)
+    return mm
 
   def set_xtalk(self, kcps):
     """Crosstalk compensation in kcps (ST VL53L1X_SetXtalk). 0 disables."""

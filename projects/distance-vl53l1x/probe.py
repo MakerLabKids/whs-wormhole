@@ -23,7 +23,9 @@ SECONDS = 8          # how long to measure
 ROI = 16             # 16 = full ~27 deg cone, 8 = ~20 deg, 4 = ~15 deg
 LABEL = "probe"
 XTALK = 0            # crosstalk compensation, kcps (from calibrate_xtalk); 0 = off
+OFFSET = 0           # zero offset, mm (from calibrate_offset); 0 = factory value
 CALIBRATE_MM = 0     # >0: calibrate crosstalk against a target at this distance first
+CALIBRATE_OFFSET_MM = 0   # >0: calibrate the zero offset against a target at this (short) distance first
 
 STATUS = {9: "OK", 8: "minrange", 6: "sigma-fail", 4: "signal-fail",
           5: "wraparound", 7: "wrap-fail", 3: "hw-fail", 19: "nowrapchk", 12: "xtalk"}
@@ -39,14 +41,21 @@ def flash(n, on_ms, off_ms):
 Pin(2, Pin.IN); Pin(3, Pin.IN)       # GPIO1 / XSHUT released if wired
 bus = I2C(0, sda=Pin(0), scl=Pin(1), freq=400000)
 from vl53l1x import VL53L1X
-dev = VL53L1X(bus, xtalk=XTALK)
+dev = VL53L1X(bus, xtalk=XTALK, offset=OFFSET)
 
-print("== %s | roi %d | xtalk %d kcps | %d s ==" % (LABEL, ROI, XTALK, SECONDS))
+print("== %s | roi %d | xtalk %d kcps | offset %d mm | %d s ==" % (LABEL, ROI, XTALK, OFFSET, SECONDS))
 print("GET READY: 5 slow flashes")
 flash(5, 1000, 1000)
 if ROI != 16:
   dev.set_roi(ROI)
   time.sleep_ms(300)
+if CALIBRATE_OFFSET_MM:
+  print("CALIBRATING zero offset against a target at %d mm with roi %d (~10 s)" % (CALIBRATE_OFFSET_MM, ROI))
+  led.on()
+  mm = dev.calibrate_offset(CALIBRATE_OFFSET_MM)
+  led.off()
+  time.sleep_ms(300)
+  print("OFFSET = %d mm for roi %d (pass as offset= to VL53L1X, or OFFSET in this file)" % (mm, ROI))
 if CALIBRATE_MM:
   print("CALIBRATING crosstalk against a target at %d mm with roi %d (~10 s)" % (CALIBRATE_MM, ROI))
   led.on()
