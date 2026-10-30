@@ -55,29 +55,55 @@ Narrower collects less light, so reach drops. The driver scales the
 sensor's minimum-signal limit with the ROI so a small region is not
 rejected for light it never had. `tof.set_roi(n)` switches it live.
 
-## Crosstalk: why a wall at 112 cm read 90 cm
+## Calibration: offset first, then crosstalk
 
-Some emitter light reaches the receiver without leaving the module. The
-chip can subtract it, but only if told how much, and these boards ship
-with that number at zero. Untold, far and dim targets read short, and the
-dimmer the target the shorter: one module read a plain wall at 1120 mm as
-900 mm with the full cone, 929 mm with `ROI = 8`, 1023 mm with `ROI = 4`,
-while a book at 500 mm was only 22 mm short. A hand in front looks fine,
-which is why it goes unnoticed.
+Two numbers per module, both volatile (the chip forgets them at power-off,
+the driver writes them at every init from the demo's constants):
 
-Calibrate once per module, with the ROI you will use, against a plain
-wall at a tape-measured distance with nothing else in the cone and the
-person well out of it:
+1. **Zero offset** (`OFFSET`, mm). ST: a flat target at 140 mm, 50 samples.
+   One bench module read 83 mm at a 100 mm wall; offset = +17.
+2. **Crosstalk** (`XTALK`, kcps). Light from the emitter that reaches the
+   receiver without leaving the module. The chip subtracts it if told how
+   much; untold, far and dim targets read short, and the dimmer the target
+   the shorter. ST: a target at ~600 mm where the under-read shows. Do this
+   AFTER the offset, with the same `ROI` the demo will use (crosstalk is not
+   flat across the pixel grid). Calibrating before the offset inflated the
+   value by 80% on the bench module.
 
-    tools/laser-probe.sh 8 8 mywall 0 1120     # seconds, ROI, label, xtalk 0, wall at 1120 mm
+Both in one go against a wall at a tape-measured distance, nothing else in
+the cone, the person well out of it (watch the LED, see the probe below):
 
-It prints `XTALK = <n> kcps`; paste `n` into `XTALK` in the demo (and keep
-`ROI` the same). Measured on that module against the 1120 mm wall after
-calibration: full cone 1129 mm (3357 kcps), `ROI = 8` 1128 mm (3226 kcps),
-`ROI = 4` 1095 mm (1570 kcps). The crosstalk is stronger at the edges of the
-pixel grid, so the full-cone figure over-corrects a 4x4 centre by 13%:
-calibrate per ROI, do not reuse. Driver calls: `tof.calibrate_xtalk(mm)`
-returns the kcps, `VL53L1X(i2c, roi=8, xtalk=n)` applies it.
+    tools/laser-probe.sh 8 8 close 0 0 0 100        # wall at 100 mm -> prints OFFSET = n
+    tools/laser-probe.sh 8 8 far 0 985 17 0         # wall at 985 mm, offset 17 -> prints XTALK = k
+
+Paste `n` and `k` into `OFFSET` and `XTALK`. Check with
+`OFF=17 X8=1328 tools/laser-sweep.sh 500 check` at a couple of distances.
+
+**Bench module, 2026-10-29/30**, `ROI = 8`, offset 17 mm, crosstalk 1328 kcps:
+
+| Truth | Reading | Error |
+| ----- | ------- | ----- |
+| 100 mm | 100 mm | 0 |
+| 500 mm | 497 mm | -3 mm |
+| 985 mm | 977 mm | -8 mm |
+| 2000 mm | no valid reading | wall return below the crosstalk |
+
+Uncalibrated the same module read 900 mm at a 1120 mm wall.
+
+**Direct crosstalk measurement.** Point the sensor where nothing exists within
+5 m (an open door at night) and run the probe with `XTALK` 0. A clean module
+reports no target. This one reported a solid "target" at 59 mm with 1.78 MCPS
+on the full array, nothing on the 4x4 centre (0.11 MCPS = 1/16 of it: the leak
+is uniform across the grid). 1.78 MCPS is the crosstalk, and it matches the
+1818 kcps the ST formula derived. It also sets the module's reach: a white wall
+returns ~0.8 MCPS at 2 m, less than half the crosstalk, and no compensation
+recovers that. **Trust this module to about 1 m, not 4.** Whether that is one
+board or the batch is unknown; test any new module at 1 m uncalibrated and
+with the open-door check before relying on the range figure.
+
+The `ROI = 4` centre is the exception that proves it: it needed no crosstalk
+term, but read 3 cm long at 500 mm under every setting, so it is the least
+accurate region on this module despite the narrow view.
 
 ## Bench probe with a signal light
 
@@ -86,8 +112,9 @@ the chip's own health numbers (range status, return signal, ambient light,
 sigma) and drives the Pico LED so the person holding a target, or staying
 out of the beam, does not need to see a terminal: five slow flashes mean
 get ready, a fast flicker means measuring, one long ON means done. Run it
-with `tools/laser-probe.sh <seconds> <roi> <label> [xtalk_kcps] [calibrate_mm]`;
-transcripts land in `~/.cache/wormhole-bench/`.
+with `tools/laser-probe.sh <seconds> <roi> <label> [xtalk_kcps] [calibrate_mm] [offset_mm] [calibrate_offset_mm]`;
+transcripts land in `~/.cache/wormhole-bench/`. `tools/laser-sweep.sh <truth_mm> <label>`
+runs all three ROIs against one known distance and prints each error.
 
 Things the probe found on the bench (October 2026):
 
@@ -102,7 +129,8 @@ Things the probe found on the bench (October 2026):
   surface under a board lying a few centimetres above it.
 - **Ambient above about 1 MCPS** in the probe output means a light source
   is in the cone. A lit fixture close by read 6 MCPS and made one sample
-  in four fail as wraparound.
+  in four fail as wraparound; a lamp near a 2 m target read 8 MCPS and
+  turned the wall into readings of 200 to 400 mm until it was switched off.
 - **A hand-held target under-reads** unless it is square to the sensor and
   fills the cone. Use a wall for accuracy checks.
 

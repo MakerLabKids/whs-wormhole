@@ -32,16 +32,16 @@ picolab.banner("VL53L1X Bench Demo", [
 # 8 = ~20 degrees, 4 = ~15 degrees (ignores the desk, a lamp beside the
 # target, or the person watching, but reaches ~1.5 m). See lib/vl53l1x.py.
 ROI = 8
-# Crosstalk compensation in kcps, per module, 0 = off. Without it far or
-# dim targets read short (one module: 900 mm against a wall at 1120 mm).
-# Get the number once with tools/laser-probe.sh <s> <ROI> <label> 0 <wall_mm>
-# and paste it here (calibrate with the same ROI as above).
+# Per-module calibration, both 0 = factory. See README "Calibration".
+# OFFSET first (mm, wall at 100 mm), then XTALK (kcps, wall at ~1 m, same ROI).
+# Uncalibrated, one module read 83 mm at 100 mm and 900 mm at 1120 mm.
+OFFSET = 0
 XTALK = 0
 
 
 def connect():
   from vl53l1x import VL53L1X
-  return VL53L1X(picolab.i2c(), roi=ROI, xtalk=XTALK)
+  return VL53L1X(picolab.i2c(), roi=ROI, xtalk=XTALK, offset=OFFSET)
 
 
 def read(dev):
