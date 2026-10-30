@@ -22,6 +22,8 @@ from machine import Pin, I2C
 SECONDS = 8          # how long to measure
 ROI = 16             # 16 = full ~27 deg cone, 8 = ~20 deg, 4 = ~15 deg
 LABEL = "probe"
+XTALK = 0            # crosstalk compensation, kcps (from calibrate_xtalk); 0 = off
+CALIBRATE_MM = 0     # >0: calibrate crosstalk against a target at this distance first
 
 STATUS = {9: "OK", 8: "minrange", 6: "sigma-fail", 4: "signal-fail",
           5: "wraparound", 7: "wrap-fail", 3: "hw-fail", 19: "nowrapchk", 12: "xtalk"}
@@ -37,11 +39,21 @@ def flash(n, on_ms, off_ms):
 Pin(2, Pin.IN); Pin(3, Pin.IN)       # GPIO1 / XSHUT released if wired
 bus = I2C(0, sda=Pin(0), scl=Pin(1), freq=400000)
 from vl53l1x import VL53L1X
-dev = VL53L1X(bus, roi=ROI)
+dev = VL53L1X(bus, xtalk=XTALK)
 
-print("== %s | roi %d | %d s ==" % (LABEL, ROI, SECONDS))
+print("== %s | roi %d | xtalk %d kcps | %d s ==" % (LABEL, ROI, XTALK, SECONDS))
 print("GET READY: 5 slow flashes")
 flash(5, 1000, 1000)
+if ROI != 16:
+  dev.set_roi(ROI)
+  time.sleep_ms(300)
+if CALIBRATE_MM:
+  print("CALIBRATING crosstalk against a target at %d mm with roi %d (~10 s)" % (CALIBRATE_MM, ROI))
+  led.on()
+  kcps = dev.calibrate_xtalk(CALIBRATE_MM)
+  led.off()
+  time.sleep_ms(300)
+  print("XTALK = %d kcps for roi %d (pass as xtalk= to VL53L1X, or XTALK in this file)" % (kcps, ROI))
 print("MEASURING")
 print("    t  status        range   signal  ambient  sigma")
 t0 = time.ticks_ms(); prev = None; rows = []; tick = 0

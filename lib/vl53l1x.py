@@ -22,6 +22,15 @@
 # ~4 m on a white wall in the dark, 4x4 struggles past ~1.5 m. The
 # minimum-signal limit is scaled with the ROI so a small region is not
 # rejected for the light it never had.
+#
+# Crosstalk. Some light from the emitter reaches the receiver without ever
+# leaving the module (cover glass, package, board). The chip subtracts a
+# per-SPAD crosstalk rate if told what it is; untold, far or dim targets
+# read SHORT, worse the dimmer they are (a module read 900 mm against a
+# wall at 1120 mm). Calibrate once per module against a plain wall at a
+# tape-measured distance, then pass the kcps figure to every init:
+#   tof = VL53L1X(i2c, roi=8, xtalk=2900)
+#   kcps = tof.calibrate_xtalk(1120)   # wall at 1120 mm, 50 samples, same roi
 
 import time
 
@@ -48,10 +57,11 @@ VALID_STATUSES = (9, 8)
 
 
 class VL53L1X:
-  def __init__(self, i2c, address=0x29, roi=16):
+  def __init__(self, i2c, address=0x29, roi=16, xtalk=0):
     self.i2c = i2c
     self.address = address
     self.roi = 16
+    self.xtalk = 0
     if address not in i2c.scan():
       raise OSError("VL53L1X not found at 0x29")
 
@@ -80,8 +90,53 @@ class VL53L1X:
     # outer offset = inner offset * 4
     self._write16(0x001E, self._read16(0x0022) * 4)
     time.sleep_ms(200)
+    if xtalk:
+      self.set_xtalk(xtalk)
     if roi != 16:
       self.set_roi(roi)
+
+  def set_xtalk(self, kcps):
+    """Crosstalk compensation in kcps (ST VL53L1X_SetXtalk). 0 disables."""
+    self._write8(0x0087, 0x00)
+    time.sleep_ms(30)
+    self._write16(0x0018, 0)              # x gradient
+    self._write16(0x001A, 0)              # y gradient
+    self._write16(0x0016, (int(kcps) << 9) // 1000)   # plane offset, 9.7 kcps
+    self._write8(0x0086, 0x01)
+    self._write8(0x0087, 0x40)
+    self.xtalk = int(kcps)
+
+  def calibrate_xtalk(self, target_mm, samples=50):
+    """ST VL53L1X_CalibrateXtalk: with a plain target square to the sensor
+    at a known distance (compensation off), average the reported distance,
+    signal rate and SPAD count, derive the crosstalk, apply it, and return
+    it in kcps for VL53L1X(..., xtalk=kcps). Calibrate with the ROI you
+    will use: crosstalk is stronger at the edges of the grid, so the
+    full-array figure over-corrects a 4x4 centre by ~13%."""
+    self.set_xtalk(0)
+    time.sleep_ms(300)
+    n = d_sum = sr_sum = sp_sum = 0
+    prev = None
+    deadline = time.ticks_add(time.ticks_ms(), 30000)
+    while n < samples and time.ticks_diff(time.ticks_ms(), deadline) < 0:
+      d = self.i2c.readfrom_mem(self.address, 0x0089, 17, addrsize=16)
+      k = bytes(d)
+      if k != prev:
+        prev = k
+        if d[0] & 0x1F == 9:
+          n += 1
+          d_sum += (d[13] << 8) | d[14]
+          sr_sum += ((d[15] << 8) | d[16]) * 8          # kcps
+          sp_sum += ((d[3] << 8) | d[4]) >> 8           # effective SPADs
+      time.sleep_ms(20)
+    if n < 10:
+      raise OSError("calibrate_xtalk: only %d valid samples" % n)
+    avg_d, avg_sr, avg_sp = d_sum / n, sr_sum / n, sp_sum / n
+    cal = int(512 * (avg_sr * (1 - avg_d / target_mm)) / avg_sp)
+    cal = max(0, min(cal, 0xFFFF))
+    kcps = (cal * 1000) >> 9
+    self.set_xtalk(kcps)
+    return kcps
 
   def set_roi(self, size):
     """Range over only the centre size x size SPADs (4..16). Restarts

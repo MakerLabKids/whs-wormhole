@@ -55,6 +55,30 @@ Narrower collects less light, so reach drops. The driver scales the
 sensor's minimum-signal limit with the ROI so a small region is not
 rejected for light it never had. `tof.set_roi(n)` switches it live.
 
+## Crosstalk: why a wall at 112 cm read 90 cm
+
+Some emitter light reaches the receiver without leaving the module. The
+chip can subtract it, but only if told how much, and these boards ship
+with that number at zero. Untold, far and dim targets read short, and the
+dimmer the target the shorter: one module read a plain wall at 1120 mm as
+900 mm with the full cone, 929 mm with `ROI = 8`, 1023 mm with `ROI = 4`,
+while a book at 500 mm was only 22 mm short. A hand in front looks fine,
+which is why it goes unnoticed.
+
+Calibrate once per module, with the ROI you will use, against a plain
+wall at a tape-measured distance with nothing else in the cone and the
+person well out of it:
+
+    tools/laser-probe.sh 8 8 mywall 0 1120     # seconds, ROI, label, xtalk 0, wall at 1120 mm
+
+It prints `XTALK = <n> kcps`; paste `n` into `XTALK` in the demo (and keep
+`ROI` the same). Measured on that module against the 1120 mm wall after
+calibration: full cone 1129 mm (3357 kcps), `ROI = 8` 1128 mm (3226 kcps),
+`ROI = 4` 1095 mm (1570 kcps). The crosstalk is stronger at the edges of the
+pixel grid, so the full-cone figure over-corrects a 4x4 centre by 13%:
+calibrate per ROI, do not reuse. Driver calls: `tof.calibrate_xtalk(mm)`
+returns the kcps, `VL53L1X(i2c, roi=8, xtalk=n)` applies it.
+
 ## Bench probe with a signal light
 
 `probe.py` is a diagnostic, not a demo. It prints every measurement with
@@ -62,8 +86,8 @@ the chip's own health numbers (range status, return signal, ambient light,
 sigma) and drives the Pico LED so the person holding a target, or staying
 out of the beam, does not need to see a terminal: five slow flashes mean
 get ready, a fast flicker means measuring, one long ON means done. Run it
-with `tools/laser-probe.sh <seconds> <roi> <label>`; transcripts land in
-`~/.cache/wormhole-bench/`.
+with `tools/laser-probe.sh <seconds> <roi> <label> [xtalk_kcps] [calibrate_mm]`;
+transcripts land in `~/.cache/wormhole-bench/`.
 
 Things the probe found on the bench (October 2026):
 
