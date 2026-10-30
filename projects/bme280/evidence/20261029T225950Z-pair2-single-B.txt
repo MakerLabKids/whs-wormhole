@@ -1,0 +1,64 @@
+# Thu Oct 29 22:59:50 UTC 2026  label: pair2-single-B  port: /dev/host/ttyACM0
+Bosch BMx280 identifier  |  board unique id 8E B5 2B 7B 43 C1 F6 D8  |  MicroPython 1.28.0
+Scanning all 12 valid Pico I2C pin pairs, addresses 0x08-0x77:
+  I2C0 SDA=GP0 SCL=GP1      : 0x76 Bosch BMx280 (SDO low)
+  I2C0 SDA=GP4 SCL=GP5      : (nothing)
+  I2C0 SDA=GP8 SCL=GP9      : (nothing)
+  I2C0 SDA=GP12 SCL=GP13    : (nothing)
+  I2C0 SDA=GP16 SCL=GP17    : (nothing)
+  I2C0 SDA=GP20 SCL=GP21    : (nothing)
+  I2C1 SDA=GP2 SCL=GP3      : (nothing)
+  I2C1 SDA=GP6 SCL=GP7      : (nothing)
+  I2C1 SDA=GP10 SCL=GP11    : (nothing)
+  I2C1 SDA=GP14 SCL=GP15    : (nothing)
+  I2C1 SDA=GP18 SCL=GP19    : (nothing)
+  I2C1 SDA=GP26 SCL=GP27    : (nothing)
+
+================================================================
+DEVICE at 0x76 on I2C0 SDA=GP0 SCL=GP1
+================================================================
+chip ID register 0xD0 = 0x58  ->  BMP280 (temp + pressure, NO humidity sensor)
+ctrl_hum 0xF2 after writing 0x01 = 0x00   (reads back 0x01 on a BME280; 0xF2 is not a documented register on a BMP280)
+ctrl_meas 0xF4 = 0x27   config 0xF5 = 0x00
+T/P calibration 0x88-0xA1: AF 6D 14 66 32 00 1E 8E 4D D6 D0 0B 2A 17 35 00 F9 FF 8C 3C F8 C6 70 17 00 45
+humidity calibration 0xA1,0xE1-0xE7: 45 00 00 00 00 00 00 00   (BME280: real numbers; BMP280: zeros/garbage)
+
+   #   temp_C  press_hPa   hum_%   raw humidity 0xFD-0xFE
+   1    25.02     983.95     n/a   0x8E70
+   2    25.02     984.01     n/a   0x8E70
+   3    25.02     984.04     n/a   0x8E70
+   4    25.00     984.01     n/a   0x8E70
+   5    25.01     983.90     n/a   0x8E70
+  (0xFD-0xFE are not documented registers on a BMP280; the value is a constant, not a measurement)
+
+BREATH TEST: breathe on the sensor for the next 10 seconds...
+  t= 0.0s  temp 25.01 C  press  984.02 hPa  humidity    n/a %  raw 0x8E70
+  t= 0.5s  temp 25.01 C  press  983.96 hPa  humidity    n/a %  raw 0x8E70
+  t= 1.0s  temp 25.01 C  press  983.94 hPa  humidity    n/a %  raw 0x8E70
+  t= 1.5s  temp 24.99 C  press  983.94 hPa  humidity    n/a %  raw 0x8E70
+  t= 2.0s  temp 25.00 C  press  984.01 hPa  humidity    n/a %  raw 0x8E70
+  t= 2.5s  temp 25.00 C  press  983.92 hPa  humidity    n/a %  raw 0x8E70
+  t= 3.0s  temp 25.01 C  press  983.97 hPa  humidity    n/a %  raw 0x8E70
+  t= 3.5s  temp 25.01 C  press  983.97 hPa  humidity    n/a %  raw 0x8E70
+  t= 4.0s  temp 25.01 C  press  984.01 hPa  humidity    n/a %  raw 0x8E70
+  t= 4.5s  temp 25.01 C  press  983.97 hPa  humidity    n/a %  raw 0x8E70
+  t= 5.0s  temp 25.01 C  press  983.99 hPa  humidity    n/a %  raw 0x8E70
+  t= 5.5s  temp 25.00 C  press  983.95 hPa  humidity    n/a %  raw 0x8E70
+  t= 6.0s  temp 25.01 C  press  984.01 hPa  humidity    n/a %  raw 0x8E70
+  t= 6.5s  temp 25.00 C  press  983.89 hPa  humidity    n/a %  raw 0x8E70
+  t= 7.0s  temp 25.01 C  press  984.02 hPa  humidity    n/a %  raw 0x8E70
+  t= 7.5s  temp 25.00 C  press  984.01 hPa  humidity    n/a %  raw 0x8E70
+  t= 8.1s  temp 25.00 C  press  984.01 hPa  humidity    n/a %  raw 0x8E70
+  t= 8.6s  temp 25.00 C  press  983.94 hPa  humidity    n/a %  raw 0x8E70
+  t= 9.1s  temp 24.99 C  press  983.91 hPa  humidity    n/a %  raw 0x8E70
+  t= 9.6s  temp 25.00 C  press  984.01 hPa  humidity    n/a %  raw 0x8E70
+  raw humidity register during breath test: 0x8E70 .. 0x8E70  (never changed)
+
+VERDICT for 0x76:
+  temperature sensor : WORKING  (25.00 C)
+  pressure sensor    : WORKING  (984.01 hPa)
+  humidity sensor    : NOT PRESENT. Chip ID 0x58 is a BMP280 (temp + pressure, NO humidity sensor).
+  Humidity data register reads 0x8E70 and never changed during the breath test; the chip has no humidity hardware.
+  This part is NOT a BME280.
+
+done.

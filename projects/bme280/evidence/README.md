@@ -31,3 +31,20 @@ Camera metadata stripped; each photo carries a caption and the summary above in 
 - `20261028-photo-03-suspect-only-pico-and-module.jpg`: same setup, side view.
 - `20261028-photo-04-both-modules-genuine-bme280-added.jpg`: genuine six-pin BME280 added at 0x77.
 - `20261028-photo-05-both-modules-suspect-side.jpg`: same, from the suspect's side.
+
+## 2026-10-29: two more modules, a different order (not part of the seller packet)
+
+Same test, same Pico. Both modules from a separate purchase showed the identical
+signature: chip ID 0x58, humidity calibration all zeros, humidity register frozen
+through the breath test, temperature and pressure working.
+
+- `20261029T225139Z-pair2-both.txt`: both on the bus, 0x76 and 0x77. Both 0x58.
+- `20261029T225431Z-pair2-sdo-low.txt`: **what an address collision looks like.** Both
+  SDO pins tied low put both at 0x76; the calibration bytes read back as the bitwise
+  AND of the two chips' tables (I2C is wired-AND) and temperature came out at -130 C.
+- `20261029T225725Z-pair2-single-A.txt`, `20261029T225950Z-pair2-single-B.txt`: the same
+  module alone, first at 0x77 then at 0x76 (identical calibration table = same die).
+
+**Visual tell:** the metal sensor can on every BMP280 module is visibly smaller than
+on a genuine BME280. That matches Bosch's packages: BMP280 is 2.0 x 2.5 mm, BME280 is
+2.5 x 2.5 mm, about 25% more area.
