@@ -37,6 +37,51 @@ Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-distan
 Files needed on the board: the version you chose, plus `index.html` (web
 version only), plus from `lib/`: `picolab.py`, `vl53l1x.py`, `ssd1306.py`.
 
+## Field of view (the `ROI` knob)
+
+The chip sees a cone about 27 degrees wide. At 1 m that is a patch half a
+metre across, and it reports the nearest strong thing anywhere in it: the
+desk it is sitting on, a lamp beside the target, or the person leaning
+over to watch. Both demos have an `ROI` constant at the top that narrows
+the cone by using only the centre of the sensor's 16x16 pixel grid:
+
+| `ROI` | Cone | Reach (white wall, dim room) | Use it for |
+| ----- | ---- | ---------------------------- | ---------- |
+| 16 | ~27 deg | ~4 m | room-scale, the longest reach |
+| 8 | ~20 deg | ~2.5 m | the default here: forgiving of clutter |
+| 4 | ~15 deg | ~1.5 m | a bin or a shelf, when only the middle matters |
+
+Narrower collects less light, so reach drops. The driver scales the
+sensor's minimum-signal limit with the ROI so a small region is not
+rejected for light it never had. `tof.set_roi(n)` switches it live.
+
+## Bench probe with a signal light
+
+`probe.py` is a diagnostic, not a demo. It prints every measurement with
+the chip's own health numbers (range status, return signal, ambient light,
+sigma) and drives the Pico LED so the person holding a target, or staying
+out of the beam, does not need to see a terminal: five slow flashes mean
+get ready, a fast flicker means measuring, one long ON means done. Run it
+with `tools/laser-probe.sh <seconds> <roi> <label>`; transcripts land in
+`~/.cache/wormhole-bench/`.
+
+Things the probe found on the bench (October 2026):
+
+- **No device anywhere, but SDA and SCL both idle high:** the two data
+  wires are swapped. The chip answers only with SDA on GP0 and SCL on GP1.
+- **Six-pin boards (VIN GND SCL SDA GPIO1 XSHUT):** leave GPIO1 and XSHUT
+  unconnected. XSHUT pulled low puts the chip to sleep and it vanishes
+  from the bus. GPIO1 is the chip's interrupt output; never drive it.
+- **Readings far too short and jumpy:** something closer is inside the
+  cone. The usual suspects, in the order we hit them: the person watching
+  (30 to 40 cm away, leaning over the desk), a ceiling lamp, the desk
+  surface under a board lying a few centimetres above it.
+- **Ambient above about 1 MCPS** in the probe output means a light source
+  is in the cone. A lit fixture close by read 6 MCPS and made one sample
+  in four fail as wraparound.
+- **A hand-held target under-reads** unless it is square to the sensor and
+  fills the cone. Use a wall for accuracy checks.
+
 ## Notes
 
 - The sensor free-runs at roughly 10 readings per second in long-range

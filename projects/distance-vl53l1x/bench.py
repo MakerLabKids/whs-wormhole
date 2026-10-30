@@ -28,9 +28,15 @@ picolab.banner("VL53L1X Bench Demo", [
 ])
 
 
+# Field of view: 16 = the full ~27 degree cone (longest reach, ~4 m),
+# 8 = ~20 degrees, 4 = ~15 degrees (ignores the desk, a lamp beside the
+# target, or the person watching, but reaches ~1.5 m). See lib/vl53l1x.py.
+ROI = 8
+
+
 def connect():
   from vl53l1x import VL53L1X
-  return VL53L1X(picolab.i2c())
+  return VL53L1X(picolab.i2c(), roi=ROI)
 
 
 def read(dev):

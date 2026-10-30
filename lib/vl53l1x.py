@@ -9,8 +9,19 @@
 # read() also returns the range status so demos can show "no target".
 #
 #   from vl53l1x import VL53L1X
-#   tof = VL53L1X(i2c)
+#   tof = VL53L1X(i2c)          # full 27 degree cone
+#   tof = VL53L1X(i2c, roi=8)   # ~20 degree cone (see ROI below)
 #   mm, valid = tof.read()
+#
+# ROI (field of view). The chip ranges over a 16x16 grid of SPADs; using
+# only the centre NxN narrows the cone: 16 = ~27 deg (ST's figure),
+# 8 = ~20 deg, 4 = ~15 deg (the minimum ST allows). Narrower means the
+# sensor ignores things at the edge of the view (the desk under it, a
+# lamp beside the target, the person watching) but it also collects
+# proportionally less light, so the usable range shrinks: 16x16 reaches
+# ~4 m on a white wall in the dark, 4x4 struggles past ~1.5 m. The
+# minimum-signal limit is scaled with the ROI so a small region is not
+# rejected for the light it never had.
 
 import time
 
@@ -37,9 +48,10 @@ VALID_STATUSES = (9, 8)
 
 
 class VL53L1X:
-  def __init__(self, i2c, address=0x29):
+  def __init__(self, i2c, address=0x29, roi=16):
     self.i2c = i2c
     self.address = address
+    self.roi = 16
     if address not in i2c.scan():
       raise OSError("VL53L1X not found at 0x29")
 
@@ -48,9 +60,16 @@ class VL53L1X:
     if self._read16(0x010F) != MODEL_ID:
       raise OSError("not a VL53L1X (bad model id)")
 
-    # Wait for firmware boot (FIRMWARE__SYSTEM_STATUS bit 0)
+    # Wait for firmware boot (FIRMWARE__SYSTEM_STATUS bit 0). The chip
+    # may not ACK at all for a few ms after a reset, so a bus error here
+    # is "not yet", not "gone".
     deadline = time.ticks_add(time.ticks_ms(), 1000)
-    while not (self._read8(0x00E5) & 0x01):
+    while True:
+      try:
+        if self._read8(0x00E5) & 0x01:
+          break
+      except OSError:
+        pass
       if time.ticks_diff(time.ticks_ms(), deadline) > 0:
         raise OSError("VL53L1X boot timeout")
       time.sleep_ms(10)
@@ -61,6 +80,24 @@ class VL53L1X:
     # outer offset = inner offset * 4
     self._write16(0x001E, self._read16(0x0022) * 4)
     time.sleep_ms(200)
+    if roi != 16:
+      self.set_roi(roi)
+
+  def set_roi(self, size):
+    """Range over only the centre size x size SPADs (4..16). Restarts
+    ranging; the next read() is valid after ~200 ms."""
+    size = max(4, min(16, int(size)))
+    self._write8(0x0087, 0x00)            # stop ranging
+    time.sleep_ms(30)
+    self._write8(0x007F, 199)             # ROI centre = array centre
+    self._write8(0x0080, ((size - 1) << 4) | (size - 1))
+    # Min count rate limit, 9.7 fixed point MCPS. ST default 1.0 MCPS for
+    # 256 SPADs; scale by the SPAD count, floor 0.125 MCPS.
+    limit = max(16, (128 * size * size) // 256)
+    self._write16(0x0066, limit)
+    self._write8(0x0086, 0x01)            # clear interrupt
+    self._write8(0x0087, 0x40)            # start ranging
+    self.roi = size
 
   def _write8(self, reg, value):
     self.i2c.writeto_mem(self.address, reg, bytes([value]), addrsize=16)
