@@ -97,9 +97,17 @@ on the full array, nothing on the 4x4 centre (0.11 MCPS = 1/16 of it: the leak
 is uniform across the grid). 1.78 MCPS is the crosstalk, and it matches the
 1818 kcps the ST formula derived. It also sets the module's reach: a white wall
 returns ~0.8 MCPS at 2 m, less than half the crosstalk, and no compensation
-recovers that. **Trust this module to about 1 m, not 4.** Whether that is one
-board or the batch is unknown; test any new module at 1 m uncalibrated and
-with the open-door check before relying on the range figure.
+recovers that. **Trust this module to about 1 m, not 4.**
+
+The cause is visible: the bench board is a **TOF400C-VL53L1X**, whose chip
+sits under a glossy black IR-pass cap, one oval over both the emitter and
+the receiver with no opaque divider and an air gap beneath. ST's cover
+window rules (a light barrier between the two apertures, minimal air gap)
+exist precisely because this geometry bounces emitter light into the
+receiver. The chip under the cap is a sealed part with its own glass;
+removing the cap should take the crosstalk to near zero and the reach back
+toward 4 m (then recalibrate). Test any other board type at 1 m uncalibrated
+and with the open-door check before relying on the range figure.
 
 The `ROI = 4` centre is the exception that proves it: it needed no crosstalk
 term, but read 3 cm long at 500 mm under every setting, so it is the least
