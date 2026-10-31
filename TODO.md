@@ -45,6 +45,16 @@ record of what got done.
 - [ ] **Make mrklabs.com/whsbt redirect to whs.makerlabkids.com/bluetooth**: it is what the
       NOT CONNECTED card on every screen shows (`HELP_URL` in the worm-bin config).
 
+- [ ] **The Opals should not need the Pis to come back after a power cycle** (2026-10-31
+      evening, two hours lost to it): the Portal rejoins its upstream only when burrow0's
+      watchdog tells it (90 s after the Pi boots, then every 2 min), and a Tunnel joins the
+      hidden backhaul (WormHole-Core) only when its own Pi's watchdog does; bounce both and
+      everything flashes white for minutes. Options: let the Opals keep their saved networks
+      and auto-reconnect (GL.iNet "saved" + auto-join), and have the watchdog only correct
+      them. Meanwhile `tools/routers/join-backhaul.py N` joins a Tunnel from any laptop on it.
+- [ ] **burrow2's Pi is offline on Opal 2's cable port** (as of the evening of 2026-10-31):
+      check power and link lights, then `edge/burrow/tools/update-burrow.sh 2`.
+
 ## Bench board (The Wrigglers, now bin 38)
 
 - [ ] **Eyeball the screen cycle** (flashed 2026-10-31 afternoon): card 2 s, name 5 s,
