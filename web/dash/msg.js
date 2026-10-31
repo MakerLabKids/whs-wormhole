@@ -145,12 +145,15 @@ window.Msg = (function () {
         $('end' + i).value = toLocal(s.end);
         $('count' + i).value = s.count || '';
         $('boot' + i).checked = !!s.boot;
-        var note = '', state = '', st = j.status && j.status[i + 1];
+        var note = '', state = '', st = j.status && j.status[i + 1], q = j.queued && j.queued[i];
+        if (st && st.pending && j.queued !== undefined) {   // the website's copy is still on its way: say what is coming
+          note = q ? 'waiting for the bin: "' + (q.title || (q.lines || [])[0] || '') + '"' : 'clearing: waiting for the bin';
+        }
         if (s.title || lines.length) {
           if (j.active) state = j.active[i] ? (s.boot ? 'at power-on' : 'on the screen') : 'not showing';
           else if (st) state = st.pending ? 'waiting for the bin' : (st.result === 'refused' ? 'refused' : (s.boot ? 'at power-on' : 'on the board'));
-          if (s.count) note = 'shown ' + (s.shown || 0) + ' of ' + s.count + (s.shown >= s.count ? ': done' : '');
-          else if (s.shown) note = 'shown ' + s.shown + ' times';
+          if (s.count) note += (note ? '. ' : '') + 'shown ' + (s.shown || 0) + ' of ' + s.count + (s.shown >= s.count ? ': done' : '');
+          else if (s.shown) note += (note ? '. ' : '') + 'shown ' + s.shown + ' times';
           if (s.start && j.now < s.start) note += (note ? '. ' : '') + 'Starts ' + when(s.start);
           if (s.end && j.now > s.end) note += (note ? '. ' : '') + 'Ended ' + when(s.end);
           if ((s.start || s.end) && j.clk === 'none') note += (note ? '. ' : '') + 'The board has no clock yet: save once and it takes this phone\'s.';
@@ -167,6 +170,8 @@ window.Msg = (function () {
       }
       if (j.clk === 'none') msg.textContent = 'The board does not know the time yet (no Burrow seen). Saving any slot sets it from this phone.';
       else if (j.clk) msg.textContent = 'Board clock: ' + when(j.now) + (j.clk === 'est' ? ' (estimated)' : '');
+      else if (j.board_seen) msg.textContent = 'What the board reported ' + when(j.board_seen) + ' (revision ' + (j.board && j.board.rev) + '). A save is refused if the board changed since.';
+      else if (j.queued !== undefined) msg.textContent = 'The board has not reported its slots yet (it needs the new code, and a Burrow with it); these are the website\'s copies.';
       else msg.textContent = '';
       if (j.changes && j.changes.length) {
         logbox.innerHTML = '<b>Recent changes on this board</b>' + j.changes.map(function (c) {

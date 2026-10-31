@@ -32,6 +32,7 @@ class Cloud:
         # the Bin acks by seq in its next push (d.msg_seq), the Surface sees
         # that in our snapshot and stops listing them.
         self.messages = {}
+        self.msg_state_fn = None        # set by the service: () -> {uid: {rev, slots, at}}
 
     @staticmethod
     def _read(path):
@@ -96,6 +97,10 @@ class Cloud:
         bins = self.now.snapshot()
         body = {"edge": self.cfg["edge"], "room": self.cfg["room"], "ts": util.now(),
                 "clk": clock.quality(), "bins": bins, "status": self.status_fn()}
+        if self.msg_state_fn:
+            state = self.msg_state_fn()
+            if state:
+                body["messages_state"] = state      # what each Bin says is on its screen
         if util.now() - self._roster_sent > 3600:
             body["roster"] = [{"uid": uid, "name": e.get("name"), "team": e.get("team"),
                                "period": e.get("period"), "bin": e.get("bin"), "room": e.get("home_room")}

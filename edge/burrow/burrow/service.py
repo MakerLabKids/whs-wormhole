@@ -36,6 +36,8 @@ class Service:
         self.watch = Watch(cfg, self.now, self.bus, clk=self.clk)
         self.net = NetStat(cfg)
         self.opal = OpalLink(cfg)
+        self.msg_state = {}      # uid -> {"rev", "slots", "at"}: what each Bin last reported is on its screen
+        self.cloud.msg_state_fn = lambda: self.msg_state
         self.events = Events(cfg, send=self.cloud.send_events)
         self.quietwatch = QuietWatch(cfg, self.now, self.peers.state, self.cloud.state, self.events)
         self.live_key = Cloud._read(cfg["cloud"].get("live_key_file"))
@@ -79,6 +81,12 @@ class Service:
             return None
         if ip and not d.get("ip"):
             d["ip"] = ip
+        if "msgs" in d:
+            # the Bin's message slots, as they are on its screen: kept aside for the
+            # Surface (the snapshot), not stored with the readings
+            msgs = d.pop("msgs")
+            if isinstance(msgs, list):
+                self.msg_state[uid] = {"rev": d.get("msg_rev"), "slots": msgs[:8], "at": util.now()}
         row = {"ts": util.now(), "clk": self.clk(), "uid": uid, "name": d.get("name"),
                "room": self.cfg["room"], "edge": self.cfg["edge"], "src": src, "d": d}
         self.store.append(row)

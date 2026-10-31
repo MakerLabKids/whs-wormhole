@@ -55,5 +55,36 @@ class MessageRelayTest(unittest.TestCase):
         self.assertNotIn("messages", r)
 
 
+class MessageStateTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.fs = FakeSurface(token="tok1")
+        tf = os.path.join(self.tmp, "cloud.token")
+        with open(tf, "w") as f:
+            f.write("tok1")
+        self.svc = make_service(self.tmp, "burrow1", 1, cloud_url=self.fs.url, token_file=tf)
+
+    def tearDown(self):
+        self.svc.stop()
+        self.fs.close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_the_bins_slots_ride_to_the_surface_but_not_into_the_archive(self):
+        slots = [{"title": "Go Worms!", "lines": ["feed us"], "by": "Jamal K", "via": "bluetooth"}, None, None, None, None]
+        st, r = http("POST", self.svc.url + "/ingest", bin_payload(msg_rev=7, msgs=slots))
+        self.assertEqual(st, 200)
+        row = self.svc.store.read_open()[-1]
+        self.assertNotIn("msgs", row["d"])
+        self.assertEqual(row["d"]["msg_rev"], 7)
+        self.assertEqual(self.svc.msg_state["e66118604b7c2b2a"]["slots"], slots)
+        self.assertTrue(self.svc.cloud.pass_once())
+        snap = self.fs.snapshots[-1]
+        self.assertEqual(snap["messages_state"]["e66118604b7c2b2a"]["rev"], 7)
+        self.assertEqual(snap["messages_state"]["e66118604b7c2b2a"]["slots"][0]["title"], "Go Worms!")
+        # a push without the slots (nothing changed) keeps the last report
+        http("POST", self.svc.url + "/ingest", bin_payload(msg_rev=7))
+        self.assertEqual(self.svc.msg_state["e66118604b7c2b2a"]["rev"], 7)
+
+
 if __name__ == "__main__":
     unittest.main()

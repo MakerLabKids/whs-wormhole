@@ -27,6 +27,12 @@ lines, start, end, count, boot}` or `{uid, slot, seq, pin, by, clear: true}`
 checks the PIN, applies each once per `seq`, and from then on its pushes
 carry `"msg_seq": {"1": 12, ...}` (negative: refused, wrong PIN); the
 Burrow's snapshot takes that to the Surface, which stops listing them.
+Every push also carries `"msg_rev"` (the Bin's own revision of its slots)
+and, when that changed since the last accepted push, `"msgs"` (the slots
+as they are on the screen, with who set each and how). The Burrow keeps
+`msgs` aside (not in the archive) and sends `messages_state: {uid: {rev,
+slots, at}}` in its snapshot; the website shows that as the board's
+current state and refuses a save based on an older `rev`.
 
 ## Bin -> Burrow: `POST /ingest/batch`  (backfill after an outage)
 

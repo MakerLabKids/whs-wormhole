@@ -125,6 +125,12 @@ in the config block is the fallback; it is never on the screen). Each
 slot shows who set it and through which door, and the card lists the
 board's last ten changes (`msglog.txt` on the board keeps sixty).
 
+Whatever door was used, the board is the truth: it reports its slots
+(with who and how) to its Burrow whenever they change, and the website
+shows that as the bin's current state. A save on the website is refused
+if the board's slots changed since the page loaded them, so nobody
+overwrites what they have not seen.
+
 Three doors to the same slots:
 
 - **The board's page** (its hotspot or the classroom network): the card

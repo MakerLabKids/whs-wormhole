@@ -87,7 +87,7 @@ class PinApp(FakeApp):
     def pin(self): return "1612"
 app = PinApp(); app.ts, app.clk = 1800001000, "ok"
 m = picolab.Messages(app, PATH)
-assert m.push_fields() == {}
+assert sorted(m.push_fields().keys()) == ["msg_rev", "msgs"], "the first push carries the slots"
 items = [{"slot": 1, "seq": 5, "pin": "1612", "by": "Ada (Dirt Vader)", "title": "From the web", "lines": ["hello", ""], "count": "3"},
          {"slot": 2, "seq": 7, "pin": "0000", "title": "Wrong pin"},
          {"slot": 3, "seq": 2, "pin": "1612", "clear": True},
@@ -98,7 +98,7 @@ assert m.slots[0] == {"title": "From the web", "lines": ["hello"], "shown": 0, "
 assert any(c["by"] == "Ada (Dirt Vader)" and c["via"] == "web" and c["what"] == "set" for c in m.changes(5)), m.changes(5)
 assert m.changes(1)[0] ["what"] == "cleared" and m.changes(1)[0]["by"] == "the website", m.changes(1)
 assert m.slots[1]["title"] == "cafx" and m.slots[2] is None, "the refused one left slot 2 alone"
-assert m.push_fields() == {"msg_seq": {"1": 5, "2": -7, "3": 2}}, m.push_fields()
+assert m.push_fields()["msg_seq"] == {"1": 5, "2": -7, "3": 2}, m.push_fields()
 assert m.apply([{"slot": 5, "seq": 1, "pin": "1612", "title": "Boot note", "boot": True}]) and m.slots[4]["boot"] is True
 # the same seqs again: nothing happens (a resend while the ack is in flight); the shown count stays
 m.slots[0]["shown"] = 2
@@ -107,6 +107,18 @@ assert m.apply(items) is False and m.slots[0]["shown"] == 2
 assert m.apply([{"slot": 1, "seq": 6, "pin": "1612", "title": "Newer"}]) and m.slots[0]["title"] == "Newer"
 m2 = picolab.Messages(app, PATH)
 assert m2.acks == {"1": 6, "2": -7, "3": 2, "5": 1} and m2.slots[0]["title"] == "Newer", (m2.acks, m2.slots[0])
+# the slots ride up by revision: with the first push, again after a change, not otherwise
+rev = m2.rev
+f = m2.push_fields()
+assert f["msg_rev"] == rev and f["msgs"] is m2.slots, f
+m2.on_reply({"ok": True})                                  # accepted: known upstream
+assert "msgs" not in m2.push_fields() and m2.push_fields()["msg_rev"] == rev
+m2.handle(req("slot=3&title=Changed&" + ME))
+assert m2.rev == rev + 1 and "msgs" in m2.push_fields(), (m2.rev, rev)
+m2.push_fields(); m2.on_reply({"ok": True})
+assert "msgs" not in m2.push_fields()
+assert m2.next() and m2.rev == rev + 1, "a showing does not bump the revision"
+assert picolab.Messages(app, PATH).rev == rev + 1, "the revision is kept"
 # the hooks: a Burrow reply carries messages
 m2.on_reply({"ok": True, "ts": 1, "messages": [{"slot": 2, "seq": 8, "pin": "1612", "title": "Via reply"}]})
 assert m2.slots[1]["title"] == "Via reply" and m2.acks["2"] == 8

@@ -158,4 +158,9 @@ undelivered messages (`messages: [...]`) for all bins; a Burrow hands a Bin its 
 push, the Bin acks by `seq` in its data (`msg_seq`), and the next snapshot brings the ack here
 (`delivered_at`, `result` ok/refused). The dashboard's bin page has the editor (`msg.js`, the
 same widget the board's own page uses); `bluetooth.html` is the same editor over Web Bluetooth.
-The `messages` table is in schema.sql: run the d1 execute line above once after deploying.
+The board is the truth: every Bin reports its slots (and who set each, through which door) by
+revision, the Burrows relay that in `messages_state`, and `bin_messages` keeps the latest. `GET`
+returns it as `board`; the bin page shows those slots, marks the Surface's own copies that are
+still on their way as "waiting for the bin", and sends the `rev` it saw with every save; a save
+based on an older `rev` gets 409 and the page reloads first. Both tables are in schema.sql: run
+the d1 execute line above once after deploying.

@@ -1027,12 +1027,16 @@ class Messages:
     self.slots = [None] * MSG_SLOTS
     self.acks = {}                    # slot -> the last seq applied from the web (negative: refused)
     self.who = {}                     # device id -> {"name", "at", "via"}
+    self.rev = 0                      # bumps on every change to the slots; the website compares it
+    self._sent_rev = -1               # the rev the last accepted push carried the slots at
+    self._push_rev = -1               # the rev the push in flight carries
     self._rot = 0
     try:
       with open(path) as f:
         data = json.load(f)
       if isinstance(data, dict):
         self.acks = data.get("acks") or {}
+        self.rev = int(data.get("rev") or 0)
         data = data.get("slots") or []
       for i in range(min(MSG_SLOTS, len(data))):
         self.slots[i] = data[i] or None
@@ -1082,24 +1086,38 @@ class Messages:
     out.reverse()
     return out
 
-  def save(self):
+  def save(self, changed=True):
+    """Write the file; a change to the slots bumps the revision."""
+    if changed:
+      self.rev += 1
     try:
       with open(self.path, "w") as f:
-        json.dump({"slots": self.slots, "acks": self.acks}, f)
+        json.dump({"slots": self.slots, "acks": self.acks, "rev": self.rev}, f)
     except Exception as e:
       log("messages save failed:", e)
 
   # ---- from the website, through a Burrow ------------------------------
   def on_reply(self, reply):
-    """Hook for WebApp.on_reply: a Burrow's /ingest reply may carry messages."""
+    """Hook for WebApp.on_reply: the push was accepted (the slots it
+    carried are known upstream now), and the reply may carry messages."""
+    self._sent_rev = self._push_rev
     items = reply.get("messages") if isinstance(reply, dict) else None
     if items:
       self.apply(items)
 
   def push_fields(self):
-    """Hook for WebApp.push_extra: the acks ride up with the next push, so
-    the website knows what landed (msg_seq: {slot: seq, negative = refused)."""
-    return {"msg_seq": dict(self.acks)} if self.acks else {}
+    """Hook for WebApp.push_extra. Every push carries the revision and the
+    acks (msg_seq: {slot: seq}, negative = refused); the slots themselves
+    ride along only when the revision changed since the last accepted
+    push (and on the first push after a boot), so the website shows what
+    is really on the board without the archive filling with messages."""
+    d = {"msg_rev": self.rev}
+    if self.acks:
+      d["msg_seq"] = dict(self.acks)
+    if self.rev != self._sent_rev:
+      d["msgs"] = self.slots
+      self._push_rev = self.rev
+    return d
 
   def apply(self, items):
     """Messages set on the website: each {slot, seq, pin, clear} or {slot,
@@ -1190,7 +1208,7 @@ class Messages:
     s = self.slots[i]
     s["shown"] = s.get("shown", 0) + 1
     if s.get("count"):                          # a counted slot keeps its count across a reboot
-      self.save()
+      self.save(changed=False)
     return s.get("title", ""), list(s.get("lines") or [])
 
   def boot_cards(self):
@@ -1200,7 +1218,7 @@ class Messages:
   def status(self, me=None):
     ts, clk = self._now()
     d = {"slots": self.slots, "active": [self.active(i) for i in range(MSG_SLOTS)], "now": int(ts), "clk": clk,
-         "changes": self.changes(10), "teacher_pin": bool(self.teacher_pin)}
+         "rev": self.rev, "changes": self.changes(10), "teacher_pin": bool(self.teacher_pin)}
     if me:
       w = self.who.get(me)
       d["me"] = w["name"] if w else None

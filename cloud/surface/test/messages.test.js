@@ -82,12 +82,37 @@ describe("messages for a bin's screen", () => {
     expect(j.messages.map((m) => [m.uid, m.slot, m.seq, m.title])).toEqual([[UID, 1, 2, "Newer"]]);
   });
 
+  it("shows what is on the board, and refuses a save based on an older view of it", async () => {
+    const onBoard = [{ title: "From the bin", lines: ["set over bluetooth"], by: "Jamal K", via: "bluetooth", at: 1800000500 }, null, null, null, null];
+    await snapshot({ [UID]: { ts: 3, d: { msg_rev: 4 } } });
+    let j = await (await get(`/api/messages?uid=${UID}`, { cookie })).json();
+    expect(j.board).toBeNull();
+    const body = { edge: "burrow1", room: 1, ts: Math.floor(Date.now() / 1000), clk: "ntp", bins: {}, status: {}, messages_state: { [UID]: { rev: 4, slots: onBoard, at: 1 } } };
+    expect((await edgeFetch("burrow1", "/v1/edge/snapshot", { method: "POST", body: JSON.stringify(body) })).status).toBe(200);
+    j = await (await get(`/api/messages?uid=${UID}`, { cookie })).json();
+    expect(j.board).toMatchObject({ rev: 4, edge: "burrow1" });
+    expect(j.board.slots[0]).toMatchObject({ title: "From the bin", by: "Jamal K", via: "bluetooth" });
+    expect(j.board.slots.length).toBe(5);
+    // an older report from another Burrow does not win
+    body.edge = "burrow2"; body.messages_state[UID] = { rev: 3, slots: [null, null, null, null, null], at: 2 };
+    expect((await edgeFetch("burrow2", "/v1/edge/snapshot", { method: "POST", body: JSON.stringify(body) })).status).toBe(200);
+    j = await (await get(`/api/messages?uid=${UID}`, { cookie })).json();
+    expect(j.board.rev).toBe(4);
+    // a save that says it saw rev 3 is refused; one that saw rev 4 goes through; one that says nothing goes through
+    let r = await postJson("/api/messages", { uid: UID, slot: 2, title: "Stale", pin: "1612", rev: 3 }, { cookie });
+    expect(r.status).toBe(409);
+    expect((await r.json()).board.rev).toBe(4);
+    r = await postJson("/api/messages", { uid: UID, slot: 2, title: "Fresh", pin: "1612", rev: 4 }, { cookie });
+    expect(r.status).toBe(200);
+    expect((await r.json()).board.rev).toBe(4);
+  });
+
   it("clearing a slot is a message too", async () => {
     const r = await postJson("/api/messages", { uid: UID, slot: 1, clear: true, pin: "1612" }, { cookie });
     const j = await r.json();
     expect(j.slots[0]).toBeNull();
     expect(j.status[1]).toMatchObject({ seq: 3, pending: true });
     const s = await snapshot();
-    expect(s.messages).toEqual([{ uid: UID, slot: 1, seq: 3, pin: "1612", by: "Ada (Dirt Vader)", clear: true }]);
+    expect(s.messages.filter((m) => m.slot === 1)).toEqual([{ uid: UID, slot: 1, seq: 3, pin: "1612", by: "Ada (Dirt Vader)", clear: true }]);
   });
 });

@@ -524,14 +524,30 @@
       }
       if (!mine) { msgcard.hidden = true; return; }
       msgcard.hidden = false;
-      var pinKey = 'pin:' + uid;
+      var pinKey = 'pin:' + uid, seenRev = null;
+      /* the board is the truth: what it reports is shown in the slots (with who set it and how); the
+         Surface's own copy only matters while a message is still on its way ("waiting for the bin").
+         A save carries the board revision this page saw; the Surface refuses a save based on an older one. */
+      function shape(j) {
+        if (j && j.board) {
+          seenRev = j.board.rev;
+          j.queued = j.slots;                            // the Surface's copies, for the pending notes
+          j.slots = j.board.slots;
+          j.board_seen = j.board.seen_at;
+        } else if (j) seenRev = null;
+        return j;
+      }
       function send(q, cb) {
-        if (!q) { api('/api/messages?uid=' + encodeURIComponent(uid)).then(function (j) { cb(true, j); }).catch(function (e) { cb(false, e.body); }); return; }
+        if (!q) { api('/api/messages?uid=' + encodeURIComponent(uid)).then(function (j) { cb(true, shape(j)); }).catch(function (e) { cb(false, e.body); }); return; }
         var pin = null;
         try { pin = localStorage.getItem(pinKey); } catch (x) {}
         if (!pin) { pin = prompt('The board\'s PIN? (on its screen: name + address, see the lab guide)'); if (!pin) { cb(false); return; } try { localStorage.setItem(pinKey, pin); } catch (x) {} }
         var body = Msg.queryToBody(q); body.uid = uid; body.pin = pin;
-        api('/api/messages', { method: 'POST', body: body }).then(function (j) { cb(true, j); }).catch(function (e) { cb(false, e.body || { error: e.message }); });
+        if (seenRev != null) body.rev = seenRev;
+        api('/api/messages', { method: 'POST', body: body }).then(function (j) { cb(true, shape(j)); }).catch(function (e) {
+          if (e.status === 409) { alert('The board\'s messages changed since this page loaded (someone set one on the board or over Bluetooth). Reloading them now; look, then save again.'); send('', cb); return; }
+          cb(false, e.body || { error: e.message });
+        });
       }
       Msg.create(msgcard, {
         send: send, open: false, identity: false,            // the login is the name here

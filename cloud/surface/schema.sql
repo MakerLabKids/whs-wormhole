@@ -150,3 +150,14 @@ CREATE TABLE IF NOT EXISTS messages (
   result       TEXT,
   PRIMARY KEY (uid, slot)
 );
+
+-- What each Bin says is on its screen (its message slots), as the Burrows relay it; rev is the
+-- Bin's own revision counter. The website shows this as the current state and refuses a save
+-- based on an older rev.
+CREATE TABLE IF NOT EXISTS bin_messages (
+  uid     TEXT PRIMARY KEY,
+  rev     INTEGER,
+  slots   TEXT,               -- JSON array
+  edge    TEXT,
+  seen_at INTEGER
+);

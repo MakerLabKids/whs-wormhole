@@ -43,6 +43,32 @@ async function slotsOf(env, uid) {
   return { slots, status };
 }
 
+// A snapshot's messages_state: {uid: {rev, slots, at}} -> upserts into bin_messages (newest rev wins
+// when two Burrows relay the same Bin).
+export function boardStateStatements(env, state, edge, t) {
+  const out = [];
+  if (!state || typeof state !== "object") return out;
+  for (const uid of Object.keys(state).slice(0, 200)) {
+    const s = state[uid];
+    if (!s || typeof s !== "object" || !Array.isArray(s.slots) || typeof uid !== "string" || uid.length > 64) continue;
+    const rev = isInt(s.rev) ? s.rev : 0;
+    out.push(env.DB.prepare(
+      `INSERT INTO bin_messages (uid, rev, slots, edge, seen_at) VALUES (?1, ?2, ?3, ?4, ?5)
+       ON CONFLICT(uid) DO UPDATE SET rev = excluded.rev, slots = excluded.slots, edge = excluded.edge, seen_at = excluded.seen_at
+       WHERE excluded.rev >= bin_messages.rev OR bin_messages.rev IS NULL`,
+    ).bind(uid, rev, JSON.stringify(s.slots.slice(0, SLOTS)), edge, t));
+  }
+  return out;
+}
+
+async function boardOf(env, uid) {
+  const r = await env.DB.prepare("SELECT rev, slots, edge, seen_at FROM bin_messages WHERE uid = ?1").bind(uid).first();
+  if (!r) return null;
+  const slots = safeParse(r.slots, []);
+  while (slots.length < SLOTS) slots.push(null);
+  return { rev: r.rev, slots: slots.slice(0, SLOTS), edge: r.edge, seen_at: r.seen_at };
+}
+
 export async function apiMessages(request, env, session) {
   if (!session) return err(401, "login required");
   if (request.method === "GET") {
@@ -50,7 +76,7 @@ export async function apiMessages(request, env, session) {
     if (!uid) return err(400, "uid required");
     const deny = await mayMessage(env, session, uid, 0);
     if (deny) return deny;
-    return json({ ok: true, uid, now: now(), role: session.role, ...(await slotsOf(env, uid)) });
+    return json({ ok: true, uid, now: now(), role: session.role, ...(await slotsOf(env, uid)), board: await boardOf(env, uid) });
   }
   if (request.method !== "POST") return err(405, "method not allowed");
   const body = await readJson(request, 64 << 10);
@@ -61,6 +87,11 @@ export async function apiMessages(request, env, session) {
   if (deny) return deny;
   const pin = String(body.pin ?? "").replace(/\D/g, "").slice(0, 6);
   if (!pin) return err(400, "the board's PIN is required");
+  // pull before push: a save based on an older view of the board is refused
+  const board = await boardOf(env, uid);
+  if (board && isInt(body.rev) && body.rev !== board.rev) {
+    return err(409, "the board's messages changed since you loaded them; reload and look first", { board });
+  }
   let row;
   if (body.clear) {
     row = { cleared: 1, title: "", lines: "[]", start: null, end: null, count: 0, boot: 0 };
@@ -86,7 +117,7 @@ export async function apiMessages(request, env, session) {
        cleared = excluded.cleared, pin = excluded.pin, set_by = excluded.set_by, set_at = excluded.set_at,
        delivered_at = NULL, result = NULL`,
   ).bind(uid, slot, seq, row.title, row.lines, row.start, row.end, row.count, row.boot, row.cleared, pin, who, t).run();
-  return json({ ok: true, uid, now: t, role: session.role, ...(await slotsOf(env, uid)) });
+  return json({ ok: true, uid, now: t, role: session.role, ...(await slotsOf(env, uid)), board });
 }
 
 // The Bins' acks, as a snapshot carries them: bins[uid].d.msg_seq = {slot: seq} (negative: the
