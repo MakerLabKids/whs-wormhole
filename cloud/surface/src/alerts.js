@@ -14,9 +14,11 @@ export const SILENT_S = 120;           // a Burrow snapshots every 60 s; two mis
                                        // neighbours' peer.down alert normally arrives well before this)
 const EVENT_CAP = 100;                 // per POST
 const LEVELS = new Set(["info", "warn", "alert"]);
-// An open alert notifies ONCE (plus once when it closes). It is retried only while the
-// notifier has never managed to deliver it. (Until 2026-10-30 it re-sent every 15 min, which
-// with four unplugged Burrows was a buzz every few minutes around the clock.)
+// An open alert notifies once, then a reminder once a day while it stays open, and once
+// when it closes. It is retried sooner only while the notifier has never managed to deliver
+// it. (Until 2026-10-30 it re-sent every 15 min, which with four unplugged Burrows was a
+// buzz every few minutes around the clock.)
+const REMIND_S = 24 * 3600;
 
 export function alertUrl(env) {
   const u = (env.ALERT_URL || "").trim();
@@ -133,11 +135,12 @@ export async function testNotify(env) {
   return json({ ok: n.ok, target: describeTarget(env), stored, kind: notifierKind(alertUrl(env) || ""), auth: env.ALERT_TOKEN ? "token" : (/^https?:\/\/[^/]*@/.test(alertUrl(env) || "") ? "basic" : "none"), error: n.error || null, ts: t });
 }
 
-// Open (or refresh) an alert under `key`; notifies on open, and again only if that failed.
+// Open (or refresh) an alert under `key`; notifies on open, again if that failed, else daily.
 export async function openAlert(env, key, edge, title, text, priority = "high", tags = "warning", t = now()) {
-  const open = await env.DB.prepare("SELECT id, last_notified FROM alerts WHERE key = ?1 AND closed_at IS NULL").bind(key).first();
-  if (open && open.last_notified) return { id: open.id, notified: false };
-  const n = await notify(env, title, text, priority, tags);
+  const open = await env.DB.prepare("SELECT id, last_notified, opened_at FROM alerts WHERE key = ?1 AND closed_at IS NULL").bind(key).first();
+  if (open && open.last_notified && t - open.last_notified < REMIND_S) return { id: open.id, notified: false };
+  const n = await notify(env, open?.last_notified ? `still: ${title}` : title,
+                         open?.last_notified ? `${text} Open since ${new Date(open.opened_at * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC.` : text, priority, tags);
   if (open) {
     await env.DB.prepare("UPDATE alerts SET text = ?1, last_notified = ?2, notify_error = ?3 WHERE id = ?4")
       .bind(text, n.ok ? t : open.last_notified, n.ok ? null : n.error, open.id).run();

@@ -177,10 +177,10 @@ describe("test alert from the Devices page", () => {
   });
 });
 
-describe("an open alert nags nobody", () => {
+describe("an open alert nags once a day", () => {
   beforeAll(applySchema);
 
-  it("notifies once on open, not again while it stays open, and once on close", async () => {
+  it("notifies on open, then once a day while it stays open, and once on close", async () => {
     const { openAlert, closeAlert } = await import("../src/alerts.js");
     const sent = [];
     const real = globalThis.fetch;
@@ -189,11 +189,13 @@ describe("an open alert nags nobody", () => {
     try {
       const t0 = 1_800_000_000;
       expect((await openAlert(env2, "edge:nag", "nag", "nag down", "x", "high", "warning", t0)).notified).toBe(true);
-      for (const dt of [60, 15 * 60 + 1, 3600, 86400]) {
+      for (const dt of [60, 15 * 60 + 1, 3600, 86399]) {
         expect((await openAlert(env2, "edge:nag", "nag", "nag down", "x", "high", "warning", t0 + dt)).notified).toBe(false);
       }
-      expect((await closeAlert(env2, "edge:nag", "nag back", "y", t0 + 90000)).notified).toBe(true);
-      expect(sent).toEqual(["nag down", "nag back"]);
+      expect((await openAlert(env2, "edge:nag", "nag", "nag down", "x", "high", "warning", t0 + 86400)).notified).toBe(true);   // the daily reminder
+      expect((await openAlert(env2, "edge:nag", "nag", "nag down", "x", "high", "warning", t0 + 90000)).notified).toBe(false);
+      expect((await closeAlert(env2, "edge:nag", "nag back", "y", t0 + 100000)).notified).toBe(true);
+      expect(sent).toEqual(["nag down", "still: nag down", "nag back"]);
     } finally {
       globalThis.fetch = real;
     }
