@@ -11,9 +11,12 @@ def data_fn():
     return {"ok": True, "in_temp_c": 21.5 + (time.ticks_ms() % 7) / 10, "moist1_pct": 40.0,
             "probe_temps_c": [20.1, None], "relay": 0, "parts": [{"name": "x", "ok": True}]}
 
+SETS = []
+ROUTES = [("/set", lambda req: (SETS.append(picolab.query_str(req, "angle")) or {"ok": True}))]
+
 def step(n, sec=1):
     for _ in range(n):
-        app.poll(data_fn)
+        app.poll(data_fn, routes=ROUTES)
         faketime.advance(sec)
 
 def http_get(path):
@@ -23,7 +26,7 @@ def http_get(path):
     s.settimeout(0.05)
     out = b""
     for i in range(400):
-        app.poll(data_fn)
+        app.poll(data_fn, routes=ROUTES)
         try:
             c = s.recv(4096)
             if not c:
@@ -67,6 +70,25 @@ check("push accepted by Burrow", app.edge_ok and app.edge == "127.0.0.1:8211" an
 check("now_ts derived from Burrow", app.now_ts() is not None)
 d = json.loads(http_get("/data").split(b"\r\n\r\n", 1)[1])
 check("/data has bin + edge + mode", d.get("bin", {}).get("bin") == 7 and d.get("edge") == "127.0.0.1:8211" and d["mode"] == "joined")
+# the PIN: changes need it, reads do not, five misses lock the door for a minute
+pin = app.pin()
+check("pin follows the rule (Dirt Vader @ .120: i=9+1, e=5+0)", pin == picolab.pin_for("Dirt Vader", "192.168.81.120") == "105")
+r = http_get("/set?angle=90")
+check("/set without the PIN is refused", r.startswith(b"HTTP/1.0 403") and b'"pin"' in r and SETS == [])
+r = http_get("/set?angle=90&pin=" + pin)
+check("/set with the PIN works", r.startswith(b"HTTP/1.0 200") and SETS == ["90"])
+r = http_get("/name?pin=" + pin + "&name=")
+check("/name rejects an empty name", b"error" in r and app._restart_at is None)
+for i in range(5):
+    http_get("/set?angle=1&pin=0000")
+r = http_get("/set?angle=1&pin=" + pin)
+check("five wrong PINs lock even the right one", r.startswith(b"HTTP/1.0 403") and b'"locked":true' in r)
+faketime.advance(61)
+r = http_get("/set?angle=2&pin=" + pin)
+check("the lock lifts after a minute", r.startswith(b"HTTP/1.0 200") and SETS[-1] == "2")
+d = json.loads(http_get("/data").split(b"\r\n\r\n", 1)[1])
+check("/data needs no PIN and does not leak it", d.get("name") == "Dirt Vader" and "pin" not in json.dumps(d))
+
 # history: three 5-minute samples
 step(3, 300)
 h = json.loads(http_get("/history").split(b"\r\n\r\n", 1)[1])

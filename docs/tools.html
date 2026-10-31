@@ -179,6 +179,21 @@
      the board on and it is found; hot-plugging the whole bank onto a <i>different</i> pair mid-run
      needs a reset.</div>
 
+  <h2>The board PIN</h2>
+  <hr class="rule">
+  <p>Anything that <em>changes</em> a board over Wi-Fi (servo and relay controls, calibration,
+     probe placements, renaming) asks for the board's PIN. Looking never does, and a USB cable
+     never does: holding the board is holding the key. The PIN is derived from the two things
+     on the board's own screen, its name and the address you browse to, so you can always work
+     it out and so can a team that finds the rule in the worm-bin README (that is deliberate).</p>
+  <p>Two numbers, written one after the other: the <b>second letter</b> of the name as a number
+     (a=1 &hellip; z=26) <b>plus the first digit</b> of the address's last number; then the
+     <b>second-to-last letter</b> as a number <b>plus the last digit</b>. "The Wrigglers" at
+     192.168.4.16: h&nbsp;(8)&nbsp;+&nbsp;1&nbsp;=&nbsp;9, r&nbsp;(18)&nbsp;+&nbsp;6&nbsp;=&nbsp;24,
+     PIN <span class="pill">924</span>. Only letters count. On its own hotspot a board is at
+     192.168.4.1 (digits 1 and 1). A rename restarts the board under its new name, Wi-Fi name
+     and PIN. Five wrong tries lock changes for a minute.</p>
+
   <h2>Version numbers</h2>
   <hr class="rule g">
   <p>The software that runs on the Pico carries a version (<span class="pill">picolab.VERSION</span>).

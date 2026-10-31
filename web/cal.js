@@ -41,9 +41,19 @@ window.Cal = (function () {
       '.cal-msg{font-size:12px;color:#86efac;min-height:14px;margin-top:4px}';
     document.head.appendChild(s);
   }
+  // Every change to the board needs its PIN (its name + the address on its screen).
+  function pinFetch(url, cb) {
+    var k = 'pin:' + location.host, pin = null;
+    try { pin = localStorage.getItem(k); } catch (e) {}
+    if (!pin) { pin = prompt('This board is locked. Its PIN?'); if (!pin) { cb && cb(false); return; } try { localStorage.setItem(k, pin); } catch (e) {} }
+    fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'pin=' + encodeURIComponent(pin), { cache: 'no-store' })
+      .then(function (r) {
+        if (r.status === 403) { try { localStorage.removeItem(k); } catch (e) {} r.json().then(function (j) { alert(j.locked ? 'Too many wrong PINs: wait a minute.' : 'Wrong PIN.'); }).catch(function () {}); }
+        cb && cb(r.ok);
+      }).catch(function () { cb && cb(false); });
+  }
   function post(q, cb) {
-    fetch('/cal?' + q, { cache: 'no-store' })
-      .then(function () { cb && cb(true); }).catch(function () { cb && cb(false); });
+    pinFetch('/cal?' + q, cb);
   }
   function create(el, cfg) {
     injectStyle();

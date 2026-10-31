@@ -238,9 +238,20 @@ function saveProbe(id) {
   var y = document.getElementById('y-' + id).value;
   var z = document.getElementById('z-' + id).value;
   q += '&x=' + urlenc(x) + '&y=' + urlenc(y) + '&z=' + urlenc(z);
-  fetch('/place?' + q, { cache: 'no-store' })
-    .then(function () { document.getElementById('sv-' + id).textContent = 'saved!'; })
-    .catch(function () { document.getElementById('sv-' + id).textContent = 'failed'; });
+  withPin('/place?' + q, function (ok) {
+    document.getElementById('sv-' + id).textContent = ok ? 'saved!' : 'failed';
+  });
+}
+  // Every change to the board needs its PIN (its name + the address on its screen).
+function withPin(url, cb) {
+  var k = 'pin:' + location.host, pin = null;
+  try { pin = localStorage.getItem(k); } catch (e) {}
+  if (!pin) { pin = prompt('This board is locked. Its PIN?'); if (!pin) { cb && cb(false); return; } try { localStorage.setItem(k, pin); } catch (e) {} }
+  fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'pin=' + encodeURIComponent(pin), { cache: 'no-store' })
+    .then(function (r) {
+      if (r.status === 403) { try { localStorage.removeItem(k); } catch (e) {} r.json().then(function (j) { alert(j.locked ? 'Too many wrong PINs: wait a minute.' : 'Wrong PIN.'); }).catch(function () {}); }
+      cb && cb(r.ok);
+    }).catch(function () { cb && cb(false); });
 }
 function buildTable(info) {
   var html = '';

@@ -93,6 +93,34 @@ on GP26, the distance sensor and the OLED: in the config block set
 `bme("in", 0x76)`, `analog_bank()` and `lux_meter()` out of `PARTS`. The
 result is a single screen and a truth light with four short blinks.
 
+## The PIN
+
+Nothing on a board changes over Wi-Fi without its PIN: the servo
+sliders and the relay button, calibration, probe placements, and the
+rename control. Reading never needs it (the page, `/data`, `/history`,
+the screen). Plugging into USB is the other key: Viper, mpremote and
+the file panel are not gated, because holding the board is holding the
+key.
+
+The PIN is worked out from what the board's own screen says, its name
+and the address you browse to, so a teacher can always derive it and a
+team that reads this paragraph can too (that is on purpose: a low wall
+that rewards effort). Two numbers written one after the other:
+
+1. the **second letter** of the name as a number (a=1 ... z=26) **plus
+   the first digit** of the address's last number;
+2. the **second-to-last letter** of the name as a number **plus the
+   last digit** of the address's last number.
+
+"The Wrigglers" browsed at 192.168.4.16: h is 8, plus 1 = **9**; r is
+18, plus 6 = **24**; PIN **924**. Only letters count (spaces, digits
+and punctuation are skipped). On its own hotspot every board is at
+192.168.4.1, so there the digits are 1 and 1; on the classroom network
+the address is the one on the screen. Renaming a board (dashboard,
+"Board name", needs the current PIN) restarts it under the new name,
+which is also its new Wi-Fi name and its new PIN. Five wrong PINs in a
+row lock every change for a minute.
+
 ## Dashboard
 
 Join the PicoLabN network, browse to http://192.168.4.1: live cards

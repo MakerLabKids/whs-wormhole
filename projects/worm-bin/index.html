@@ -62,6 +62,12 @@
 
     <div class="card"><div id="calbox"></div></div>
     <div class="card"><div id="calbox2"></div></div>
+    <div class="card"><div class="calrow"><b>Board name</b>&nbsp;
+      <input id="newname" maxlength="24" placeholder="new name" style="width:11em">
+      <button id="renamebtn">Rename</button></div>
+      <div id="renamemsg" style="font-size:12px;color:#86efac;min-height:14px"></div>
+      <div style="font-size:11px;color:#94a3b8">Needs the PIN. The board restarts as its new
+        name (new Wi-Fi name, new PIN).</div></div>
 
     <div class="card"><h3>WIRING &amp; PINS</h3>
       <div class="wirenote">Hold the board with the <b>USB at the top</b>. Pins are numbered 1&ndash;40:
@@ -184,10 +190,29 @@ function setStatus(text, bad) {
   $('status').textContent = text;
   $('status').className = bad ? 'err' : '';
 }
+// Every change to the board needs its PIN (name + address on its screen; see the README).
+// Asked once, kept in this browser for this board; a 403 clears it and asks again.
+function withPin(url, cb) {
+  var k = 'pin:' + location.host, pin = null;
+  try { pin = localStorage.getItem(k); } catch (e) {}
+  if (!pin) { pin = prompt('This board is locked. Its PIN?'); if (!pin) { cb && cb(false); return; } try { localStorage.setItem(k, pin); } catch (e) {} }
+  fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'pin=' + encodeURIComponent(pin), { cache: 'no-store' })
+    .then(function (r) {
+      if (r.status === 403) { try { localStorage.removeItem(k); } catch (e) {} r.json().then(function (j) { alert(j.locked ? 'Too many wrong PINs: wait a minute.' : 'Wrong PIN.'); }).catch(function () {}); }
+      cb && cb(r.ok);
+    }).catch(function () { cb && cb(false); });
+}
 function send(q) {
   holdoff = Date.now() + 1500;
-  fetch('/set?' + q, { cache: 'no-store' }).catch(function () {});
+  withPin('/set?' + q);
 }
+$('renamebtn').onclick = function () {
+  var n = ($('newname').value || '').trim();
+  if (!n) return;
+  withPin('/name?name=' + encodeURIComponent(n), function (ok) {
+    $('renamemsg').textContent = ok ? 'Renamed. The board restarts now: join Wi-Fi "' + n + '" and browse again.' : 'Not renamed.';
+  });
+};
 $('big').oninput = function () { $('bigv').textContent = this.value; };
 $('small').oninput = function () { $('smallv').textContent = this.value; };
 $('big').onchange = function () { send('big=' + this.value); };

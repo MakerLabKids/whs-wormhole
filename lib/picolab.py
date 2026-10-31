@@ -650,6 +650,7 @@ NAME_FILE = "name.txt"
 
 HEADER_HTML = b"HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n"
 HEADER_JSON = b"HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n"
+HEADER_403 = HEADER_JSON.replace(b"200 OK", b"403 Forbidden")
 
 _CTYPES = {"js": "application/javascript", "css": "text/css", "html": "text/html",
            "svg": "image/svg+xml", "json": "application/json", "txt": "text/plain"}
@@ -737,6 +738,27 @@ def station_name():
   except Exception:
     pass
   return "PicoLab" + str(board_num())
+
+
+def pin_for(name, ip):
+  """The board's PIN, from what is written on its screen: its name and
+  the address you browse to. Two numbers glued together: the 2nd letter
+  of the name as a number (a=1 ... z=26) plus the FIRST digit of the
+  address's last octet, then the 2nd-to-last letter plus the LAST digit.
+  'The Wrigglers' at 192.168.4.16: h=8 + 1 = 9, r=18 + 6 = 24 -> '924'.
+  Letters only count (spaces, digits, punctuation are skipped); a one-
+  letter name uses that letter twice. Guessable by someone who reads the
+  rule, which is the point: a low wall that rewards effort."""
+  letters = [c for c in name.lower() if "a" <= c <= "z"] or ["a"]
+  second = letters[1] if len(letters) > 1 else letters[0]
+  penult = letters[-2] if len(letters) > 1 else letters[0]
+  octet = str(ip).rsplit(".", 1)[-1]
+  digits = [int(c) for c in octet if c.isdigit()] or [0]
+  return "%d%d" % (ord(second) - 96 + digits[0], ord(penult) - 96 + digits[-1])
+
+
+PIN_MAX_FAILS = 5          # wrong PINs in a row before...
+PIN_LOCK_S = 60            # ...every PIN-gated request is refused for this long
 
 
 def query_str(req, key, default=None):
@@ -1291,6 +1313,9 @@ class WebApp:
     self.push = True
     self.history = None
     self.buffer = None
+    self._pin_fails = 0
+    self._pin_locked_until = 0
+    self._restart_at = None         # uptime at which to reset (after a rename)
     self.boot = _bump_boot()
     self._clock_est = _read_clock()   # unix time at boot if a Burrow ever told us (else None)
     self._clock_saved = 0
@@ -1786,13 +1811,54 @@ class WebApp:
         lines.append("Rescue net: " + self.rescue_target)
       banner(title, lines)
 
+  def pin(self):
+    """This board's PIN right now (it changes with the name and the address)."""
+    return pin_for(self.name, self.ip)
+
+  def _pin_ok(self, req):
+    """True if the request carries the right PIN. Five misses in a row
+    lock every gated route for a minute (a 3-4 digit PIN is small)."""
+    up = uptime_s()
+    if up < self._pin_locked_until:
+      return False
+    if query_str(req, "pin") == self.pin():
+      self._pin_fails = 0
+      return True
+    self._pin_fails += 1
+    if self._pin_fails >= PIN_MAX_FAILS:
+      self._pin_fails = 0
+      self._pin_locked_until = up + PIN_LOCK_S
+      log("PIN: %d wrong in a row, locked for %d s" % (PIN_MAX_FAILS, PIN_LOCK_S))
+    return False
+
+  def _rename(self, req):
+    """/name?name=New%20Name: write name.txt and restart in 2 s. The new
+    name is the new hotspot and the new PIN, so the page says so."""
+    new = (query_str(req, "name") or "").strip()
+    if not (1 <= len(new) <= 24) or any(ord(c) < 32 or ord(c) > 126 for c in new):
+      return {"error": "name: 1-24 plain characters"}
+    with open(NAME_FILE, "w") as f:
+      f.write(new)
+    self._restart_at = uptime_s() + 2
+    log("renamed to '%s' from the web; restarting" % new)
+    return {"ok": True, "name": new, "restart_s": 2}
+
   def poll(self, data_fn, routes=None):
     """Serve one pending request, if any. Never raises.
 
     data_fn() -> dict, served as JSON at /data.
     routes: optional list of (prefix, handler); handler(req) -> dict,
-    also served as JSON. Use for actions like /set?angle=90.
+    also served as JSON. Use for actions like /set?angle=90. Every
+    route (and the built-in /name) needs ?pin=<the board's PIN>, see
+    pin_for(); reading (/data, /history, the page) never does. USB
+    (Viper, mpremote) is not gated: plugging in IS the key.
     """
+    if self._restart_at is not None and uptime_s() >= self._restart_at:
+      try:
+        self.close()
+      except Exception:
+        pass
+      machine.reset()
     # Housekeeping first, every call, all cheap unless something changed:
     # the Wi-Fi ladder, the push to the Burrow, the history sample.
     feed()
@@ -1826,16 +1892,20 @@ class WebApp:
         pass
 
       handled = False
-      if routes:
-        for prefix, handler in routes:
-          if prefix.encode() in req:
-            try:
-              payload = json.dumps(handler(req)).encode("utf-8")
-            except Exception as e:
-              payload = json.dumps({"error": str(e)}).encode("utf-8")
-            cl.sendall(HEADER_JSON + payload)
+      gated = list(routes or []) + [("/name", self._rename)]
+      for prefix, handler in gated:
+        if (b"GET " + prefix.encode()) in req or (b"POST " + prefix.encode()) in req:
+          if not self._pin_ok(req):
+            cl.sendall(HEADER_403 + b'{"error":"pin","locked":%s}' % (b"true" if uptime_s() < self._pin_locked_until else b"false"))
             handled = True
             break
+          try:
+            payload = json.dumps(handler(req)).encode("utf-8")
+          except Exception as e:
+            payload = json.dumps({"error": str(e)}).encode("utf-8")
+          cl.sendall(HEADER_JSON + payload)
+          handled = True
+          break
 
       if not handled and b"GET /history" in req:
         try:

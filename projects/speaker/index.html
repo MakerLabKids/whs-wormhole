@@ -61,7 +61,19 @@
 <script>
 var NOTES = [['C',523],['D',587],['E',659],['F',698],['G',784],['A',880],['B',988],['C↑',1047]];
 function $(id){ return document.getElementById(id); }
-function send(qs){ fetch('/set?'+qs,{cache:'no-store'}).catch(function(){}); }
+// Every change to the board needs its PIN (name + address on its screen; see the README).
+// Asked once, kept in this browser for this board; a 403 clears it and asks again.
+function withPin(url, cb) {
+  var k = 'pin:' + location.host, pin = null;
+  try { pin = localStorage.getItem(k); } catch (e) {}
+  if (!pin) { pin = prompt('This board is locked. Its PIN?'); if (!pin) { cb && cb(false); return; } try { localStorage.setItem(k, pin); } catch (e) {} }
+  fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'pin=' + encodeURIComponent(pin), { cache: 'no-store' })
+    .then(function (r) {
+      if (r.status === 403) { try { localStorage.removeItem(k); } catch (e) {} r.json().then(function (j) { alert(j.locked ? 'Too many wrong PINs: wait a minute.' : 'Wrong PIN.'); }).catch(function () {}); }
+      cb && cb(r.ok);
+    }).catch(function () { cb && cb(false); });
+}
+function send(qs){ withPin('/set?'+qs); }
 function setStatus(t,bad){ $('status').textContent=t; $('status').className=bad?'err':''; }
 
 // note pads

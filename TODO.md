@@ -39,6 +39,9 @@ record of what got done.
 
 ## Ideas, not scheduled
 
+- [ ] **Bluetooth config** (rename / PIN entry over BLE from a phone with no Wi-Fi
+      switch): the Pico 2 W has BLE and MicroPython's `aioble` exists, but nothing on
+      the board speaks it yet. The Wi-Fi PIN gate (2026-10-31) covers the dashboard.
 - [ ] Surface alert when a Bin reports a large `buffered` count (it means every
       Burrow it can see has been dark for that many minutes).
 - [ ] A battery RTC module on the Pico would turn "estimated" backfill timestamps
