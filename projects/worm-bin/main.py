@@ -394,10 +394,11 @@ def data_fn():
 
 
 # ---- OLED: one screen built from what is REPORTING --------------------
-# Every part with data contributes a row (16 characters); an absent part
-# contributes nothing. Up to 6 rows fit under the title on one screen (the
-# display tightens its line pitch past 4), so a lean bin just sits there,
-# readable, and a crowded bin pages, through rows that exist. Rows are in
+# Every part with data contributes a row (16 characters, LABEL: value); an
+# absent part contributes nothing. Up to 6 rows fit under the title on one
+# screen (the display stacks them up from the bottom edge, under the
+# underlined title, and tightens the pitch past 5), so a lean bin just sits
+# there, readable, and a crowded bin pages, through rows that exist. Rows are in
 # priority order; the actuator row only appears once something has been
 # commanded, because an idle servo is not data.
 ROWS_PER_SCREEN = 6
@@ -414,42 +415,44 @@ def screen_rows(d):
   ti, to = d.get("in_temp_c"), d.get("out_temp_c")
   hi, ho = d.get("in_hum_pct"), d.get("out_hum_pct")
   if ti is not None and to is not None:
-    rows.append(("In  %s %s" % (fmt(ti, "%.1fC"), fmt(hi, "%.0f%%")), "sensor"))
-    rows.append(("Out %s %s" % (fmt(to, "%.1fC"), fmt(ho, "%.0f%%")), "sensor"))
-    rows.append(("dT %+.1fC" % (ti - to), "sensor"))
+    rows.append(("IN: %s %s" % (fmt(ti, "%.1fC"), fmt(hi, "%.0f%%")), "sensor"))
+    rows.append(("OUT: %s %s" % (fmt(to, "%.1fC"), fmt(ho, "%.0f%%")), "sensor"))
+    rows.append(("DT: %+.1fC" % (ti - to), "sensor"))
   elif ti is not None or to is not None:
     which = "in" if ti is not None else "out"
-    rows.append(("Air %s %s" % (fmt(d.get(which + "_temp_c"), "%.1fC"),
+    rows.append(("AIR: %s %s" % (fmt(d.get(which + "_temp_c"), "%.1fC"),
                                 fmt(d.get(which + "_hum_pct"), "%.0f%%")), "sensor"))
-    rows.append(("Press %s" % fmt(d.get(which + "_press_hpa"), "%.0f hPa"), "sensor"))
+    rows.append(("PRESS: %s" % fmt(d.get(which + "_press_hpa"), "%.0f hPa"), "sensor"))
   temps = d.get("probe_temps_c") or []
   if len(temps) == 1:
-    rows.append(("Soil %s" % ("fault!" if temps[0] is None else "%.1fC" % temps[0]), "sensor"))
+    rows.append(("SOIL: %s" % ("fault!" if temps[0] is None else "%.1fC" % temps[0]), "sensor"))
   elif temps:
-    rows.append(("Soil " + " ".join("--" if t is None else "%.1f" % t for t in temps[:2])
-                 + (" +%d" % (len(temps) - 2) if len(temps) > 2 else ""), "sensor"))
+    rows.append(("SOIL: " + " ".join("--" if t is None else "%.1f" % t for t in temps[:2])
+                 + ("+" if len(temps) > 2 else ""), "sensor"))   # trailing + = more probes
   if d.get("moist1_pct") is not None:
     if d.get("moist2_pct") is None:
-      rows.append(("Moist %s" % fmt(d["moist1_pct"], "%.0f%%"), "sensor"))
+      rows.append(("MOIST: %s" % fmt(d["moist1_pct"], "%.0f%%"), "sensor"))
     else:
-      rows.append(("Moist %s  %s" % (fmt(d["moist1_pct"], "%.0f%%"),
-                                     fmt(d["moist2_pct"], "%.0f%%")), "sensor"))
+      rows.append(("MOIST: %s %s" % (fmt(d["moist1_pct"], "%.0f%%"),
+                                    fmt(d["moist2_pct"], "%.0f%%")), "sensor"))
   if d.get("light_pct") is not None or d.get("lux") is not None:
     lux = d.get("lux")
-    lux_s = None if lux is None else ("%.1fk" % (lux / 1000) if lux >= 1000 else "%.0flx" % lux)
+    lux_s = None if lux is None else ("%.0fk" % (lux / 1000) if lux >= 10000 else
+                                      "%.1fk" % (lux / 1000) if lux >= 1000 else "%.0flx" % lux)
     if lux_s is not None and d.get("light_pct") is not None:
-      rows.append(("Light %s %s" % (fmt(d["light_pct"], "%.0f%%"), lux_s), "light"))
+      row = "LIGHT: %s %s" % (fmt(d["light_pct"], "%.0f%%"), lux_s)
+      rows.append((row if len(row) <= 16 else row.replace("lx", ""), "light"))   # 100% 999lx
     elif lux_s is not None:
-      rows.append(("Light %s" % lux_s, "light"))
+      rows.append(("LIGHT: %s" % lux_s, "light"))
     else:
-      rows.append(("Light %s" % fmt(d["light_pct"], "%.0f%%"), "light"))
+      rows.append(("LIGHT: %s" % fmt(d["light_pct"], "%.0f%%"), "light"))
   if d.get("sound_pct") is not None:
-    rows.append(("Sound %s" % fmt(d["sound_pct"], "%.0f%%"), "sensor"))
+    rows.append(("SOUND: %s" % fmt(d["sound_pct"], "%.0f%%"), "sensor"))
   if d.get("surface_mm") is not None:
-    rows.append(("Dist %s" % fmt(d["surface_mm"], "%d mm"), "sensor"))
+    rows.append(("DIST: %s" % fmt(d["surface_mm"], "%d mm"), "sensor"))
   big, small, rly = d.get("big", 90), d.get("small", 90), d.get("relay", 0)
   if rly or big != 90 or small != 90:
-    rows.append(("Srv %d/%d %s" % (big, small, "RlyON" if rly else "rly-"), "sensor"))
+    rows.append(("SRV: %d/%d%s" % (big, small, " RLY" if rly else ""), "sensor"))   # RLY = relay on
   if not rows:
     rows.append(("no parts found", "sensor"))
     rows.append(("check wiring", "sensor"))
@@ -479,7 +482,7 @@ display.show([
     " Maker Lab Kids",
     "",
     " Wormhole v" + picolab.VERSION,
-], gap=0)
+], title=False)
 time.sleep_ms(3000)
 
 light = picolab.StatusLight()

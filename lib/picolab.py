@@ -293,24 +293,41 @@ class Display:
     except Exception:
       self.oled = None
 
+  FONT = 8            # the built-in 8x8 font
+  PANEL = 64
+  BAR_Y = 58          # the 6 px bar sits on rows 58..63
+  RULE_Y = 9          # the title's underline, one blank row under the glyphs
+
   @staticmethod
-  def layout(count, gap=2):
-    """y of each of `count` rows on the 64 px panel (8 px font).
+  def layout(count, title=True, bar=False):
+    """y of each of `count` rows on the 64 px panel.
 
-    Up to 5 rows sit at a roomy 11 px pitch. Six rows tighten to 10 px and
-    seven to 9 px (the 8 px font still clears), so a station with more to
-    say can keep it on ONE screen instead of paging. The first row is the
-    title; `gap` extra pixels under it set it apart from the readings
-    (2 px fits every case: seven rows end exactly on the last pixel row).
+    Row 0 is the title: it sits at the top with an underline. The rest are
+    the readings, stacked up from the bottom edge (or from above the bar)
+    at a roomy 11 px pitch, so whatever is left over is air under the
+    title. Only when the top reading would run into the underline does the
+    pitch tighten, to 10 then 9 px (six readings at 9 px start at y=11, one
+    blank row under the rule). title=False: plain rows from the top, no
+    rule, for a card like the splash.
     """
-    pitch = 11 if count <= 5 else (10 if count == 6 else 9)
-    return [idx * pitch + (gap if idx else 0) for idx in range(count)]
+    D = Display
+    if not title:
+      pitch = 11 if count <= 5 else (10 if count == 6 else 9)
+      return [idx * pitch for idx in range(count)]
+    n = count - 1
+    if n <= 0:
+      return [0][:count]
+    floor = D.BAR_Y if bar else D.PANEL
+    for pitch in (11, 10, 9):
+      top = floor - D.FONT - (n - 1) * pitch
+      if top >= D.RULE_Y + 2:
+        break
+    return [0] + [top + idx * pitch for idx in range(n)]
 
-  def show(self, lines, bar=None, gap=2):
+  def show(self, lines, bar=None, title=True):
     """Draw text rows plus an optional 0.0-1.0 bar at the bottom.
 
-    See layout() for the pitch. With a bar, 5 rows max. gap=0 for a card
-    whose first row is not a title.
+    See layout() for where they go. With a bar, 5 rows max; else 7.
     """
     if not self.oled and self._retry.ready():
       self._connect()
@@ -319,9 +336,11 @@ class Display:
     try:
       o = self.oled
       o.fill(0)
-      rows = lines[:5] if bar is not None else lines[:7]
-      for text, y in zip(rows, self.layout(len(rows), gap)):
-        o.text(str(text)[:16], 0, y)
+      rows = [str(t)[:16] for t in (lines[:5] if bar is not None else lines[:7])]
+      for text, y in zip(rows, self.layout(len(rows), title, bar is not None)):
+        o.text(text, 0, y)
+      if title and rows and len(rows) > 1:
+        o.hline(0, self.RULE_Y, len(rows[0]) * self.FONT, 1)
       if bar is not None:
         width = int(min(1.0, max(0.0, bar)) * 128)
         o.rect(0, 58, 128, 6, 1)
