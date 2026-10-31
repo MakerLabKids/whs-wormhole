@@ -74,10 +74,11 @@ d = fresh(["Dirt Nerds", "IN: 24.1C 71%"]); d.marquee = "Woodstock High School a
 assert run(d, 4990) == [], "nothing moves during the hold"
 seen = run(d, 20)
 assert seen and seen[0][0] == d.marquee and seen[0][1] == 128, seen[:2]    # enters from the right
-seen = run(d, 7000)                    # one full crossing (632 px at 100 px/s = 6.3 s)
+seen = run(d, 13000)                   # one full crossing (632 px at 50 px/s = 12.6 s)
 xs = [x for t, x, _ in seen if t == d.marquee]
-assert xs[0] == 128 - D.SCROLL_PX and all(b - a == -D.SCROLL_PX for a, b in zip(xs, xs[1:])), xs[:5]   # one step per SCROLL_MS
-assert 0 < xs[-1] + len(d.marquee) * 8 <= D.SCROLL_PX, xs[-1]                 # last frame: a sliver left, then gone
+assert xs[0] == 127 and all(b - a == -1 for a, b in zip(xs, xs[1:])), xs[:5]  # a pixel at a time, every 20 ms
+assert xs[-1] + len(d.marquee) * 8 == 1, xs[-1]                               # last frame: a sliver left, then gone
+assert len(xs) == 632 - 1 - 1 + 1, len(xs)
 back = [c for c in seen if c[0] == "Dirt Nerds"]
 assert back and back[0][1] == (128 - 10 * 8) // 2 and d._mq is False, (back[:1], d._mq)   # home, centered
 # the rule travelled with the text: never wider than the screen, never past the glyphs
@@ -122,3 +123,69 @@ assert order[:3] == [long, "and the marquee", long], order                  # na
 first_mq = [c for c in seen if c[0] == "and the marquee"][0]
 assert first_mq[1] == 128, first_mq                                           # it waited for the name's pass to end
 print("display layout + marquee OK")
+
+# ---- the shows: name, marquee, name, a show, name, marquee, name, the next show...
+class Show:
+    frames = 10
+    def __init__(self): self.drawn = []
+    def draw(self, o, t): self.drawn.append(t); o.text("frame", 0, 0)
+class ShowA(Show): name = "A"
+class ShowB(Show): name = "B"
+
+def phases(d, ms):
+    """what was on the title row, as it changed, over ms"""
+    out = []
+    for _ in range(ms // 10):
+        faketime.advance(0.01); d.oled.calls = []; d.tick()
+        if d.oled.calls:
+            t = d.oled.title()[0]
+            t = "show" if t == "frame" else ("mq" if t == d.marquee else "name")
+            if not out or out[-1] != t: out.append(t)
+    return out
+
+d = fresh(["Dirt Nerds", "x"]); d.marquee = "short marquee"; d.shows = [ShowA, ShowB]
+assert run(d, 4990) == [], "the first hold is untouched"
+seen = phases(d, 40000)
+assert seen[:6] == ["mq", "name", "show", "name", "mq", "name"], seen
+assert seen[6:8] == ["show", "name"], seen
+assert d._show_idx >= 2 and d._show is None, (d._show_idx, d._show)
+# the shows ran in order, every frame once, at SHOW_FPS, then held the last frame
+d = fresh(["Dirt Nerds", "x"]); d.marquee = "m"; d.shows = [ShowA, ShowB]
+run(d, 5010); 
+while d._mq: run(d, 10)
+run(d, 5010)                                     # the second hold ends with a show
+assert d._show and d._show.name == "A", d._show
+show, t0, frames = d._show, faketime.ticks_ms(), []
+while d._show:
+    faketime.advance(0.01); d.oled.calls = []; d.tick()
+    if d.oled.calls and d.oled.title()[0] == "frame": frames.append(faketime.ticks_diff(faketime.ticks_ms(), t0))
+assert show.drawn == list(range(10)), show.drawn                             # every frame once, in order (0 came with the start)
+assert all(b - a == 1000 // D.SHOW_FPS for a, b in zip(frames, frames[1:])), frames
+assert faketime.ticks_diff(faketime.ticks_ms(), t0) - frames[-1] == D.SHOW_HOLD_MS, (frames[-1], faketime.ticks_ms() - t0)
+assert d.oled.title() == ("Dirt Nerds", 24, 0), d.oled.title()             # straight back to the centered name
+assert run(d, 4990) == [] and run(d, 20), "and a fresh 5 s hold"
+while d._mq: run(d, 10)
+run(d, 5010)
+assert d._show and d._show.name == "B", d._show                              # the next one, in order
+# new readings during a show wait: the show keeps the screen, the rows land after it
+d.oled.calls = []; d.show(["Dirt Nerds", "MOIST: 50%"])
+assert d.oled.calls == [], d.oled.calls
+while d._show: run(d, 10)
+assert ("MOIST: 50%", 0, 56) in d.oled.calls, d.oled.calls
+# a stalled loop (a slow sensor sweep) skips frames; the show keeps its tempo and its length
+d = fresh(["Dirt Nerds", "x"]); d.shows = [ShowA]
+run(d, 5010); show = d._show; assert show and show.drawn == [0], show
+run(d, 100)                                      # frames 1, 2
+faketime.advance(0.3); d.tick()                  # 300 ms gone in one pass: straight to frame 8
+assert show.drawn == [0, 1, 2, 8], show.drawn
+while d._show: run(d, 10)
+assert show.drawn == [0, 1, 2, 8, 9] and d._show_drawn == 5, show.drawn
+assert faketime.ticks_diff(faketime.ticks_ms(), d._hold_at) < 20 and d.oled.title()[0] == "Dirt Nerds"
+# shows without a marquee: name, show, name, show
+d = fresh(["Dirt Nerds", "x"]); d.shows = [ShowA]
+assert phases(d, 20000)[:4] == ["show", "name", "show", "name"]
+# a long name: its passes, then a show, then its passes again
+d = fresh([long, "x"]); d.marquee = ""; d.shows = [ShowA]
+seen = phases(d, 15000)
+assert seen[:3] == ["name", "show", "name"], seen
+print("worm show cycle OK")

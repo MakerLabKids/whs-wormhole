@@ -29,12 +29,10 @@ record of what got done.
 
 ## Bench board (The Wrigglers, now bin 38)
 
-- [ ] **It is in splash-demo mode** (2026-10-31): `main.py` on the board is
-      `tools/splash_demo.py` looping the ten worm shows; the real program is saved on
-      the board as `main_wormbin.py`. To go back:
-      `mpremote cp :main_wormbin.py :main.py` is not a thing, so:
-      `mpremote cp <local copy> :main.py && mpremote reset` (the hand-tuned copy is
-      what was on the board; or reflash with the fleet tool).
+- [ ] **Eyeball the screen cycle** (2026-10-31 12:55, flashed): card 2 s, name 5 s,
+      marquee, name 5 s, a worm show, round again with the next show. The readings
+      keep updating under the shows. (The splash-demo `main.py` is gone from the board;
+      `main_wormbin.py` on it is now a stale copy and can be deleted.)
 
 - [ ] **Moisture probe reads 100 % at 0.4 V** since the wire fix. Dry in air it read
       2.7 V this morning. Check which pin the AOUT wire is on (GP26 = pin 31) and

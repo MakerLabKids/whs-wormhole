@@ -57,10 +57,8 @@ to 0 to show the raw reading everywhere.
 
 ## The screen
 
-Power on: one of ten animated worm shows (a different one each boot;
-`lib/wormshow.py`, gallery at docs/splash.html, `SPLASH_SHOW = False`
-to skip it), the start-up card for three seconds, then one screen built
-from whatever is reporting.
+Power on: the start-up card for two seconds, then one screen built from
+whatever is reporting.
 
 <img src="../../docs/img/oled/startup.svg" width="300" alt="start-up card"> <img src="../../docs/img/oled/data.svg" width="300" alt="a lean bin">
 
@@ -77,11 +75,16 @@ has been commanded.
 
 <img src="../../docs/img/oled/full.svg" width="300" alt="six readings"> <img src="../../docs/img/oled/marquee.svg" width="300" alt="the marquee">
 
-The top row is also a marquee: the name holds for five seconds, then
-`MARQUEE` (the school and program line, in the config block) scrolls
-through, then the name holds again. A name too wide for the screen (more
-than 16 characters) scrolls instead of holding and still gets its five
-seconds. `MARQUEE = ""` turns the scroll off.
+The top row is also a marquee, and the screen runs a cycle: the name
+holds for five seconds, `MARQUEE` (the school and program line, in the
+config block) scrolls through, the name holds another five seconds, then
+one of the ten animated worm shows plays (`lib/wormshow.py`, gallery at
+docs/splash.html; they go in order, the next one each time round, so it
+is predictable), and it starts again from the name. The readings keep
+updating underneath and come back the moment a show ends. A name too
+wide for the screen (more than 16 characters) scrolls instead of holding
+and still gets its five seconds. `MARQUEE = ""` turns the scroll off,
+`WORM_SHOWS = False` the shows.
 
 <img src="../../docs/img/oled/longname.svg" width="300" alt="a long team name scrolling">
 

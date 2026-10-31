@@ -30,7 +30,7 @@ from machine import I2C, Pin, unique_id
 #   1.0.0  go-live: after this, no breaking changes.
 # Shown by the self-test (header + healthy message + OLED) and the worm-bin
 # startup screen, so a board tells you what it runs with no computer attached.
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 
 _i2c = None
 
@@ -333,9 +333,10 @@ class Display:
   """SSD1306 wrapper that never raises. Retries the display every 3 s."""
 
   HOLD_MS = 5000      # the title shows (still, or scrolling if long) this long between marquee runs
-  SCROLL_MS = 40      # one scroll step...
-  SCROLL_PX = 4       # ...moves this far (100 px/s, ~12 letters/s: a 60-char line crosses in ~6 s;
-                      #    the step rate is pinned by the ~25 ms an I2C refresh takes, so speed = step size)
+  SCROLL_PX_S = 50    # scrolling text moves this fast (~6 letters/s; a 60-char line crosses in ~12 s),
+                      #    on the wall clock, so the pace is the same however fast the loop runs
+  SHOW_FPS = 20       # a show's frames come this fast (an I2C refresh is ~25 ms, so this is the ceiling)
+  SHOW_HOLD_MS = 600  # ...and its last frame lingers this long
 
   def __init__(self, addr=0x3C):
     self.addr = addr
@@ -345,11 +346,21 @@ class Display:
     # The title row. A name that fits (16 chars) sits centered; a longer
     # one scrolls through. With `marquee` set (and tick() called every
     # pass): show the name HOLD_MS, scroll the marquee through, repeat.
+    # With `shows` set too (a list of classes with .frames and .draw(o, t),
+    # see lib/wormshow.py) the two take turns after each hold: name,
+    # marquee, name, a show, name, marquee, name, the next show...
     self.marquee = None
+    self.shows = None
+    self._show = None                 # the show now playing (an instance), else None
+    self._show_t = 0                  # its next frame
+    self._show_drawn = 0              # frames drawn so far (fewer than frames when the loop stalled)
+    self._show_at = 0                 # when it started
+    self._show_idx = 0                # which show plays next (in order, so it is predictable)
+    self._show_next = False           # True: the next hold ends with a show, False: the marquee
     self._mq = False                  # True while the marquee text is crossing
     self._x = None                    # x of whatever is scrolling (None: nothing yet)
     self._hold_at = time.ticks_ms()   # when the current hold began
-    self._step_at = self._hold_at     # the last scroll step
+    self._scroll_at = self._hold_at   # when the current scrolling pass entered from the right
     self._lines, self._bar, self._title = None, None, True
     self._title_seen = False
 
@@ -415,32 +426,83 @@ class Display:
     if title and not self._title_seen:          # the first titled screen starts the first hold
       self._title_seen, self._hold_at = True, time.ticks_ms()
     self._lines, self._bar, self._title = lines, bar, title
-    self._draw()
+    if not self._show:                          # a running show keeps the screen; the rows wait
+      self._draw()
 
   def tick(self):
-    """Call every loop pass: scrolls a long title, and runs the marquee."""
+    """Call every loop pass: scrolls a long title, runs the marquee and
+    plays the shows."""
     if not self._title or not self._lines or not self.oled:
       return
     now = time.ticks_ms()
+    if self._show:
+      self._show_tick(now)
+      return
     name = str(self._lines[0])
     long = len(name) * self.FONT > 128
     if not self._mq and not long:               # a short name holds still
-      if not self.marquee or time.ticks_diff(now, self._hold_at) < self.HOLD_MS:
+      if time.ticks_diff(now, self._hold_at) < self.HOLD_MS or not self._after_hold(now):
         return
-      self._mq, self._x = True, 128             # the marquee enters from the right
-    else:
-      if time.ticks_diff(now, self._step_at) < self.SCROLL_MS:
-        return
+    else:                                       # something is crossing, on the wall clock
       text = self.marquee if self._mq else name
-      self._x = 128 if self._x is None else self._x - self.SCROLL_PX
+      if self._x is None:                       # a pass begins: enter from the right
+        self._x, self._scroll_at = 128, now
+      else:
+        x = 128 - (time.ticks_diff(now, self._scroll_at) * self.SCROLL_PX_S) // 1000
+        if x == self._x:
+          return                                # not a pixel further yet
+        self._x = x
       if self._x + len(text) * self.FONT <= 0:  # this pass has left the screen
         if self._mq:
           self._mq, self._hold_at = False, now  # back to the name
-        elif self.marquee and time.ticks_diff(now, self._hold_at) >= self.HOLD_MS:
-          self._mq = True                       # the name has had its HOLD_MS
-        self._x = 128
-    self._step_at = now
-    self._draw()
+        elif time.ticks_diff(now, self._hold_at) >= self.HOLD_MS:
+          self._after_hold(now)                 # the name has had its HOLD_MS
+        self._x, self._scroll_at = 128, now
+    if not self._show:
+      self._draw()
+
+  def _after_hold(self, now):
+    """The name has had its HOLD_MS: start what follows it. The marquee
+    and the shows take turns; with only one of them set it is always that
+    one. False when there is nothing to follow it."""
+    if self.shows and (self._show_next or not self.marquee):
+      cls = self.shows[self._show_idx % len(self.shows)]
+      self._show_idx += 1
+      self._show, self._show_t, self._show_at, self._show_next = cls(), 0, now, False
+      self._show_drawn = 0
+      self._show_tick(now)                      # frame 0 right away
+      return True
+    if self.marquee:
+      self._mq, self._x, self._scroll_at, self._show_next = True, 128, now, True
+      return True
+    return False
+
+  def _show_tick(self, now):
+    """The running show, on the wall clock: frame elapsed // period, so a
+    sensor sweep that stalls the loop skips frames rather than slowing the
+    show down, and every show takes its frames / SHOW_FPS seconds plus
+    SHOW_HOLD_MS on the last frame. Then the name again, for a fresh hold."""
+    s = self._show
+    period = 1000 // self.SHOW_FPS
+    elapsed = time.ticks_diff(now, self._show_at)
+    if elapsed >= (s.frames - 1) * period + self.SHOW_HOLD_MS:
+      log("%s: %d of %d frames in %d ms" % (getattr(s, "name", "show"), self._show_drawn, s.frames, elapsed))
+      self._show, self._hold_at, self._x = None, now, None
+      self._draw()
+      return
+    t = min(elapsed // period, s.frames - 1)
+    if t < self._show_t:
+      return
+    try:
+      o = self.oled
+      o.fill(0)
+      s.draw(o, t)
+      o.show()
+    except Exception as e:
+      log("show lost:", e)
+      self._show, self.oled = None, None
+      return
+    self._show_t, self._show_drawn = t + 1, self._show_drawn + 1
 
   def _draw(self):
     if not self.oled and self._retry.ready():
@@ -1754,7 +1816,7 @@ class WebApp:
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind(addr)
         self.server.listen(2)
-        self.server.settimeout(0.05)
+        self.server.settimeout(0)   # accept() returns at once: the loop (screen, shows) never waits on it
         return
       except OSError as e:
         try:

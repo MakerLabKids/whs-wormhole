@@ -98,8 +98,11 @@
       <h3>The little screen <span class="part">OLED 128&times;64</span></h3>
       <p class="what">shows what the station knows, with no phone and no computer</p>
       <p>Four wires put it on the I2C bus at address <code>0x3C</code>, and every program in this
-         guide draws on it. Power on and you get the start-up card for three seconds; then one row
-         per part that is plugged in and reporting, with the team name across the top.</p>
+         guide draws on it. Power on and you get the start-up card for two seconds; then one row
+         per part that is plugged in and reporting, with the team name across the top. The top
+         row cycles: the name for five seconds, the school line scrolling through, the name
+         again, then one of the ten <a href="splash.html">worm shows</a> (the next one each time
+         round), and back to the name.</p>
       <div class="shots">
         <figure><img src="img/oled/startup.svg" alt="The start-up card: WOODSTOCK HIGH SCHOOL, Maker Lab Kids, Wormhole version" loading="lazy">
           <figcaption>Power on: the start-up card.</figcaption></figure>

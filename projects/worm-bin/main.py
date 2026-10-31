@@ -82,13 +82,14 @@ READ_EVERY_MS = 500   # sensor sweep cadence (default 500 ms)
 # have time to shine a light on a sensor and watch it react.
 PAGE_SEC_LIGHT = 10   # a page with a light sensor (shine a light, watch it move)
 PAGE_SEC_SENSOR = 5   # any other page
-# One of the ten worm shows plays at power-on (a different one each boot),
-# then the school card. False = card only (boots ~5 s faster).
-SPLASH_SHOW = True
-# The title row: the team name holds for 5 s, then this line scrolls
-# through, then the name holds again. "" turns the marquee off. A name too
-# long for the screen scrolls instead of holding; it still gets its 5 s.
+# The screen's cycle: the school card (2 s, power-on only), then forever:
+# the team name 5 s, this line scrolls through, the name 5 s, one of the
+# ten worm shows (lib/wormshow.py, in order, the next one each time round),
+# and again from the name. "" turns the marquee off, False the shows; a
+# name too long for the screen scrolls instead of holding, and still gets
+# its 5 s.
 MARQUEE = "Woodstock High School and Maker Lab Kids - Vermiculture PBL by:"
+WORM_SHOWS = True
 # ===== end of config ==================================================
 
 
@@ -503,17 +504,12 @@ picolab.banner("WORM BIN COMMAND CENTER  v" + picolab.VERSION, [
 
 display = picolab.Display()
 display.marquee = MARQUEE
-if SPLASH_SHOW:
+if WORM_SHOWS:
   try:
     import wormshow
-    try:
-      with open(picolab.BOOT_FILE) as f:
-        nth = int(f.read().strip() or 0)      # the boot counter: a different show each boot
-    except Exception:
-      nth = 0
-    wormshow.play(display, loop=False, only=wormshow.SHOWS[nth % len(wormshow.SHOWS)].name)
+    display.shows = wormshow.SHOWS
   except Exception as e:
-    picolab.log("worm show skipped:", e)
+    picolab.log("worm shows skipped:", e)
 # The capstone gets a proper opening card (the little demos stay fast).
 display.show([
     "   WOODSTOCK",
@@ -522,7 +518,7 @@ display.show([
     "",
     " Wormhole v" + picolab.VERSION,
 ], title=False)
-time.sleep_ms(3000)
+time.sleep_ms(2000)
 
 light = picolab.StatusLight()
 app = picolab.WebApp()
@@ -544,7 +540,7 @@ try:
     app.poll(data_fn, routes=[("/set", set_handler), ("/cal", cal.handle)])
     servo_big.step()      # ramp the servos toward their targets every pass
     servo_small.step()
-    display.tick()        # the title marquee, between sensor sweeps
+    display.tick()        # the title marquee and the worm shows, between sensor sweeps
     if not tick.ready():
       continue
 

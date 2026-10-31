@@ -175,23 +175,26 @@ class Pulse:
 
   def draw(self, o, t):
     o.text("LIVE", 2, 2)
-    # beating heart
-    b = 1 + (1 if (t % 24) < 4 else 0)
-    dot(o, 110, 7, 3 * b)
-    dot(o, 117, 7, 3 * b)
-    o.ellipse(113, 10, 5 * b, 3 * b, ON, True)
+    # five hearts: an earthworm has five pairs of aortic arches, and they
+    # squeeze one after another, front to back, so the beat runs along them
+    for i in range(5):
+      b = 1 if (t - i * 3) % 24 < 4 else 0
+      cx = 46 + i * 17
+      dot(o, cx - 3, 5, 2 + b)
+      dot(o, cx + 3, 5, 2 + b)
+      o.ellipse(cx, 8, 5 + b, 3 + b, ON, True)
     base = 38
     sweep = (t * 3) % (W + 40)
     for x in range(W):
       if x < sweep:
-        y = base - self.trace(x + t * 0)
+        y = base - self.trace(x)
         y2 = base - self.trace(x + 1)
         o.line(x, y, x + 1, y2, ON)
     # the worm IS the pen, riding the trace at the sweep point
     hx = min(sweep, W - 1)
     pts = [(hx - i * 3, base - self.trace(hx - i * 3) - 1) for i in range(6)]
     worm(o, pts, 2)
-    o.text("bpm: worm", 2, 54)
+    o.text("5 hearts, 1 worm", 0, 55)
 
 
 # ---- 6. compost: scraps fall in, worms come up for dinner ---------------
