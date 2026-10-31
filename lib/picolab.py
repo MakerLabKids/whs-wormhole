@@ -942,8 +942,12 @@ PIN_LOCK_S = 60            # ...every PIN-gated request is refused for this long
 
 
 MSG_FILE = "msg.json"
+WHO_FILE = "who.json"      # device id -> {name, at, via}: who is behind each phone/laptop that touched the slots
+MSG_LOG = "msglog.txt"     # the last MSG_LOG_KEEP changes: ts, door, name, slot, what, title
+MSG_LOG_KEEP = 60
 MSG_SLOTS = 5          # 1-3 the team's, 4-5 the teacher's (the website enforces who; the PIN opens all)
 MSG_TEAM_SLOTS = 3
+MSG_NAME_MAX = 32
 MSG_LINES = 5
 MSG_WIDTH = 16         # the 8 px font: 16 characters across the screen
 
@@ -967,13 +971,24 @@ class Messages:
   &l1=..&l5=..&start=..&end=..&count=..&now=.. sets slot 1;
   /msg?slot=1&clear=1 empties it. `now` is the phone's clock: a board no
   Burrow has told the time takes it, so dated messages work on the hotspot.
+
+  Who: every call carries me=<device id> (a random id the browser keeps).
+  The first name a device sends (&name=) is recorded against it and
+  cannot be changed from that device again; only a call with the teacher
+  PIN (&tpin=, bin.json "teacher_pin") renames it. No name, no changes:
+  the page makes a kid set it before the editor opens, saying it will be
+  logged. Each slot keeps who set it and through which door (by, via, at),
+  and msglog.txt keeps the last changes. The website's door comes with
+  its own login name (apply(): by, via "web").
   """
 
-  def __init__(self, app=None, path=MSG_FILE):
+  def __init__(self, app=None, path=MSG_FILE, teacher_pin=None):
     self.app = app
     self.path = path
+    self.teacher_pin = str(teacher_pin) if teacher_pin else None
     self.slots = [None] * MSG_SLOTS
     self.acks = {}                    # slot -> the last seq applied from the web (negative: refused)
+    self.who = {}                     # device id -> {"name", "at", "via"}
     self._rot = 0
     try:
       with open(path) as f:
@@ -985,6 +1000,49 @@ class Messages:
         self.slots[i] = data[i] or None
     except Exception:
       pass
+    try:
+      with open(WHO_FILE) as f:
+        self.who = json.load(f) or {}
+    except Exception:
+      pass
+
+  def _save_who(self):
+    try:
+      with open(WHO_FILE, "w") as f:
+        json.dump(self.who, f)
+    except Exception as e:
+      log("who save failed:", e)
+
+  def _log(self, via, by, slot, what, title=""):
+    """Append a line to msglog.txt and keep it short."""
+    ts, _ = self._now()
+    line = "%d\t%s\t%s\t%s\t%s\t%s\n" % (int(ts), via, by, slot, what, title)
+    try:
+      try:
+        with open(MSG_LOG) as f:
+          lines = f.read().split("\n")
+      except OSError:
+        lines = []
+      lines = [x for x in lines if x][-(MSG_LOG_KEEP - 1):]
+      with open(MSG_LOG, "w") as f:
+        f.write("\n".join(lines) + ("\n" if lines else "") + line)
+    except Exception as e:
+      log("msglog:", e)
+
+  def changes(self, n=20):
+    """The last n changes, newest first, as dicts."""
+    out = []
+    try:
+      with open(MSG_LOG) as f:
+        lines = [x for x in f.read().split("\n") if x]
+    except OSError:
+      return out
+    for x in lines[-n:]:
+      p = x.split("\t")
+      if len(p) >= 5:
+        out.append({"ts": int(p[0]), "via": p[1], "by": p[2], "slot": p[3], "what": p[4], "title": p[5] if len(p) > 5 else ""})
+    out.reverse()
+    return out
 
   def save(self):
     try:
@@ -1026,9 +1084,11 @@ class Messages:
         log("message %d from the web refused: wrong PIN" % slot)
         changed = True
         continue
+      by = _msg_text(it.get("by"))[:MSG_NAME_MAX] or "the website"
       if it.get("clear"):
         self.slots[slot - 1] = None
-        log("message %d cleared from the web" % slot)
+        self._log("web", by, slot, "cleared")
+        log("message %d cleared from the web by %s" % (slot, by))
       else:
         title = _msg_text(it.get("title"))
         lines = [_msg_text(t) for t in list(it.get("lines") or [])[:MSG_LINES]]
@@ -1047,8 +1107,11 @@ class Messages:
               new[k] = v
           if it.get("boot"):
             new["boot"] = True
+          ts, _ = self._now()
+          new["by"], new["via"], new["at"] = by, "web", int(ts)
           self.slots[slot - 1] = new
-          log("message %d set from the web: %s" % (slot, title or lines[0]))
+          self._log("web", by, slot, "set", title or lines[0])
+          log("message %d set from the web by %s: %s" % (slot, by, title or lines[0]))
       self.acks[key] = seq
       changed = True
     if changed:
@@ -1096,26 +1159,52 @@ class Messages:
     """The live slots flagged for the power-on sequence, each counted as shown."""
     return [self._shown(i) for i in range(MSG_SLOTS) if self.active(i) and self.slots[i].get("boot")]
 
-  def status(self):
+  def status(self, me=None):
     ts, clk = self._now()
-    return {"slots": self.slots, "active": [self.active(i) for i in range(MSG_SLOTS)], "now": int(ts), "clk": clk}
+    d = {"slots": self.slots, "active": [self.active(i) for i in range(MSG_SLOTS)], "now": int(ts), "clk": clk,
+         "changes": self.changes(10), "teacher_pin": bool(self.teacher_pin)}
+    if me:
+      w = self.who.get(me)
+      d["me"] = w["name"] if w else None
+    return d
 
   def handle(self, req):
     """Route handler, see the class note."""
     hint = query_int(req, "now")
     if hint and self.app and hasattr(self.app, "clock_hint"):
       self.app.clock_hint(hint)
+    via = "bluetooth" if b"X-Via: ble" in req else "wifi"
+    me = (query_str(req, "me") or "").strip()[:48]
+    name = _msg_text(query_str(req, "name"))[:MSG_NAME_MAX] if query_str(req, "name") is not None else None
+    if me and name is not None:
+      tpin = query_str(req, "tpin")
+      have = self.who.get(me)
+      if have and have.get("name") != name and name:
+        if not (self.teacher_pin and tpin == self.teacher_pin):
+          return {"error": "this device's name is set; a teacher can change it", "me": have["name"]}
+        self._log(via, have["name"], "-", "renamed by a teacher to " + name)
+      if name and (not have or have.get("name") != name):
+        ts, _ = self._now()
+        self.who[me] = {"name": name, "at": int(ts), "via": via}
+        self._save_who()
+        if not have:
+          self._log(via, name, "-", "set their name")
     slot = query_int(req, "slot")
     if slot is None:
-      return self.status()
+      return self.status(me)
     if not 1 <= slot <= MSG_SLOTS:
       return {"error": "slot 1-%d" % MSG_SLOTS}
+    who = self.who.get(me) if me else None
+    if not who:
+      return {"error": "set your name first", "me": None}
+    by = who["name"]
     i = slot - 1
     if query_str(req, "clear") is not None:
       self.slots[i] = None
       self.save()
-      log("message %d cleared" % slot)
-      return self.status()
+      self._log(via, by, slot, "cleared")
+      log("message %d cleared by %s (%s)" % (slot, by, via))
+      return self.status(me)
     title = _msg_text(query_str(req, "title"))
     lines = [_msg_text(query_str(req, "l%d" % n)) for n in range(1, MSG_LINES + 1)]
     while lines and not lines[-1]:
@@ -1129,10 +1218,13 @@ class Messages:
         s[key] = v
     if query_int(req, "boot"):
       s["boot"] = True
+    ts, _ = self._now()
+    s["by"], s["via"], s["at"] = by, via, int(ts)
     self.slots[i] = s
     self.save()
-    log("message %d set: %s" % (slot, title or lines[0]))
-    return self.status()
+    self._log(via, by, slot, "set", title or lines[0])
+    log("message %d set by %s (%s): %s" % (slot, by, via, title or lines[0]))
+    return self.status(me)
 
 
 def query_str(req, key, default=None):

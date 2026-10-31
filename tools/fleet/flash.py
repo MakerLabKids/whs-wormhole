@@ -316,8 +316,10 @@ def flash_one(rn, port, fleet, rows, password, dry=False):
     with tempfile.TemporaryDirectory() as td:
         put_text(rn, port, "wifi.json", json.dumps({"ssid": fleet["ssid"], "password": password,
                                                     "rescue": fleet.get("rescue", "wormmaster")}) + "\n", td)
-        put_text(rn, port, "bin.json", json.dumps({"team": team, "period": int(row["period"]),
-                                                   "bin": int(row["bin"]), "room": int(row["room"])}) + "\n", td)
+        b = {"team": team, "period": int(row["period"]), "bin": int(row["bin"]), "room": int(row["room"])}
+        if fleet.get("teacher_pin"):
+            b["teacher_pin"] = str(fleet["teacher_pin"])      # unlocks a locked name on a board; never shown
+        put_text(rn, port, "bin.json", json.dumps(b) + "\n", td)
         put_text(rn, port, "name.txt", team + "\n", td)
     version = read_version(rn, port)
     row.update(uid=uid, flashed_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), version=version)

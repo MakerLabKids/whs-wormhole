@@ -76,7 +76,8 @@ export async function apiMessages(request, env, session) {
   }
   const t = now();
   const seq = ((await env.DB.prepare("SELECT seq FROM messages WHERE uid = ?1 AND slot = ?2").bind(uid, slot).first("seq")) || 0) + 1;
-  const who = session.first_name ? `${session.first_name} (${session.team?.name})` : session.team?.name || session.role;
+  const team = session.team?.name || session.role;
+  const who = session.role === "team" && session.first_name && session.first_name !== team ? `${session.first_name} (${team})` : team;
   await env.DB.prepare(
     `INSERT INTO messages (uid, slot, seq, title, lines, start_ts, end_ts, count, boot, cleared, pin, set_by, set_at, delivered_at, result)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, NULL, NULL)
@@ -109,10 +110,10 @@ export function ackStatements(env, bins, t) {
 // Everything not yet acked, for the Burrows (each item as the Bin wants it).
 export async function pendingMessages(env) {
   const { results } = await env.DB.prepare(
-    "SELECT uid, slot, seq, title, lines, start_ts, end_ts, count, boot, cleared, pin FROM messages WHERE delivered_at IS NULL AND set_at > ?1 ORDER BY set_at LIMIT 200",
+    "SELECT uid, slot, seq, title, lines, start_ts, end_ts, count, boot, cleared, pin, set_by FROM messages WHERE delivered_at IS NULL AND set_at > ?1 ORDER BY set_at LIMIT 200",
   ).bind(now() - PENDING_DAYS * 86400).all();
   return results.map((r) => {
-    const it = { uid: r.uid, slot: r.slot, seq: r.seq, pin: r.pin };
+    const it = { uid: r.uid, slot: r.slot, seq: r.seq, pin: r.pin, by: r.set_by || "the website" };
     if (r.cleared) return { ...it, clear: true };
     it.title = r.title || "";
     it.lines = safeParse(r.lines, []);

@@ -534,7 +534,7 @@
         api('/api/messages', { method: 'POST', body: body }).then(function (j) { cb(true, j); }).catch(function (e) { cb(false, e.body || { error: e.message }); });
       }
       Msg.create(msgcard, {
-        send: send, open: false,
+        send: send, open: false, identity: false,            // the login is the name here
         canEdit: function (i) { return role !== 'team' || i < Msg.TEAM; },
         hint: 'Type a message and it goes down to the bin\'s screen through its Burrow (within a couple of minutes of the bin\'s next push). ' +
           'The board checks its PIN, so the message needs the PIN that is on the board\'s screen. A title and up to five lines of 16 characters; ' +

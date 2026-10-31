@@ -103,6 +103,16 @@ board's PIN (asked once per phone, see below). The slots live on the
 board in `msg.json`; the editor is `msg.js`, which the install puts on
 the Pico next to `cal.js`.
 
+Who set what is always recorded. On the website it is the login. On the
+board's page and over Bluetooth, the first thing a phone or laptop must
+do is give its owner's name: the page says the name is logged with every
+change, the board records it against that device, and the device can
+never change it again. Only the teacher PIN can (`teacher_pin` in
+bin.json, put there by the fleet flasher from fleet.json; `TEACHER_PIN`
+in the config block is the fallback; it is never on the screen). Each
+slot shows who set it and through which door, and the card lists the
+board's last ten changes (`msglog.txt` on the board keeps sixty).
+
 Three doors to the same slots:
 
 - **The board's page** (its hotspot or the classroom network): the card

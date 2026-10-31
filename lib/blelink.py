@@ -116,7 +116,7 @@ class BleLink:
         d = {"error": str(e)}
       obj = d
     else:
-      status, obj = self.app.dispatch(b"GET " + line + b" HTTP/1.0\r\n")
+      status, obj = self.app.dispatch(b"GET " + line + b" HTTP/1.0\r\nX-Via: ble\r\n")
       if status is None:
         obj = {"error": "unknown request", "try": ["/data", "/msg", "/name"] + [p for p, _ in (self.app.routes or [])]}
     self._queue(json.dumps(obj) + "\n")

@@ -63,8 +63,8 @@ describe("messages for a bin's screen", () => {
     const j = await snapshot();
     expect(j.ok).toBe(true);
     expect(j.messages).toEqual([
-      { uid: UID, slot: 1, seq: 1, pin: "1612", title: "Go Worms!", lines: ["feed us", "", "please"], count: 3 },
-      { uid: OTHER, slot: 4, seq: 1, pin: "2718", title: "Welcome back", lines: ["from Ms T"], start: 1800000000, end: 1800003600, boot: true },
+      { uid: UID, slot: 1, seq: 1, pin: "1612", by: "Ada (Dirt Vader)", title: "Go Worms!", lines: ["feed us", "", "please"], count: 3 },
+      { uid: OTHER, slot: 4, seq: 1, pin: "2718", by: "ms-teacher", title: "Welcome back", lines: ["from Ms T"], start: 1800000000, end: 1800003600, boot: true },
     ]);
   });
 
@@ -88,6 +88,6 @@ describe("messages for a bin's screen", () => {
     expect(j.slots[0]).toBeNull();
     expect(j.status[1]).toMatchObject({ seq: 3, pending: true });
     const s = await snapshot();
-    expect(s.messages).toEqual([{ uid: UID, slot: 1, seq: 3, pin: "1612", clear: true }]);
+    expect(s.messages).toEqual([{ uid: UID, slot: 1, seq: 3, pin: "1612", by: "Ada (Dirt Vader)", clear: true }]);
   });
 });

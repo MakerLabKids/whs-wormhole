@@ -100,6 +100,11 @@ WORM_SHOWS = True
 # on the website (they come down through the Burrow), or over Bluetooth.
 MESSAGE_S = 4
 BLUETOOTH = True      # advertise as the board's name; the website's Bluetooth page talks to it
+# A phone or laptop sets its owner's name once (it is logged with every
+# message) and only this PIN unlocks the name again. The fleet flasher
+# puts it in bin.json ("teacher_pin"); this is the fallback. Never on
+# the screen.
+TEACHER_PIN = ""
 # ===== end of config ==================================================
 
 
@@ -535,7 +540,7 @@ boot_card_at = time.ticks_ms()
 
 light = picolab.StatusLight()
 app = picolab.WebApp()
-messages = picolab.Messages(app)   # the three dashboard message slots (msg.json)
+messages = picolab.Messages(app, teacher_pin=(app.bin or {}).get("teacher_pin") or TEACHER_PIN)   # the message slots (msg.json)
 display.cards = messages.next
 display.CARD_MS = MESSAGE_S * 1000
 app.on_reply = messages.on_reply   # messages set on the website ride down on the Burrow's reply...

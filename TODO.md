@@ -28,8 +28,9 @@ record of what got done.
       2026-10-31) plus `npx wrangler d1 execute wormhole --remote --file schema.sql` (the new
       `messages` table, if not run yet); the Burrow code to the Pis (the /ingest reply carries website messages, the
       snapshot reply lists them); and the Pico reflash (picolab 0.2.2, lib/blelink.py,
-      lib/logos.py, msg.js). Until all three are out, website messages queue harmlessly
-      (status "waiting for the bin").
+      lib/logos.py, msg.js, and bin.json gets the fleet `teacher_pin`, 2718 in fleet.json:
+      change it there first if you want another). Until all three are out, website messages
+      queue harmlessly (status "waiting for the bin").
 - [x] Bluetooth from a phone: works (2026-10-31 evening, Android Chrome on the live page
       whs.makerlabkids.com/bluetooth against the bench board). On a laptop, wait for the
       chooser's scan to settle before picking the board: a Bluetooth mouse stalling is the

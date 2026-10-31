@@ -7,10 +7,11 @@ sys.modules["time"] = faketime
 import bluetooth, picolab, blelink
 
 PATH = "tools/picotest/msg-ble-test.json"
-try:
-    os.remove(PATH)
-except OSError:
-    pass
+for f in (PATH, "who.json", "msglog.txt"):
+    try:
+        os.remove(f)
+    except OSError:
+        pass
 
 
 class FakeApp:
@@ -57,10 +58,14 @@ assert all(len(c) <= 20 for c in ble.notified) and len(ble.notified) > 1, [len(c
 # a message without the PIN is refused the way the page refuses it
 r = ask("/msg?slot=1&title=Hi&l1=there")
 assert r == {"error": "pin", "locked": False}, r
-# with the PIN (pin_for("Dirt Vader", .7) = 1612) it lands, url-decoded
-r = ask("/msg?slot=1&title=Hi%20there&l1=line+one&pin=" + app.pin())
+# with the PIN (pin_for("Dirt Vader", .7) = 1612) but no name yet: refused; the name set, it lands, url-decoded
+r = ask("/msg?slot=1&title=Hi%20there&me=phone1&pin=" + app.pin())
+assert r == {"error": "set your name first", "me": None}, r
+r = ask("/msg?me=phone1&name=Priya&pin=" + app.pin())
+assert r["me"] == "Priya"
+r = ask("/msg?slot=1&title=Hi%20there&l1=line+one&me=phone1&pin=" + app.pin())
 assert r["slots"][0]["title"] == "Hi there" and r["slots"][0]["lines"] == ["line one"], r
-assert msgs.slots[0]["title"] == "Hi there"
+assert msgs.slots[0]["title"] == "Hi there" and msgs.slots[0]["by"] == "Priya" and msgs.slots[0]["via"] == "bluetooth", msgs.slots[0]
 # reading the slots needs the PIN too
 assert ask("/msg")["error"] == "pin"
 # unknown lines are answered, not ignored
@@ -68,7 +73,7 @@ r = ask("/wat")
 assert r["error"] == "unknown request" and "/msg" in r["try"], r
 # a line can arrive in pieces (a phone writes 20 bytes at a time)
 ble.notified = []
-line = ("/msg?slot=2&title=Pieces&pin=" + app.pin() + "\n").encode()
+line = ("/msg?slot=2&title=Pieces&me=phone1&pin=" + app.pin() + "\n").encode()
 for i in range(0, len(line), 7):
     ble.central_writes(rx, line[i:i + 7]); link.poll()
 for _ in range(40): link.poll()
@@ -83,5 +88,6 @@ assert ask("/msg?slot=1&title=x&pin=" + app.pin()) == {"error": "pin", "locked":
 # disconnect: queue dropped, advertising again
 ble.adv = None; ble.disconnect()
 assert not link.connected and ble.adv is not None
-os.remove(PATH)
+for f in (PATH, "who.json", "msglog.txt"):
+    os.remove(f)
 print("bluetooth OK")

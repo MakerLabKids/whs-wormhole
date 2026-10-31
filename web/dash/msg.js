@@ -20,6 +20,11 @@
 //
 // The default transport keeps the PIN in this browser for this board ('pin:' + host, the same
 // key the dashboard and cal.js use), so it is typed once per phone.
+//
+// Who: before the editor opens (board and Bluetooth doors), the person sets their name once on
+// this device and is told it is logged with every change. The board keeps the name against a
+// random device id ('who:id') and never takes another from that device; only the teacher PIN
+// renames it. The website door (identity: false) uses the real login instead.
 
 window.Msg = (function () {
   var SLOTS = 5, TEAM = 3, LINES = 5, WIDTH = 16;
@@ -44,7 +49,11 @@ window.Msg = (function () {
       '.msg-b.msg-save{background:#14532d;color:#86efac}' +
       '.msg-b:disabled{opacity:.5;cursor:default}' +
       '.msg-note{font-size:11px;color:#94a3b8;min-height:14px;margin-top:4px}' +
-      '.msg-msg{font-size:12px;color:#94a3b8;margin-top:6px}';
+      '.msg-msg{font-size:12px;color:#94a3b8;margin-top:6px}' +
+      '.msg-who{font-size:12px;color:#94a3b8;margin:6px 0 10px}.msg-who b{color:#e2e8f0}.msg-who a{color:#93c5fd;cursor:pointer;margin-left:8px}' +
+      '.msg-gate{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;max-width:420px}' +
+      '.msg-gate p{font-size:13px;margin:0 0 8px}.msg-gate input{width:60%;margin-right:6px}' +
+      '.msg-log{font-size:11px;color:#94a3b8;margin-top:10px}.msg-log div{padding:2px 0;border-top:1px solid #1e293b}.msg-log b{color:#cbd5e1}';
     document.head.appendChild(s);
   }
   // The board's door: GET /msg?... with the PIN this browser keeps for this host.
@@ -73,10 +82,21 @@ window.Msg = (function () {
     return isNaN(t) ? 0 : Math.floor(t / 1000);
   }
   function when(ts) { return ts ? new Date(ts * 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
+  function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  function fetchKey(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function deviceId() {
+    var id = fetchKey('who:id');
+    if (!id) { id = 'd' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); store('who:id', id); }
+    return id;
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   function create(el, cfg) {
     cfg = cfg || {};
-    var send = cfg.send || boardSend;
+    var send0 = cfg.send || boardSend;
+    var identity = cfg.identity !== false;           // the board and Bluetooth doors: a name per device
+    var me = identity ? deviceId() : null;
+    function send(q, cb) { send0(identity ? (q ? q + '&' : '') + 'me=' + encodeURIComponent(me) : q, cb); }
     var canEdit = cfg.canEdit || function () { return true; };
     injectStyle();
     el.innerHTML = '';
@@ -85,10 +105,13 @@ window.Msg = (function () {
     hint.textContent = cfg.hint || ('Five slots: three for the team, two for the teacher. After each worm show the screen shows the next live one for a few seconds: ' +
       'a title and up to five lines, 16 characters each. Give it a start and/or end time, or a number of showings; blank means forever. ' +
       '"At power-on" slots show when the board starts instead.');
+    var who = document.createElement('div'); who.className = 'msg-who';
+    var gate = document.createElement('div'); gate.className = 'msg-gate'; gate.hidden = true;
     var slots = document.createElement('div'); slots.className = 'msg-slots';
     var msg = document.createElement('div'); msg.className = 'msg-msg';
+    var logbox = document.createElement('div'); logbox.className = 'msg-log';
     var open = document.createElement('button'); open.className = 'msg-b'; open.textContent = cfg.openLabel || 'Open (needs the PIN)';
-    el.appendChild(head); el.appendChild(hint); el.appendChild(open); el.appendChild(slots); el.appendChild(msg);
+    el.appendChild(head); el.appendChild(hint); el.appendChild(open); el.appendChild(who); el.appendChild(gate); el.appendChild(slots); el.appendChild(msg); el.appendChild(logbox);
     var ids = 'msg' + Math.floor(Math.random() * 1e6) + '_';
     function $(k) { return document.getElementById(ids + k); }
 
@@ -132,6 +155,7 @@ window.Msg = (function () {
           if (s.end && j.now > s.end) note += (note ? '. ' : '') + 'Ended ' + when(s.end);
           if ((s.start || s.end) && j.clk === 'none') note += (note ? '. ' : '') + 'The board has no clock yet: save once and it takes this phone\'s.';
           if (st && st.set_by) note += (note ? '. ' : '') + 'Set by ' + st.set_by + (st.set_at ? ' ' + when(st.set_at) : '');
+          if (s.by) note += (note ? '. ' : '') + 'Set by ' + s.by + (s.via ? ' over ' + s.via : '') + (s.at ? ' ' + when(s.at) : '');
           if (st && st.result === 'refused') note += (note ? '. ' : '') + 'The board refused it: wrong PIN. Save again with the right one.';
           if (st && st.pending) note += (note ? '. ' : '') + 'It lands on the board within about two minutes of its next push.';
         } else {
@@ -144,6 +168,45 @@ window.Msg = (function () {
       if (j.clk === 'none') msg.textContent = 'The board does not know the time yet (no Burrow seen). Saving any slot sets it from this phone.';
       else if (j.clk) msg.textContent = 'Board clock: ' + when(j.now) + (j.clk === 'est' ? ' (estimated)' : '');
       else msg.textContent = '';
+      if (j.changes && j.changes.length) {
+        logbox.innerHTML = '<b>Recent changes on this board</b>' + j.changes.map(function (c) {
+          return '<div>' + esc(when(c.ts) || 'no clock') + ' · <b>' + esc(c.by) + '</b> over ' + esc(c.via) + ' · ' + esc(c.what) + (c.slot && c.slot !== '-' ? ' slot ' + esc(c.slot) : '') + (c.title ? ' "' + esc(c.title) + '"' : '') + '</div>';
+        }).join('');
+      } else logbox.innerHTML = '';
+      drawWho(j);
+    }
+    function drawWho(j) {
+      if (!identity) { who.innerHTML = ''; return; }
+      if (j.me) store('who:name', j.me);
+      who.innerHTML = j.me ? 'You are <b>' + esc(j.me) + '</b> on this device. Every change you make is recorded under that name.' +
+        (j.teacher_pin ? '<a id="' + ids + 'rename">teacher: change the name</a>' : '') : '';
+      var a = $('rename');
+      if (a) a.onclick = function () {
+        var tp = prompt('The teacher PIN?'); if (!tp) return;
+        var n = prompt('The new name for this device?', j.me || ''); if (!n) return;
+        send('name=' + encodeURIComponent(n.trim()) + '&tpin=' + encodeURIComponent(tp), function (ok, r) {
+          if (ok && r && r.me) { render(r); } else alert('Not changed' + (r && r.error ? ': ' + r.error : '.'));
+        });
+      };
+    }
+    function askName(j) {
+      slots.innerHTML = ''; logbox.innerHTML = ''; who.innerHTML = '';
+      gate.hidden = false;
+      gate.innerHTML = '<p><b>Before you can post to the screen, tell the board who you are.</b></p>' +
+        '<p>Your name is recorded on the board with every message you set or clear, and shown next to it. ' +
+        'It cannot be changed from this phone or laptop afterwards; only a teacher can change it.</p>' +
+        '<input class="msg-in" id="' + ids + 'whoname" maxlength="32" placeholder="first and last name" style="display:inline-block">' +
+        '<button class="msg-b msg-save" id="' + ids + 'whogo">That\'s me</button><div class="msg-note" id="' + ids + 'whonote"></div>';
+      $('whogo').onclick = function () {
+        var n = $('whoname').value.trim();
+        if (n.length < 2) { $('whonote').textContent = 'Type your name first.'; return; }
+        if (!confirm('Record "' + n + '" as the name on this device? It is logged with every change and only a teacher can change it.')) return;
+        $('whonote').textContent = 'telling the board...';
+        send('name=' + encodeURIComponent(n), function (ok, r) {
+          if (ok && r && r.me) { store('who:name', r.me); gate.hidden = true; render(r); }
+          else $('whonote').textContent = 'The board did not take it' + (r && r.error ? ': ' + r.error : '.');
+        });
+      };
     }
     function onButton(ev) {
       var i = parseInt(ev.target.getAttribute('data-i'), 10), q = 'slot=' + (i + 1) + '&now=' + Math.floor(Date.now() / 1000);
@@ -175,9 +238,13 @@ window.Msg = (function () {
     }
     function load() {
       msg.textContent = 'asking the board...';
-      send('', function (ok, j) {
-        if (ok && j && j.slots) { open.style.display = 'none'; render(j); }
-        else msg.textContent = cfg.failText || 'Could not read the messages (older board software, or no PIN).';
+      // the name this device already told some board: offer it to this one too (first name wins, on the board)
+      var known = identity ? fetchKey('who:name') : null;
+      send(known ? 'name=' + encodeURIComponent(known) : '', function (ok, j) {
+        if (ok && j && j.slots) {
+          open.style.display = 'none';
+          if (identity && !j.me) { msg.textContent = ''; askName(j); } else render(j);
+        } else msg.textContent = cfg.failText || 'Could not read the messages (older board software, or no PIN).';
       });
     }
     open.onclick = load;
