@@ -57,8 +57,10 @@ to 0 to show the raw reading everywhere.
 
 ## The screen
 
-Power on: the start-up card for three seconds, then one screen built from
-whatever is reporting.
+Power on: one of ten animated worm shows (a different one each boot;
+`lib/wormshow.py`, gallery at docs/splash.html, `SPLASH_SHOW = False`
+to skip it), the start-up card for three seconds, then one screen built
+from whatever is reporting.
 
 <img src="../../docs/img/oled/startup.svg" width="300" alt="start-up card"> <img src="../../docs/img/oled/data.svg" width="300" alt="a lean bin">
 

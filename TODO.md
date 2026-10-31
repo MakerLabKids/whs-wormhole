@@ -27,7 +27,14 @@ record of what got done.
 - [ ] **Surface (Cloudflare) deploy + `ALERT_URL`** (carried over): `wrangler deploy`
       from your laptop, and the alert URL as `https://`.
 
-## Bench board (The Wrigglers, period 1 bin 9)
+## Bench board (The Wrigglers, now bin 38)
+
+- [ ] **It is in splash-demo mode** (2026-10-31): `main.py` on the board is
+      `tools/splash_demo.py` looping the ten worm shows; the real program is saved on
+      the board as `main_wormbin.py`. To go back:
+      `mpremote cp :main_wormbin.py :main.py` is not a thing, so:
+      `mpremote cp <local copy> :main.py && mpremote reset` (the hand-tuned copy is
+      what was on the board; or reflash with the fleet tool).
 
 - [ ] **Moisture probe reads 100 % at 0.4 V** since the wire fix. Dry in air it read
       2.7 V this morning. Check which pin the AOUT wire is on (GP26 = pin 31) and

@@ -16,3 +16,6 @@ tools/picotest/board/buf/
 tools/picotest/board/boot.txt
 tools/picotest/board/clock.txt
 tools/picotest/board/picolab.py
+
+# rendered OLED frames (regenerate: micropython tools/gen-splash.py)
+docs/img/oled/raw/

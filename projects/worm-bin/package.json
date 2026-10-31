@@ -42,6 +42,10 @@
     [
       "fs:toc.txt",
       "github:MakerLabKids/whs-wormhole/docs/TOC.txt"
+    ],
+    [
+      "fs:lib/wormshow.py",
+      "github:MakerLabKids/whs-wormhole/lib/wormshow.py"
     ]
   ]
 }

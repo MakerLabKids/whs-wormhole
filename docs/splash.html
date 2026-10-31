@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worm screens</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+  .shows { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin: 18px 0; }
+  .show { margin: 0; background: var(--light); border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(27,58,92,0.10); }
+  .show img { width: 100%; border-radius: 10px; background: #1E293B; image-rendering: pixelated; }
+  .show figcaption { font-size: 13.5px; color: var(--ink); margin-top: 8px; }
+  .show figcaption b { color: var(--navy); margin-right: 4px; }
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="index.html">&#129714; Wormhole</a>
+  <div class="links">
+    <a class="nl" href="index.html">Home</a><a class="nl" href="start.html">Start Here</a>
+    <a class="nl" href="sessions.html">Sessions</a><a class="nl" href="stations.html">Sensors</a>
+    <a class="nl" href="research.html">Ideas</a><a class="nl" href="demos/mission-control.html">Demos</a>
+    <a class="nl" href="glossary.html">Glossary</a><a class="nl" href="cheatsheet.html">Code</a>
+    <a class="nl" href="reset.html">Fix a Board</a><a class="nl" href="tools.html">Board Tools</a>
+  </div>
+</div></nav>
+<div class="wrap">
+  <h1>Worm screens</h1>
+  <p>Ten little animations for the 128&times;64 screen on every bin. A board plays one of them
+     when it powers on, a different one each time, before the school card and the readings.
+     These are the real pixels: the same code that runs on the Pico was run on a desktop and
+     every frame captured, so what you see here is what the screen does, three times bigger.</p>
+  <div class="shows">
+    <figure class="show"><img src="img/oled/splash-bigworm.gif" alt="Big Worm" loading="lazy">
+      <figcaption><b>Big Worm</b> One fat worm crosses the screen, grinning, and the name comes up under it.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-wormparty.gif" alt="Worm Party" loading="lazy">
+      <figcaption><b>Worm Party</b> Fifteen little worms wiggling at once. Some are thin, some are fat, none hold still.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-wormhole.gif" alt="Wormhole" loading="lazy">
+      <figcaption><b>Wormhole</b> Rings rush outward like a tunnel and a worm shrinks into the middle. Then the name.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-underground.gif" alt="Underground" loading="lazy">
+      <figcaption><b>Underground</b> A cross-section: sun, grass, two worms tunnelling and leaving tunnels behind, and a temperature probe stuck in the soil, warming up.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-pulse.gif" alt="Worm Pulse" loading="lazy">
+      <figcaption><b>Worm Pulse</b> A heartbeat trace drawn live, with a worm for the pen and a beating heart. bpm: worm.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-compost.gif" alt="Compost" loading="lazy">
+      <figcaption><b>Compost</b> An apple core and a peel drop into the pile, and the worms come up for dinner. nom nom nom.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-face.gif" alt="Hello Worm" loading="lazy">
+      <figcaption><b>Hello Worm</b> Zoom in on a worm face. It blinks. It says hi.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-scientist.gif" alt="Worm Lab" loading="lazy">
+      <figcaption><b>Worm Lab</b> A worm in glasses watches a bar chart update on its own little screen. DATA!</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-conga.gif" alt="Conga" loading="lazy">
+      <figcaption><b>Conga</b> Six worms do the wave across the screen. Do the worm.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-radar.gif" alt="Worm Radar" loading="lazy">
+      <figcaption><b>Worm Radar</b> A radar sweep finds worms. Each blip wiggles when the beam passes. WORMS FOUND.</figcaption></figure>
+  </div>
+  <p>They live in <span class="pill">lib/wormshow.py</span>, each one a few dozen lines of circles,
+     lines and text. Make your own: copy one, give it a name and a <span class="pill">draw(o, t)</span>,
+     add it to <span class="pill">SHOWS</span>. A board can run all of them in a loop as a demo
+     (<span class="pill">tools/splash_demo.py</span>), and <span class="pill">tools/gen-splash.py</span>
+     plus <span class="pill">tools/splash-gif.py</span> make these pictures.</p>
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC &middot; MakerLabKids.com &middot; Learn. Make. Share.</footer>
+</body>
+</html>

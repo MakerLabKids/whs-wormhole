@@ -82,6 +82,9 @@ READ_EVERY_MS = 500   # sensor sweep cadence (default 500 ms)
 # have time to shine a light on a sensor and watch it react.
 PAGE_SEC_LIGHT = 10   # a page with a light sensor (shine a light, watch it move)
 PAGE_SEC_SENSOR = 5   # any other page
+# One of the ten worm shows plays at power-on (a different one each boot),
+# then the school card. False = card only (boots ~5 s faster).
+SPLASH_SHOW = True
 # The title row: the team name holds for 5 s, then this line scrolls
 # through, then the name holds again. "" turns the marquee off. A name too
 # long for the screen scrolls instead of holding; it still gets its 5 s.
@@ -500,6 +503,17 @@ picolab.banner("WORM BIN COMMAND CENTER  v" + picolab.VERSION, [
 
 display = picolab.Display()
 display.marquee = MARQUEE
+if SPLASH_SHOW:
+  try:
+    import wormshow
+    try:
+      with open(picolab.BOOT_FILE) as f:
+        nth = int(f.read().strip() or 0)      # the boot counter: a different show each boot
+    except Exception:
+      nth = 0
+    wormshow.play(display, loop=False, only=wormshow.SHOWS[nth % len(wormshow.SHOWS)].name)
+  except Exception as e:
+    picolab.log("worm show skipped:", e)
 # The capstone gets a proper opening card (the little demos stay fast).
 display.show([
     "   WOODSTOCK",
