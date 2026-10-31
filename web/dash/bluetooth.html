@@ -37,6 +37,9 @@
      with the board's PIN. The same requests as the board's web page, one line each.</p>
   <div id="nobt" class="bt-warn" hidden>This browser has no Web Bluetooth. It works in Chrome or Edge on Android, Windows,
      macOS and Chromebooks, over https. On an iPhone use the board's Wi-Fi page instead, or the Bluefy app.</div>
+  <div class="bt-note" style="margin-bottom:10px">Use Chrome or Edge. Vivaldi, Brave and Opera have the API but no device
+     chooser, so the request "cancels" the moment you allow it. No pairing is involved: the board never shows up as
+     pairable in the system's Bluetooth settings, only in this page's chooser.</div>
   <div class="bt-bar">
     <button class="bt-b go" id="connect">Connect to a bin</button>
     <button class="bt-b" id="disconnect" disabled>Disconnect</button>
