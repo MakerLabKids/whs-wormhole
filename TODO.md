@@ -24,15 +24,17 @@ record of what got done.
       capture the empty bin depth (lid to the paper towel, ~175 mm on the viewer
       bins) and a box/book at a measured ~64 mm, then Apply. Each module has its own
       offset and slope (the bench one: raw 120 at 64, raw 232 at 175).
-- [ ] **Messages (2026-10-31 evening) need three deploys**: Surface `wrangler deploy` plus
-      `npx wrangler d1 execute wormhole --remote --file schema.sql` (the new `messages`
-      table); the Burrow code to the Pis (the /ingest reply carries website messages, the
+- [ ] **Messages (2026-10-31 evening) need three deploys**: Surface `wrangler deploy` (done
+      2026-10-31) plus `npx wrangler d1 execute wormhole --remote --file schema.sql` (the new
+      `messages` table, if not run yet); the Burrow code to the Pis (the /ingest reply carries website messages, the
       snapshot reply lists them); and the Pico reflash (picolab 0.2.2, lib/blelink.py,
       lib/logos.py, msg.js). Until all three are out, website messages queue harmlessly
       (status "waiting for the bin").
-- [ ] **Bluetooth from a phone**: the page worked from a laptop (Chrome, 2026-10-31 evening,
-      the bench board over the dev server). Still to try: Chrome on Android against the
-      deployed page, whs.makerlabkids.com/bluetooth. Vivaldi/Brave/Opera have no chooser.
+- [x] Bluetooth from a phone: works (2026-10-31 evening, Android Chrome on the live page
+      whs.makerlabkids.com/bluetooth against the bench board). On a laptop, wait for the
+      chooser's scan to settle before picking the board: a Bluetooth mouse stalling is the
+      adapter resetting, and that closes the chooser ("User cancelled"). Vivaldi/Brave/Opera
+      have no chooser at all.
 - [ ] **Surface (Cloudflare) deploy + `ALERT_URL`** (carried over): `wrangler deploy`
       from your laptop, and the alert URL as `https://`.
 

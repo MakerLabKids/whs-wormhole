@@ -54,6 +54,7 @@ class BleLink:
     self._out = []
     self._mtu = 23
     self.served = 0
+    self._event = None                          # "connected"/"dropped", logged from poll() (not the IRQ)
     self._advertise()
     picolab.log("Bluetooth: '%s' (the web page's requests, one line each)" % self.name)
 
@@ -74,9 +75,11 @@ class BleLink:
       self._conn = data[0]
       self._in = bytearray()
       self._out = []
+      self._event = "connected"
     elif event == _IRQ_CENTRAL_DISCONNECT:
       self._conn = None
       self._out = []
+      self._event = "dropped, advertising again"
       self._advertise()
     elif event == _IRQ_GATTS_WRITE:
       if data[1] == self._rx:
@@ -88,6 +91,9 @@ class BleLink:
 
   def poll(self):
     """Every loop pass: answer one complete line, send a few reply pieces."""
+    if self._event:
+      picolab.log("Bluetooth:", self._event)
+      self._event = None
     if b"\n" in self._in:
       line, _, rest = bytes(self._in).partition(b"\n")
       self._in = bytearray(rest)
