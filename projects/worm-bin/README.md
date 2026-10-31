@@ -102,10 +102,10 @@ actuator control at `/set?big=90`, `/set?small=45`, `/set?relay=1`.
 
 ## Calibration
 
-**Distance (compaction).** The VL53L0X reads long by a good margin with
-this driver (an empty viewer bin, 175 mm lid to the paper towel on the
-bottom, reads about 257), and it is useless past a metre, so calibrate it
-for the range a bin actually uses: the empty bin (easy to check before
+**Distance (compaction).** `lib/vl53l0x.py` is a port of Pololu's
+driver (ST's full init and reference calibration; the old one skipped
+that and read 80 mm long). Each module still has its own offset from its
+cover glass and mounting, so calibrate it for the range a bin actually uses: the empty bin (easy to check before
 the bedding goes in) and the 30-50 mm gap a working bin sits at. On the
 dashboard's Surface calibration card: with the bin empty, type the
 measured depth and capture; then rest a box or book on the bottom so the

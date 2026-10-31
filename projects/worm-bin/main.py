@@ -217,7 +217,7 @@ def compaction():
   # reading is the gap to the surface in mm; watch it grow as bedding
   # settles and compacts, or jump when someone digs in the bin.
   #
-  # Single shots bounce by a few mm, so the raw shots go through a
+  # Shots bounce by a mm or two, so they go through a
   # Smoother: surface_now_mm (a second or two, biased to now) is what the
   # screen and the local page show; surface_mm (the mean of the last
   # minute, one push interval) is what the Burrow records. Both are
@@ -227,23 +227,31 @@ def compaction():
   # against when calibrating.
   smooth = picolab.Smoother(alpha=0.5, n=int(60000 / READ_EVERY_MS))
 
+  # The chip measures on its own clock (continuous mode, a 200 ms "high
+  # accuracy" budget every 250 ms) and read() just collects the newest
+  # result, so the sensor never stalls the loop or the marquee. A result
+  # the chip itself flags as untrusted (status != 11) is dropped; no
+  # result for 2 s faults the part and the wrapper re-initialises it.
+  last = [None, 0]     # (last good raw mm, ticks of the last good result)
+
   def connect():
     from vl53l0x import VL53L0X
-    tof = VL53L0X(picolab.i2c())
-    tof.init_sensor()
-    tof.ping()   # the first shot after init reads 0; throw it away
+    tof = VL53L0X(picolab.i2c(), timing_budget_us=200000)
+    tof.start_continuous(250)
     smooth.reset()
+    last[0], last[1] = None, time.ticks_ms()
     return tof
 
   def read(dev):
-    raw = dev.ping()
-    # 0 mm is not a distance: the chip never finished a measurement (a
-    # module whose power sags when the laser fires does exactly this).
-    # Fault the part so the truth light and the screen say so, and the
-    # Sensor wrapper re-initialises it on the next retry. 8190+ is the
-    # chip's own "no target in range" code.
-    if raw == 0 or raw >= 8190:
-      raise OSError("VL53L0X no measurement (%d)" % raw)
+    raw = dev.range()
+    now_ms = time.ticks_ms()
+    if raw is not None and dev.status == 11 and 0 < raw < 8190:
+      last[0], last[1] = raw, now_ms
+    elif time.ticks_diff(now_ms, last[1]) > 2000:
+      raise OSError("VL53L0X no measurement (%s, status %d)" % (raw, dev.status))
+    if last[0] is None:
+      return None          # warming up: the first result or two after init is junk
+    raw = last[0]
     now, avg = smooth.feed(raw)
     fix = (lambda x: cal.apply("distance", x, digits=1)) if "distance" in cal.data else (lambda x: x)
     return {"surface_mm": round(fix(avg)), "surface_now_mm": round(fix(now)),
