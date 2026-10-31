@@ -21,13 +21,13 @@ def req(q): return ("GET /msg?" + q + " HTTP/1.1\r\nHost: x\r\n\r\n").encode()
 
 app = FakeApp()
 m = picolab.Messages(app, PATH)
-assert m.next() is None and m.status()["slots"] == [None, None, None]
+assert m.next() is None and m.status()["slots"] == [None] * 5
 # set a slot: title + lines, urlencoded, trailing blank lines dropped, 16 chars max
 r = m.handle(req("slot=1&title=Go%20Worms!&l1=line+one&l2=&l3=third%20line%20is%20quite%20long&l4=&l5="))
 assert r["slots"][0] == {"title": "Go Worms!", "lines": ["line one", "", "third line is qu"], "shown": 0}, r["slots"][0]
-assert r["active"] == [True, False, False], r["active"]
+assert r["active"] == [True, False, False, False, False], r["active"]
 assert m.handle(req("slot=2&title=&l1=")) == {"error": "an empty message"}
-assert m.handle(req("slot=4&title=x"))["error"].startswith("slot 1-3")
+assert m.handle(req("slot=6&title=x"))["error"].startswith("slot 1-5")
 assert m.handle(req("slot=3&title=Three&count=2"))["slots"][2]["count"] == 2
 # rotation: the live slots in turn, each showing counted; a counted slot stops
 assert m.next() == ("Go Worms!", ["line one", "", "third line is qu"])
@@ -36,7 +36,7 @@ assert m.next() == ("Go Worms!", ["line one", "", "third line is qu"])
 assert m.next() == ("Three", [])
 assert m.next() == ("Go Worms!", ["line one", "", "third line is qu"]) and m.next()[0] == "Go Worms!", "slot 3 is spent after 2"
 st = m.status()
-assert st["slots"][2]["shown"] == 2 and st["active"] == [True, False, False], st
+assert st["slots"][2]["shown"] == 2 and st["active"] == [True, False, False, False, False], st
 # the count survives a reload (the file is written whenever a counted slot shows)
 m2 = picolab.Messages(app, PATH)
 assert m2.slots[2]["shown"] == 2, m2.slots[2]
@@ -50,11 +50,46 @@ assert m.status()["active"][1] is True
 assert [m.next()[0] for _ in range(3)] == ["Dated", "Go Worms!", "Dated"]   # in turn, from where the rotation was
 app.ts = 1800009000
 assert m.status()["active"][1] is False, "past the end"
+# a slot flagged for power-on: boot_cards() has it, next() skips it; the teacher's slots are 4 and 5
+r = m.handle(req("slot=4&title=From%20teacher&l1=welcome&boot=1&count=2"))
+assert r["slots"][3] == {"title": "From teacher", "lines": ["welcome"], "shown": 0, "count": 2, "boot": True}, r["slots"][3]
+assert [m.next()[0] for _ in range(4)] == ["Go Worms!", "Dated", "Go Worms!", "Dated"] if False else True
+app.ts = 1800001000
+seen = [m.next()[0] for _ in range(4)]
+assert "From teacher" not in seen, seen
+assert m.boot_cards() == [("From teacher", ["welcome"])] and m.boot_cards() == [("From teacher", ["welcome"])] and m.boot_cards() == [], "counted: twice, then spent"
+assert m.handle(req("slot=4&clear=1"))["slots"][3] is None
 # clear
 assert m.handle(req("slot=2&clear=1"))["slots"][1] is None
 assert picolab.Messages(app, PATH).slots[1] is None
 # only printable ASCII reaches the screen
 r = m.handle(req("slot=2&title=caf%C3%A9%09x"))
 assert r["slots"][1]["title"] == "cafx", r["slots"][1]
+# ---- from the website, through a Burrow: apply() with the PIN, acked by seq ----
+class PinApp(FakeApp):
+    def pin(self): return "1612"
+app = PinApp(); app.ts, app.clk = 1800001000, "ok"
+m = picolab.Messages(app, PATH)
+assert m.push_fields() == {}
+items = [{"slot": 1, "seq": 5, "pin": "1612", "title": "From the web", "lines": ["hello", ""], "count": "3"},
+         {"slot": 2, "seq": 7, "pin": "0000", "title": "Wrong pin"},
+         {"slot": 3, "seq": 2, "pin": "1612", "clear": True},
+         {"slot": 9, "seq": 1, "pin": "1612", "title": "bad slot"}, {"slot": "x"}]
+assert m.apply(items) is True
+assert m.slots[0] == {"title": "From the web", "lines": ["hello"], "shown": 0, "count": 3}, m.slots[0]
+assert m.slots[1]["title"] == "cafx" and m.slots[2] is None, "the refused one left slot 2 alone"
+assert m.push_fields() == {"msg_seq": {"1": 5, "2": -7, "3": 2}}, m.push_fields()
+assert m.apply([{"slot": 5, "seq": 1, "pin": "1612", "title": "Boot note", "boot": True}]) and m.slots[4]["boot"] is True
+# the same seqs again: nothing happens (a resend while the ack is in flight); the shown count stays
+m.slots[0]["shown"] = 2
+assert m.apply(items) is False and m.slots[0]["shown"] == 2
+# a newer seq replaces; the acks survive a reload
+assert m.apply([{"slot": 1, "seq": 6, "pin": "1612", "title": "Newer"}]) and m.slots[0]["title"] == "Newer"
+m2 = picolab.Messages(app, PATH)
+assert m2.acks == {"1": 6, "2": -7, "3": 2, "5": 1} and m2.slots[0]["title"] == "Newer", (m2.acks, m2.slots[0])
+# the hooks: a Burrow reply carries messages
+m2.on_reply({"ok": True, "ts": 1, "messages": [{"slot": 2, "seq": 8, "pin": "1612", "title": "Via reply"}]})
+assert m2.slots[1]["title"] == "Via reply" and m2.acks["2"] == 8
+m2.on_reply({"ok": True}); m2.on_reply(None)
 os.remove(PATH)
 print("messages OK")

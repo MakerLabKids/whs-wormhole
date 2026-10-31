@@ -57,8 +57,11 @@ to 0 to show the raw reading everywhere.
 
 ## The screen
 
-Power on: the start-up card for two seconds, then one screen built from
-whatever is reporting.
+Power on: WOODSTOCK HIGH SCHOOL (2 s, longer while Wi-Fi joins), the
+wolverine zooming in with the school's name (5 s), "AND..." (1 s), MAKER
+LAB KIDS (2 s), the gear (1 s), then any message flagged "at power-on",
+then one screen built from whatever is reporting. The three card times
+are `BOOT_CARD_MS`, `BOOT_AND_MS` and `BOOT_MLK_MS` in the config block.
 
 <img src="../../docs/img/oled/startup.svg" width="300" alt="start-up card"> <img src="../../docs/img/oled/data.svg" width="300" alt="a lean bin">
 
@@ -90,13 +93,33 @@ shows.
 
 ### Messages on the screen
 
-The dashboard has a MESSAGES card with three slots. Fill one in (a
-title, up to five lines of 16 characters) and after each show the screen
-holds it for `MESSAGE_S` seconds (4), the live slots taking turns. A slot
-can have a start and/or end time, or a number of showings; blank means
-forever. Saving needs the board's PIN (asked once per phone, see below).
-The slots live on the board in `msg.json`; the editor is `msg.js`, which
-the install puts on the Pico next to `cal.js`.
+The dashboard has a MESSAGES card with five slots: three for the team,
+two for the teacher. Fill one in (a title, up to five lines of 16
+characters) and after each show the screen holds it for `MESSAGE_S`
+seconds (4), the live slots taking turns. A slot can have a start and/or
+end time, or a number of showings; blank means forever. A slot ticked
+"at power-on" shows in the power-on sequence instead. Saving needs the
+board's PIN (asked once per phone, see below). The slots live on the
+board in `msg.json`; the editor is `msg.js`, which the install puts on
+the Pico next to `cal.js`.
+
+Three doors to the same slots:
+
+- **The board's page** (its hotspot or the classroom network): the card
+  above.
+- **The website** (whs.makerlabkids.com, signed in): the bin's page has
+  the same card. A team edits slots 1-3 of its own bin, a teacher or
+  admin any slot of any bin; the message goes down through the Burrow
+  with the bin's next push (within a couple of minutes), the board checks
+  the PIN, and the page shows "waiting for the bin", "on the board" or
+  "refused" (wrong PIN). The teacher's slots can only be set this way.
+- **Bluetooth** (`BLUETOOTH = True`): the board advertises its name; the
+  website's /bluetooth.html page (Chrome or Edge on Android, Windows, Mac
+  or a Chromebook) connects, shows the readings, and has the same card
+  and the rename control. Any BLE terminal app (Nordic UART service)
+  works too: send `/data`, or `/msg?slot=1&title=Hi&l1=there&pin=1612`,
+  one line each, and read the JSON line back. It is the web page's
+  request line, so the PIN, its lockout and the routes are the same.
 
 A dated message needs the board to know the time. A Burrow sets it; so
 does saving a message, which sends the phone's clock along, so this works

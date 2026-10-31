@@ -127,6 +127,7 @@ class School:
 class MakerLab:
   name = "Maker Lab Kids"
   frames = 70
+  wipe = 16                                     # frames of reveal, left to right (0: just the picture)
 
   def __init__(self):
     self.fb, self.w, self.h = logo("MLK")
@@ -134,9 +135,15 @@ class MakerLab:
   def draw(self, o, t):
     x, y = (W - self.w) // 2, (H - self.h) // 2
     o.blit(self.fb, x, y)
-    if t < 16:                                  # reveal left to right over 0.8 s
-      shown = (t + 1) * self.w // 16
+    if t < self.wipe:
+      shown = (t + 1) * self.w // self.wipe
       o.fill_rect(x + shown, y, self.w - shown, self.h, OFF)
+
+
+class MakerLabStill(MakerLab):
+  """The picture, held one second (the power-on sequence)."""
+  frames = 20
+  wipe = 0
 
 
 # ---- 1. one big worm crossing, with a grin -------------------------------
@@ -429,7 +436,8 @@ class Radar:
       o.text("!!", 100, 34)
 
 
-SHOWS = [School, MakerLab, BigWorm, WormParty, Wormhole, Underground, Pulse, Compost, Face, Scientist, Conga, Radar]
+SHOWS = [BigWorm, WormParty, Wormhole, Underground, Pulse, Compost, Face, Scientist, Conga, Radar]
+LOGOS = [School, MakerLab]          # the power-on sequence (the worm-bin), and the gallery
 
 
 def play(display, loop=True, only=None, fps=20, hold_ms=600):

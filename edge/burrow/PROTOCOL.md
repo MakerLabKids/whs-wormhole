@@ -17,6 +17,13 @@ plus three things the push loop adds:
 
 Reply: `{"ok": true, "ts": 1760600000, "edge": "burrow1", "room": 1}`.
 `ts` is the Burrow's unix time; the Bin keeps it to label its own graph.
+When the website has messages waiting for this Bin's screen the reply
+also carries `"messages": [...]`, each `{uid, slot, seq, pin, title,
+lines, start, end, count, boot}` or `{uid, slot, seq, pin, clear: true}`
+(the Burrow learnt them from its last snapshot reply, see below). The Bin
+checks the PIN, applies each once per `seq`, and from then on its pushes
+carry `"msg_seq": {"1": 12, ...}` (negative: refused, wrong PIN); the
+Burrow's snapshot takes that to the Surface, which stops listing them.
 
 ## Bin -> Burrow: `POST /ingest/batch`  (backfill after an outage)
 

@@ -1,6 +1,6 @@
 // Wormhole Surface: the Cloudflare Worker.
 //   /v1/edge/*   Burrows (bearer token)          -> edge.js
-//   /api/*       viewers + admin (cookie)         -> auth.js, viewer.js, admin.js
+//   /api/*       viewers + admin (cookie)         -> auth.js, viewer.js, admin.js, messages.js
 //   /live/<room> SSE proxied from a Burrow tunnel
 //   everything else: the dashboard SPA from static assets (+ one visits row per HTML page view)
 
@@ -8,6 +8,7 @@ import { handleAdmin } from "./admin.js";
 import { watchEdges } from "./alerts.js";
 import { getSession, listTeams, login, logout, meBody } from "./auth.js";
 import { handleEdge } from "./edge.js";
+import { apiMessages } from "./messages.js";
 import { HttpError, err, ipHash, json, now } from "./util.js";
 import { apiBins, apiHistory, apiNow, apiPublicNow } from "./viewer.js";
 
@@ -53,6 +54,7 @@ async function handleApi(request, env, ctx, path) {
   if (path === "/api/me") return session ? json(meBody(session)) : json({ ok: false }, 401);
   if (path === "/api/logout" && m === "POST") return logout(request, env, session);
   if (path.startsWith("/api/admin")) return handleAdmin(request, env, ctx, path, session);
+  if (path === "/api/messages") return apiMessages(request, env, session);
 
   if (!session) return err(401, "login required");
   if (m !== "GET") return err(405, "method not allowed");

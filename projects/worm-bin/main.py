@@ -82,17 +82,24 @@ READ_EVERY_MS = 500   # sensor sweep cadence (default 500 ms)
 # have time to shine a light on a sensor and watch it react.
 PAGE_SEC_LIGHT = 10   # a page with a light sensor (shine a light, watch it move)
 PAGE_SEC_SENSOR = 5   # any other page
-# The screen's cycle: the school card (2 s, power-on only), then forever:
-# the team name 5 s, this line scrolls through, the name 5 s, one of the
-# ten worm shows (lib/wormshow.py, in order, the next one each time round),
-# and again from the name. "" turns the marquee off, False the shows; a
-# name too long for the screen scrolls instead of holding, and still gets
-# its 5 s.
+# The screen. Power-on: WOODSTOCK HIGH SCHOOL (2 s), the wolverine zooms
+# in with the name (5 s), "AND..." (1 s), MAKER LAB KIDS (2 s), the gear
+# (1 s), then any message flagged for power-on. Then forever: the team
+# name 5 s, this line scrolls through, the name 5 s, one of the ten worm
+# shows (lib/wormshow.py, in order, the next one each time round), a
+# message if the team left one, and again from the name. "" turns the
+# marquee off, False the shows; a name too long for the screen scrolls
+# instead of holding, and still gets its 5 s.
+BOOT_CARD_MS = 2000   # the school card
+BOOT_AND_MS = 1000    # "AND..."
+BOOT_MLK_MS = 2000    # the MAKER LAB KIDS card
 MARQUEE = "Woodstock High School and Maker Lab Kids - Vermiculture PBL by:"
 WORM_SHOWS = True
 # Messages from the dashboard (three slots, PIN): one shows after each
-# worm show, for this many seconds.
+# worm show, for this many seconds. They can be set on the board's page,
+# on the website (they come down through the Burrow), or over Bluetooth.
 MESSAGE_S = 4
+BLUETOOTH = True      # advertise as the board's name; the website's Bluetooth page talks to it
 # ===== end of config ==================================================
 
 
@@ -513,21 +520,42 @@ if WORM_SHOWS:
     display.shows = wormshow.SHOWS
   except Exception as e:
     picolab.log("worm shows skipped:", e)
-# The capstone gets a proper opening card (the little demos stay fast).
+# The power-on sequence, step 1: the school card goes up now and stays
+# while Wi-Fi joins (at least BOOT_CARD_MS); display.boot() below plays
+# the rest once the parts that need the network exist.
 display.show([
+    "",
     "   WOODSTOCK",
     "  HIGH SCHOOL",
-    " Maker Lab Kids",
+    "",
     "",
     " Wormhole v" + picolab.VERSION,
 ], title=False)
-time.sleep_ms(2000)
+boot_card_at = time.ticks_ms()
 
 light = picolab.StatusLight()
 app = picolab.WebApp()
 messages = picolab.Messages(app)   # the three dashboard message slots (msg.json)
 display.cards = messages.next
 display.CARD_MS = MESSAGE_S * 1000
+app.on_reply = messages.on_reply   # messages set on the website ride down on the Burrow's reply...
+app.push_extra = messages.push_fields   # ...and the acks ride back up with the next push
+ROUTES = [("/set", set_handler), ("/cal", cal.handle), ("/msg", messages.handle)]
+app.routes = ROUTES
+ble = None
+if BLUETOOTH:
+  try:
+    import blelink
+    ble = blelink.BleLink(app, data_fn)
+  except Exception as e:
+    picolab.log("Bluetooth off:", e)
+# The rest of the power-on sequence (step 1 is on the screen already).
+boot_steps = [("hold", BOOT_CARD_MS - time.ticks_diff(time.ticks_ms(), boot_card_at))]
+if WORM_SHOWS:
+  boot_steps += [("show", wormshow.School), ("card", "", ["AND..."], BOOT_AND_MS),
+                 ("card", "", ["MAKER LAB KIDS"], BOOT_MLK_MS), ("show", wormshow.MakerLabStill)]
+boot_steps.append(("cards", messages.boot_cards))
+display.boot(boot_steps)
 tick = picolab.Throttle(READ_EVERY_MS)
 heartbeat = picolab.Throttle(5000)
 page = 0                         # OLED page (only moves when rows overflow a screen)
@@ -543,7 +571,9 @@ app.announce("Worm Bin Command Center Active!")
 try:
   while True:
     light.poll()
-    app.poll(data_fn, routes=[("/set", set_handler), ("/cal", cal.handle), ("/msg", messages.handle)])
+    app.poll(data_fn, routes=ROUTES)
+    if ble:
+      ble.poll()          # a phone's line over Bluetooth, same requests as the page
     servo_big.step()      # ramp the servos toward their targets every pass
     servo_small.step()
     display.tick()        # the title marquee and the worm shows, between sensor sweeps

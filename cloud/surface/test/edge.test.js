@@ -208,7 +208,7 @@ describe("snapshot merge in /api/now", () => {
       bbb: { ts: t - 5, clk: "ntp", src: "push", name: "B", team: "Team B", period: 3, bin: 2, room: 1, d: { temp: 21 } },
     }, [{ uid: "aaa", name: "A", team: "Team A", period: 3, bin: 1, room: 1 }, { uid: "bbb", name: "B", team: "Team B", period: 3, bin: 2, room: 1 }]);
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ ok: true });
+    expect(await r.json()).toMatchObject({ ok: true });
 
     // bbb failed over to burrow2 and was seen there more recently.
     r = await snap("burrow2", 2, t, {

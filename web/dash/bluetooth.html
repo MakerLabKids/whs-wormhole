@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wormhole: a bin over Bluetooth</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .bt-wrap { max-width: 980px; margin: 0 auto; padding: 14px 16px 40px; }
+  .bt-wrap h1 { font-size: 22px; margin: 6px 0 2px; }
+  .bt-wrap .lead { color: #94a3b8; font-size: 14px; margin: 0 0 14px; }
+  .bt-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .bt-state { color: #94a3b8; font-size: 13px; }
+  .bt-state b { color: #e2e8f0; }
+  .bt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .bt-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 12px; }
+  .bt-card h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: 1px; color: #94a3b8; }
+  .bt-readings { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+  .bt-rd { background: #0f172a; border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+  .bt-rd .k { display: block; color: #94a3b8; font-size: 11px; }
+  .bt-rd .v { font-weight: 700; }
+  .bt-note { font-size: 12px; color: #94a3b8; margin-top: 8px; }
+  .bt-log { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #94a3b8; white-space: pre-wrap; max-height: 160px; overflow: auto; background: #0f172a; border-radius: 8px; padding: 8px; }
+  .bt-in { background: #0f172a; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 5px 7px; font-size: 13px; }
+  .bt-b { background: #334155; color: #f8fafc; border: 0; border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .bt-b.go { background: #1d4ed8; }
+  .bt-b:disabled { opacity: .5; cursor: default; }
+  .bt-warn { background: #3f1d1d; border: 1px solid #7f1d1d; color: #fecaca; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<header class="top"><div class="nav"><a class="brand" href="/">Wormhole</a><a href="/">Wall</a><a href="/bluetooth.html" aria-current="page">Bluetooth</a><a href="/about">About</a></div></header>
+<main class="bt-wrap">
+  <h1>A bin over Bluetooth</h1>
+  <p class="lead">No Wi-Fi switch: the board advertises its own name. Connect, read the bin, and set its messages
+     with the board's PIN. The same requests as the board's web page, one line each.</p>
+  <div id="nobt" class="bt-warn" hidden>This browser has no Web Bluetooth. It works in Chrome or Edge on Android, Windows,
+     macOS and Chromebooks, over https. On an iPhone use the board's Wi-Fi page instead, or the Bluefy app.</div>
+  <div class="bt-bar">
+    <button class="bt-b go" id="connect">Connect to a bin</button>
+    <button class="bt-b" id="disconnect" disabled>Disconnect</button>
+    <span class="bt-state" id="state">not connected</span>
+  </div>
+  <div class="bt-grid">
+    <div class="bt-card"><h3>READINGS <button class="bt-b" id="refresh" disabled style="float:right;padding:3px 8px;font-size:11px">refresh</button></h3>
+      <div class="bt-readings" id="readings"><div class="bt-note">connect first</div></div>
+      <div class="bt-note" id="ident"></div></div>
+    <div class="bt-card"><h3>RENAME THE BOARD</h3>
+      <div class="bt-bar"><input class="bt-in" id="newname" maxlength="24" placeholder="new name" style="width:12em"><button class="bt-b" id="rename" disabled>Rename</button></div>
+      <div class="bt-note">Needs the PIN. The board restarts as its new name (new Wi-Fi name, new Bluetooth name, new PIN).</div>
+      <div class="bt-note" id="renamemsg"></div></div>
+  </div>
+  <div class="bt-card" style="margin-top:12px"><div id="msgbox"><div class="bt-note">connect first</div></div></div>
+  <div class="bt-card" style="margin-top:12px"><h3>WHAT WENT OVER THE AIR</h3><div class="bt-log" id="log"></div></div>
+</main>
+<script src="/msg.js"></script>
+<script>
+(function () {
+  var UART = '6e400001-b5a3-f393-e0a9-e50e24dcca9e', RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e', TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+  var dev = null, rx = null, buf = '', waiting = [], name = '';
+  function $(id) { return document.getElementById(id); }
+  function log(s) { var l = $('log'); l.textContent += s + '\n'; l.scrollTop = l.scrollHeight; }
+  function setState(s, on) {
+    $('state').innerHTML = s;
+    $('connect').disabled = !!on; $('disconnect').disabled = !on; $('refresh').disabled = !on; $('rename').disabled = !on;
+  }
+  if (!navigator.bluetooth) { $('nobt').hidden = false; $('connect').disabled = true; }
+
+  // one request line out, one JSON line back (it arrives in notification-sized pieces)
+  function ask(line, cb) {
+    if (!rx) { cb(false, { error: 'not connected' }); return; }
+    log('> ' + line.replace(/pin=\d+/, 'pin=****'));
+    waiting.push(cb);
+    var data = new TextEncoder().encode(line + '\n'), i = 0;
+    (function next() {
+      if (i >= data.length) return;
+      var chunk = data.slice(i, i + 20); i += 20;
+      var w = rx.writeValueWithoutResponse ? rx.writeValueWithoutResponse(chunk) : rx.writeValue(chunk);
+      w.then(next).catch(function (e) { log('! write failed: ' + e.message); waiting.shift(); cb(false, { error: 'write failed' }); });
+    })();
+  }
+  function onNotify(ev) {
+    buf += new TextDecoder().decode(ev.target.value);
+    var nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      var line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+      log('< ' + (line.length > 300 ? line.slice(0, 300) + '…' : line));
+      var cb = waiting.shift(), j = null;
+      try { j = JSON.parse(line); } catch (e) { j = { error: 'bad reply' }; }
+      if (cb) cb(!j.error, j);
+    }
+  }
+  function pinKey() { return 'pin:ble:' + name; }
+  // the Msg widget's transport: the same query the board's page sends, plus the PIN kept for this board
+  function send(q, cb) {
+    var pin = null;
+    try { pin = localStorage.getItem(pinKey()); } catch (e) {}
+    if (!pin) { pin = prompt('This board is locked. Its PIN?'); if (!pin) { cb(false); return; } try { localStorage.setItem(pinKey(), pin); } catch (e) {} }
+    ask('/msg' + (q ? '?' + q + '&' : '?') + 'pin=' + encodeURIComponent(pin), function (ok, j) {
+      if (j && j.error === 'pin') { try { localStorage.removeItem(pinKey()); } catch (e) {} alert(j.locked ? 'Too many wrong PINs: wait a minute.' : 'Wrong PIN.'); cb(false, j); return; }
+      cb(ok, j);
+    });
+  }
+  function refresh() {
+    ask('/data', function (ok, d) {
+      if (!ok) { $('readings').innerHTML = '<div class="bt-note">no reply</div>'; return; }
+      var rows = [['air temp', d.in_temp_c, '°C'], ['air humidity', d.in_hum_pct, '%'], ['air pressure', d.in_press_hpa, ' hPa'], ['room temp', d.out_temp_c, '°C'],
+        ['soil moisture 1', d.moist1_pct, '%'], ['soil moisture 2', d.moist2_pct, '%'], ['surface', d.surface_mm, ' mm'], ['light', d.light_pct, '%'], ['sound', d.sound_pct, '%'],
+        ['soil temp', Array.isArray(d.probe_temps_c) ? d.probe_temps_c.join(' · ') : null, '°C'], ['buffered', d.buffered > 0 ? d.buffered : null, ' rows']];
+      $('readings').innerHTML = rows.filter(function (r) { return r[1] != null; }).map(function (r) {
+        return '<div class="bt-rd"><span class="k">' + r[0] + '</span><span class="v">' + (typeof r[1] === 'number' ? Math.round(r[1] * 10) / 10 : r[1]) + '<small>' + r[2] + '</small></span></div>';
+      }).join('') || '<div class="bt-note">nothing measured yet</div>';
+      $('ident').textContent = (d.name || '') + (d.ip ? ' · ' + d.ip + (d.mode === 'ap' ? ' (its own hotspot)' : ' on ' + (d.net || 'Wi-Fi')) : '') + (d.id ? ' · ' + d.id : '');
+    });
+  }
+  $('connect').onclick = function () {
+    setState('looking…');
+    navigator.bluetooth.requestDevice({ filters: [{ services: [UART] }], optionalServices: [UART] }).then(function (d) {
+      dev = d; name = d.name || 'bin';
+      d.addEventListener('gattserverdisconnected', function () { rx = null; setState('disconnected from <b>' + name + '</b>', false); });
+      setState('connecting to <b>' + name + '</b>…');
+      return d.gatt.connect();
+    }).then(function (server) { return server.getPrimaryService(UART); })
+      .then(function (svc) { return Promise.all([svc.getCharacteristic(TX), svc.getCharacteristic(RX)]); })
+      .then(function (cs) {
+        cs[1] && (rx = cs[1]);
+        cs[0].addEventListener('characteristicvaluechanged', onNotify);
+        return cs[0].startNotifications();
+      }).then(function () {
+        setState('connected to <b>' + name + '</b>', true);
+        refresh();
+        Msg.create($('msgbox'), { send: send, open: false, openLabel: 'Open', failText: 'The board did not answer (older board software?).' });
+      }).catch(function (e) { setState('not connected (' + e.message + ')', false); log('! ' + e.message); });
+  };
+  $('disconnect').onclick = function () { if (dev && dev.gatt.connected) dev.gatt.disconnect(); };
+  $('refresh').onclick = refresh;
+  $('rename').onclick = function () {
+    var n = ($('newname').value || '').trim();
+    if (!n) return;
+    var pin = null;
+    try { pin = localStorage.getItem(pinKey()); } catch (e) {}
+    if (!pin) { pin = prompt('This board is locked. Its PIN?'); if (!pin) return; try { localStorage.setItem(pinKey(), pin); } catch (e) {} }
+    ask('/name?name=' + encodeURIComponent(n) + '&pin=' + encodeURIComponent(pin), function (ok, j) {
+      $('renamemsg').textContent = ok && j.ok ? 'Renamed. The board restarts now as "' + n + '": connect again under that name.' : 'Not renamed' + (j && j.error ? ': ' + (j.error === 'pin' ? 'wrong PIN' : j.error) : '.');
+      if (j && j.error === 'pin') { try { localStorage.removeItem(pinKey()); } catch (e) {} }
+    });
+  };
+})();
+</script>
+</body>
+</html>

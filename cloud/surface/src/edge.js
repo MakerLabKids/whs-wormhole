@@ -3,6 +3,7 @@
 
 import { postEvents } from "./alerts.js";
 import { chunks, err, hex, isInt, json, now, readJson, safeParse, timingSafeEqual } from "./util.js";
+import { ackStatements, pendingMessages } from "./messages.js";
 
 const CASTING_CAP = 8 * 1024 * 1024;   // gz bytes per PUT
 const VERIFY_CAP = 40;                 // R2 reads per verify (free Workers: 50 subrequests)
@@ -200,7 +201,9 @@ async function snapshot(request, env, edge) {
       stmts.push(env.DB.prepare(sql).bind(...params));
     }
   }
+  // the Bins' acks for website messages ride in their data; the reply lists what is still waiting
+  stmts.push(...ackStatements(env, bins, t));
   await env.DB.batch(stmts);
-  return json({ ok: true });
+  return json({ ok: true, messages: await pendingMessages(env) });
 }
 

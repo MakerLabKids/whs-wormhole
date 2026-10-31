@@ -128,3 +128,25 @@ CREATE TABLE IF NOT EXISTS alerts (
   notify_error  TEXT
 );
 CREATE INDEX IF NOT EXISTS alerts_key_open ON alerts (key, closed_at);
+
+-- Messages for a Bin's screen, set on the website: one row per (bin, slot), seq bumped on every
+-- change. Listed to every Burrow (snapshot reply) until the Bin acks the seq in its push data
+-- (msg_seq), which the next snapshot brings back; result is 'ok' or 'refused' (wrong PIN).
+CREATE TABLE IF NOT EXISTS messages (
+  uid          TEXT NOT NULL,
+  slot         INTEGER NOT NULL,   -- 1-3 the team's, 4-5 the teacher's
+  seq          INTEGER NOT NULL,
+  title        TEXT,
+  lines        TEXT,               -- JSON array of strings
+  start_ts     INTEGER,
+  end_ts       INTEGER,
+  count        INTEGER NOT NULL DEFAULT 0,
+  boot         INTEGER NOT NULL DEFAULT 0,
+  cleared      INTEGER NOT NULL DEFAULT 0,
+  pin          TEXT,
+  set_by       TEXT,
+  set_at       INTEGER,
+  delivered_at INTEGER,
+  result       TEXT,
+  PRIMARY KEY (uid, slot)
+);

@@ -15,6 +15,7 @@ class FakeSurface:
         self.castings = {}       # id -> meta (+verified_at, rollups_at)
         self.rollups = {}        # (uid, step, ts) -> data
         self.snapshots = []
+        self.messages = []              # listed in every snapshot reply (the website's queue)
         self.events = []
         self.reject_events = False
         self.calls = []
@@ -60,7 +61,7 @@ class FakeSurface:
                 with outer.lock:
                     if self.path == "/v1/edge/snapshot":
                         outer.snapshots.append(body)
-                        return self._send(200, {"ok": True})
+                        return self._send(200, {"ok": True, "messages": list(outer.messages)})
                     if self.path == "/v1/edge/events":
                         if outer.reject_events:
                             return self._send(503, {"ok": False, "error": "try later"})

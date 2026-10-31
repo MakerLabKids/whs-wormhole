@@ -37,7 +37,9 @@ class FakeOled:
     def fill_rect(self, *a): pass
     def text(self, s, x, y): self.calls.append((s, x, y))
     def hline(self, x, y, w, c): self.lines.append((x, y, w))
-    def title(self): return [c for c in self.calls if c[2] == 0][0]
+    def title(self):
+        t = [c for c in self.calls if c[2] == 0]
+        return t[0] if t else None
 
 
 def fresh(lines, **kw):
@@ -67,7 +69,7 @@ def run(d, ms):
     seen = []
     for _ in range(ms // 10):
         faketime.advance(0.01); d.oled.calls = []; d.tick()
-        if d.oled.calls: seen.append(d.oled.title())
+        if d.oled.calls: seen.append(d.oled.title() or ("", 0, 0))
     return seen
 
 d = fresh(["Dirt Nerds", "IN: 24.1C 71%"]); d.marquee = "Woodstock High School and Maker Lab Kids - Vermiculture PBL by:"
@@ -217,3 +219,35 @@ while d._mq: run(d, 10)
 run(d, 5010)
 assert d._card == ("Hi", ["there"]), d._card
 print("cards OK")
+
+# ---- the power-on sequence: hold, show, card, card, show, boot messages, then the cycle ----
+d = D(); d.oled = FakeOled(); d.marquee = "m"; d.shows = [ShowA]; d.cards = lambda: None
+d.show(["", "WOODSTOCK"], title=False)                 # step 1 is on the screen before boot()
+faketime.advance(0.5)
+d.boot([("hold", 1500), ("show", ShowA), ("card", "", ["AND..."], 1000), ("card", "", ["MAKER LAB KIDS"], 2000),
+        ("show", ShowB), ("cards", lambda: [("Boot note", ["welcome"]), ("Second", ["one"])])])
+assert d._boot is not None and d._show is None and d._card is None
+d.oled.calls = []
+assert run(d, 1490) == [] and d._show is None, "the hold keeps the card"
+run(d, 20); assert d._show and d._show.name == "A", "then the first show"
+d.show(["Dirt Nerds", "x"])                            # readings arrive during the sequence: they wait
+assert d.oled.calls == [] or d.oled.title()[0] == "frame"
+while d._show: run(d, 10)
+assert d._card == ("", ["AND..."]), d._card
+t0 = faketime.ticks_ms()
+while d._card == ("", ["AND..."]): run(d, 10)
+assert abs(faketime.ticks_diff(faketime.ticks_ms(), t0) - 1000) <= 20
+assert d._card == ("", ["MAKER LAB KIDS"]), d._card
+t0 = faketime.ticks_ms()
+while d._card: run(d, 10)
+assert abs(faketime.ticks_diff(faketime.ticks_ms(), t0) - 2000) <= 20 and d._show and d._show.name == "B"
+while d._show: run(d, 10)
+assert d._card == ("Boot note", ["welcome"]), d._card
+while d._card == ("Boot note", ["welcome"]): run(d, 10)
+assert d._card == ("Second", ["one"]), d._card
+while d._card: run(d, 10)
+assert d._boot is None and d.oled.title() == ("Dirt Nerds", 24, 0), (d._boot, d.oled.title())   # the readings, centered name
+assert run(d, 4990) == [] and run(d, 20) and d._mq, "a fresh 5 s hold, then the marquee as usual"
+# no boot messages and nothing else: boot([]) is a no-op cycle start
+d = fresh(["Dirt Nerds", "x"]); d.boot([("cards", lambda: [])]); assert d._boot is None
+print("boot sequence OK")

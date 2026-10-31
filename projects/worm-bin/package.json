@@ -53,7 +53,11 @@
     ],
     [
       "fs:msg.js",
-      "github:MakerLabKids/whs-wormhole/web/msg.js"
+      "github:MakerLabKids/whs-wormhole/web/dash/msg.js"
+    ],
+    [
+      "fs:lib/blelink.py",
+      "github:MakerLabKids/whs-wormhole/lib/blelink.py"
     ]
   ]
 }

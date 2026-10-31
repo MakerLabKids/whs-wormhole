@@ -88,6 +88,14 @@ class Service:
         self.counts[src] = self.counts.get(src, 0) + 1
         return row
 
+    def messages_for(self, uid):
+        """Website messages waiting for this Bin (from the Surface, via the
+        last snapshot reply); they ride on the /ingest reply."""
+        try:
+            return self.cloud.messages_for(uid)
+        except Exception:
+            return []
+
     def ingest_batch(self, body, ip=None):
         """Backfill from a Bin's flash buffer: rows it could not push while
         every Burrow was out of reach. Rows keep their own timestamps and

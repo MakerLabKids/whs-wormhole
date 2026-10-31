@@ -24,7 +24,7 @@ def main():
   except OSError:
     pass
   o = ssd1306.SSD1306_I2C(128, 64, FakeI2C())
-  for cls in wormshow.SHOWS:
+  for cls in wormshow.LOGOS + wormshow.SHOWS:
     show = cls()
     path = "%s/%s.raw" % (OUT, cls.__name__.lower())
     with open(path, "wb") as f:

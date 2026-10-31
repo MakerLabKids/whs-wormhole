@@ -487,6 +487,7 @@
     var LIVE_WINDOW_S = 600, liveRows = [], liveSig = null;
     var head = el('div', 'card binhead'); main.appendChild(head);
     var watchbar = el('div', 'card watchbar'); main.appendChild(watchbar);
+    var msgcard = el('div', 'card msgcard'); main.appendChild(msgcard); drawMessages();
     var ranges = el('div', 'ranges'); main.appendChild(ranges);
     var lastLive = 0;
     var out = el('div', 'charts'); main.appendChild(out);
@@ -509,6 +510,37 @@
           .filter(function (x) { return x[1] != null && x[1] !== ''; })
           .map(function (x) { return '<div class="rd"><span class="k">' + x[0] + '</span><span class="v">' + (typeof x[1] === 'number' ? f1(x[1]) : esc(x[1])) + '<small>' + x[2] + '</small></span></div>'; }).join('') +
         '</div>' + '<div class="spacer"></div><a class="btn ghost sm" href="/">← wall</a>';
+    }
+    /* messages for the bin's screen (Surface only, signed in; msg.js is the same widget the board's
+       own page uses, here with a transport that posts to /api/messages and keeps the PIN per bin).
+       A team edits slots 1-3 of its own bin; a teacher or admin any slot of any bin. */
+    function drawMessages() {
+      var role = S.me && S.me.role;
+      if (S.local || !window.Msg || !role || role === 'local') { msgcard.hidden = true; return; }
+      var mine = role === 'teacher' || role === 'admin';
+      if (!mine) {
+        var e0 = S.bins[uid], bn = e0 ? binNoOf(e0) : (roster && roster.bin);
+        mine = S.me.team && bn != null && bn === S.me.team.bin;
+      }
+      if (!mine) { msgcard.hidden = true; return; }
+      msgcard.hidden = false;
+      var pinKey = 'pin:' + uid;
+      function send(q, cb) {
+        if (!q) { api('/api/messages?uid=' + encodeURIComponent(uid)).then(function (j) { cb(true, j); }).catch(function (e) { cb(false, e.body); }); return; }
+        var pin = null;
+        try { pin = localStorage.getItem(pinKey); } catch (x) {}
+        if (!pin) { pin = prompt('The board\'s PIN? (on its screen: name + address, see the lab guide)'); if (!pin) { cb(false); return; } try { localStorage.setItem(pinKey, pin); } catch (x) {} }
+        var body = Msg.queryToBody(q); body.uid = uid; body.pin = pin;
+        api('/api/messages', { method: 'POST', body: body }).then(function (j) { cb(true, j); }).catch(function (e) { cb(false, e.body || { error: e.message }); });
+      }
+      Msg.create(msgcard, {
+        send: send, open: false,
+        canEdit: function (i) { return role !== 'team' || i < Msg.TEAM; },
+        hint: 'Type a message and it goes down to the bin\'s screen through its Burrow (within a couple of minutes of the bin\'s next push). ' +
+          'The board checks its PIN, so the message needs the PIN that is on the board\'s screen. A title and up to five lines of 16 characters; ' +
+          'a start and/or end time, or a number of showings (blank: forever); "at power-on" slots show when the board starts.',
+        failText: 'Could not read the messages for this bin.'
+      });
     }
     /* the 1 Hz live view: while the button is on, this page's stream carries ?watch=<uid> and the
        Burrow polls the bin every second; the readings above and the ticker update each second.

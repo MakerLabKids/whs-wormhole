@@ -24,6 +24,15 @@ record of what got done.
       capture the empty bin depth (lid to the paper towel, ~175 mm on the viewer
       bins) and a box/book at a measured ~64 mm, then Apply. Each module has its own
       offset and slope (the bench one: raw 120 at 64, raw 232 at 175).
+- [ ] **Messages (2026-10-31 evening) need three deploys**: Surface `wrangler deploy` plus
+      `npx wrangler d1 execute wormhole --remote --file schema.sql` (the new `messages`
+      table); the Burrow code to the Pis (the /ingest reply carries website messages, the
+      snapshot reply lists them); and the Pico reflash (picolab 0.2.2, lib/blelink.py,
+      lib/logos.py, msg.js). Until all three are out, website messages queue harmlessly
+      (status "waiting for the bin").
+- [ ] **Try the Bluetooth page from a phone**: whs.makerlabkids.com/bluetooth.html in Chrome
+      on Android (or Edge/Chrome on a laptop), Connect, pick "The Wrigglers", PIN 1126 on
+      the bench. Not tested with a real phone yet (the container has no Bluetooth).
 - [ ] **Surface (Cloudflare) deploy + `ALERT_URL`** (carried over): `wrangler deploy`
       from your laptop, and the alert URL as `https://`.
 
@@ -50,9 +59,8 @@ record of what got done.
 
 ## Ideas, not scheduled
 
-- [ ] **Bluetooth config** (rename / PIN entry over BLE from a phone with no Wi-Fi
-      switch): the Pico 2 W has BLE and MicroPython's `aioble` exists, but nothing on
-      the board speaks it yet. The Wi-Fi PIN gate (2026-10-31) covers the dashboard.
+- [x] Bluetooth config: done 2026-10-31 (lib/blelink.py, the Nordic UART service; the
+      website's /bluetooth.html page and any BLE terminal app).
 - [ ] Surface alert when a Bin reports a large `buffered` count (it means every
       Burrow it can see has been dark for that many minutes).
 - [ ] A battery RTC module on the Pico would turn "estimated" backfill timestamps

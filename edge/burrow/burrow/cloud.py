@@ -27,6 +27,11 @@ class Cloud:
                       "snapshots": 0}
         self.timeout = 20
         self._roster_sent = 0
+        # Messages set on the website for the Bins, as the last snapshot reply
+        # listed them: {uid: [item, ...]}. Handed to a Bin in its /ingest reply;
+        # the Bin acks by seq in its next push (d.msg_seq), the Surface sees
+        # that in our snapshot and stops listing them.
+        self.messages = {}
 
     @staticmethod
     def _read(path):
@@ -99,7 +104,18 @@ class Cloud:
         if body.get("roster") is not None:
             self._roster_sent = util.now()
         self.state["snapshots"] += 1
+        if isinstance(j, dict) and isinstance(j.get("messages"), list):
+            by_uid = {}
+            for it in j["messages"]:
+                if isinstance(it, dict) and isinstance(it.get("uid"), str):
+                    by_uid.setdefault(it["uid"], []).append(it)
+            self.messages = by_uid
+            self.state["messages"] = sum(len(v) for v in by_uid.values())
         return j
+
+    def messages_for(self, uid):
+        """Pending website messages for one Bin (each with uid, slot, seq, pin...)."""
+        return list(self.messages.get(uid) or [])
 
     # ---- castings ------------------------------------------------------
     def pending(self):

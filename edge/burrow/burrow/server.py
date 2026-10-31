@@ -167,8 +167,11 @@ class Handler(BaseHTTPRequestHandler):
         row = self.svc.ingest(d, src="push", ip=ip)
         if row is None:
             return self._json({"ok": False, "error": "no id"}, 400)
-        self._json({"ok": True, "ts": row["ts"], "edge": self.svc.cfg["edge"],
-                    "room": self.svc.cfg["room"]})
+        reply = {"ok": True, "ts": row["ts"], "edge": self.svc.cfg["edge"], "room": self.svc.cfg["room"]}
+        msgs = self.svc.messages_for(row["uid"])
+        if msgs:
+            reply["messages"] = msgs       # set on the website; the Bin acks them in its next push
+        self._json(reply)
 
     def _ingest_batch(self):
         body = self._read_body()

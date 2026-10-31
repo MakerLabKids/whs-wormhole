@@ -358,6 +358,10 @@ class Display:
     self.cards = None
     self._card = None                 # the card on screen, else None
     self._card_at = 0                 # when it went up
+    # boot(steps): a one-off sequence played before the cycle starts; see boot()
+    self._boot = None
+    self._boot_at = 0
+    self._boot_ms = 0
     self._show = None                 # the show now playing (an instance), else None
     self._show_t = 0                  # its next frame
     self._show_drawn = 0              # frames drawn so far (fewer than frames when the loop stalled)
@@ -433,22 +437,72 @@ class Display:
     if title and not self._title_seen:          # the first titled screen starts the first hold
       self._title_seen, self._hold_at = True, time.ticks_ms()
     self._lines, self._bar, self._title = lines, bar, title
-    if not self._show and not self._card:       # a show or a card keeps the screen; the rows wait
+    if not self._show and not self._card and not self._boot:   # a show, a card or the boot sequence keeps the screen
+      self._draw()
+
+  def boot(self, steps):
+    """Play a one-off sequence, then start the cycle with a fresh hold.
+    Each step is one of
+      ("hold", ms)                  keep whatever is on the screen
+      ("card", title, lines, ms)    a card like a message's (title "" for none)
+      ("show", cls)                 a show, full length
+      ("cards", fn)                 fn() -> [(title, lines)], CARD_MS each (the boot messages)
+    tick() drives it, so the loop keeps running underneath."""
+    self._boot = list(steps)
+    self._boot_next(time.ticks_ms())
+
+  def _boot_next(self, now):
+    """Start the next boot step; at the end, the cycle."""
+    while self._boot:
+      step = self._boot.pop(0)
+      kind = step[0]
+      if kind == "hold":
+        if step[1] > 0:
+          self._boot_at, self._boot_ms = now, step[1]
+          return
+      elif kind == "card":
+        if step[3] > 0:
+          self._card, self._card_at = (step[1], step[2]), now
+          self._boot_ms = step[3]
+          self._draw_card()
+          return
+      elif kind == "show":
+        self._start_show(step[1], now)
+        return
+      elif kind == "cards":
+        try:
+          cards = list(step[1]() or [])
+        except Exception as e:
+          log("boot cards:", e)
+          cards = []
+        if cards:
+          self._boot[0:0] = [("card", t, l, self.CARD_MS) for t, l in cards]
+    self._boot = None
+    self._hold_at, self._x = now, None
+    if self._lines:
       self._draw()
 
   def tick(self):
     """Call every loop pass: scrolls a long title, runs the marquee and
     plays the shows."""
-    if not self._title or not self._lines or not self.oled:
+    if not self.oled or (self._boot is None and (not self._title or not self._lines)):
       return
     now = time.ticks_ms()
     if self._show:
       self._show_tick(now)
       return
     if self._card:
-      if time.ticks_diff(now, self._card_at) >= self.CARD_MS:
-        self._card, self._hold_at, self._x = None, now, None
-        self._draw()
+      if time.ticks_diff(now, self._card_at) >= (self._boot_ms if self._boot is not None else self.CARD_MS):
+        self._card = None
+        if self._boot is not None:
+          self._boot_next(now)
+        else:
+          self._hold_at, self._x = now, None
+          self._draw()
+      return
+    if self._boot is not None:                  # a "hold" step
+      if time.ticks_diff(now, self._boot_at) >= self._boot_ms:
+        self._boot_next(now)
       return
     name = str(self._lines[0])
     long = len(name) * self.FONT > 128
@@ -479,11 +533,9 @@ class Display:
     one. False when there is nothing to follow it."""
     turn = self._show_next or not self.marquee
     if turn and self.shows:
-      cls = self.shows[self._show_idx % len(self.shows)]
+      self._start_show(self.shows[self._show_idx % len(self.shows)], now)
       self._show_idx += 1
-      self._show, self._show_t, self._show_at, self._show_next = cls(), 0, now, False
-      self._show_drawn = 0
-      self._show_tick(now)                      # frame 0 right away
+      self._show_next = False
       return True
     if turn and self._start_card(now):          # no shows: a card takes the show's turn
       self._show_next = False
@@ -492,6 +544,10 @@ class Display:
       self._mq, self._x, self._scroll_at, self._show_next = True, 128, now, True
       return True
     return False
+
+  def _start_show(self, cls, now):
+    self._show, self._show_t, self._show_at, self._show_drawn = cls(), 0, now, 0
+    self._show_tick(now)                        # frame 0 right away
 
   def _show_tick(self, now):
     """The running show, on the wall clock: frame elapsed // period, so a
@@ -504,7 +560,9 @@ class Display:
     if elapsed >= (s.frames - 1) * period + self.SHOW_HOLD_MS:
       log("%s: %d of %d frames in %d ms" % (getattr(s, "name", "show"), self._show_drawn, s.frames, elapsed))
       self._show, self._hold_at, self._x = None, now, None
-      if not self._start_card(now):             # a message after the show, if there is one
+      if self._boot is not None:
+        self._boot_next(now)
+      elif not self._start_card(now):           # a message after the show, if there is one
         self._draw()
       return
     t = min(elapsed // period, s.frames - 1)
@@ -884,7 +942,8 @@ PIN_LOCK_S = 60            # ...every PIN-gated request is refused for this long
 
 
 MSG_FILE = "msg.json"
-MSG_SLOTS = 3
+MSG_SLOTS = 5          # 1-3 the team's, 4-5 the teacher's (the website enforces who; the PIN opens all)
+MSG_TEAM_SLOTS = 3
 MSG_LINES = 5
 MSG_WIDTH = 16         # the 8 px font: 16 characters across the screen
 
@@ -895,11 +954,13 @@ def _msg_text(s):
 
 
 class Messages:
-  """Three message slots for the screen, set from the dashboard, kept in
-  msg.json. A slot has a title and up to 5 lines (16 characters each),
-  and optionally a start and/or end time (unix seconds) or a number of
-  showings (0 or absent: forever). The Display shows one after each worm
-  show, taking the live slots in turn (display.cards = messages.next).
+  """Message slots for the screen (three for the team, two for the
+  teacher), set from the dashboard, kept in msg.json. A slot has a title
+  and up to 5 lines (16 characters each), and optionally a start and/or
+  end time (unix seconds) or a number of showings (0 or absent: forever).
+  The Display shows one after each worm show, taking the live slots in
+  turn (display.cards = messages.next); a slot flagged `boot` shows in
+  the power-on sequence instead (boot_cards()).
 
   /msg is PIN-gated like every change (so is reading it: the page asks
   once). /msg -> the slots and the board's clock; /msg?slot=1&title=..
@@ -912,10 +973,14 @@ class Messages:
     self.app = app
     self.path = path
     self.slots = [None] * MSG_SLOTS
+    self.acks = {}                    # slot -> the last seq applied from the web (negative: refused)
     self._rot = 0
     try:
       with open(path) as f:
         data = json.load(f)
+      if isinstance(data, dict):
+        self.acks = data.get("acks") or {}
+        data = data.get("slots") or []
       for i in range(min(MSG_SLOTS, len(data))):
         self.slots[i] = data[i] or None
     except Exception:
@@ -924,9 +989,71 @@ class Messages:
   def save(self):
     try:
       with open(self.path, "w") as f:
-        json.dump(self.slots, f)
+        json.dump({"slots": self.slots, "acks": self.acks}, f)
     except Exception as e:
       log("messages save failed:", e)
+
+  # ---- from the website, through a Burrow ------------------------------
+  def on_reply(self, reply):
+    """Hook for WebApp.on_reply: a Burrow's /ingest reply may carry messages."""
+    items = reply.get("messages") if isinstance(reply, dict) else None
+    if items:
+      self.apply(items)
+
+  def push_fields(self):
+    """Hook for WebApp.push_extra: the acks ride up with the next push, so
+    the website knows what landed (msg_seq: {slot: seq, negative = refused)."""
+    return {"msg_seq": dict(self.acks)} if self.acks else {}
+
+  def apply(self, items):
+    """Messages set on the website: each {slot, seq, pin, clear} or {slot,
+    seq, pin, title, lines, start, end, count}. The PIN must be this
+    board's (the web form asks for it, like the page does); a seq already
+    answered is skipped, so a resend is harmless. True if anything changed."""
+    changed = False
+    for it in items or []:
+      try:
+        slot, seq = int(it.get("slot")), int(it.get("seq"))
+      except (TypeError, ValueError, AttributeError):
+        continue
+      if not 1 <= slot <= MSG_SLOTS or seq <= 0:
+        continue
+      key = str(slot)
+      if self.acks.get(key) in (seq, -seq):
+        continue
+      if not self.app or str(it.get("pin", "")) != self.app.pin():
+        self.acks[key] = -seq
+        log("message %d from the web refused: wrong PIN" % slot)
+        changed = True
+        continue
+      if it.get("clear"):
+        self.slots[slot - 1] = None
+        log("message %d cleared from the web" % slot)
+      else:
+        title = _msg_text(it.get("title"))
+        lines = [_msg_text(t) for t in list(it.get("lines") or [])[:MSG_LINES]]
+        while lines and not lines[-1]:
+          lines.pop()
+        if not title and not any(lines):
+          self.slots[slot - 1] = None
+        else:
+          new = {"title": title, "lines": lines, "shown": 0}
+          for k in ("start", "end", "count"):
+            try:
+              v = int(it.get(k) or 0)
+            except (TypeError, ValueError):
+              v = 0
+            if v > 0:
+              new[k] = v
+          if it.get("boot"):
+            new["boot"] = True
+          self.slots[slot - 1] = new
+          log("message %d set from the web: %s" % (slot, title or lines[0]))
+      self.acks[key] = seq
+      changed = True
+    if changed:
+      self.save()
+    return changed
 
   def _now(self):
     return self.app.wall() if self.app else (0, "none")
@@ -953,14 +1080,21 @@ class Messages:
     """The next message due, as (title, lines), counted as shown; None if none."""
     for k in range(MSG_SLOTS):
       i = (self._rot + k) % MSG_SLOTS
-      if self.active(i):
+      if self.active(i) and not self.slots[i].get("boot"):
         self._rot = i + 1
-        s = self.slots[i]
-        s["shown"] = s.get("shown", 0) + 1
-        if s.get("count"):                      # a counted slot keeps its count across a reboot
-          self.save()
-        return s.get("title", ""), list(s.get("lines") or [])
+        return self._shown(i)
     return None
+
+  def _shown(self, i):
+    s = self.slots[i]
+    s["shown"] = s.get("shown", 0) + 1
+    if s.get("count"):                          # a counted slot keeps its count across a reboot
+      self.save()
+    return s.get("title", ""), list(s.get("lines") or [])
+
+  def boot_cards(self):
+    """The live slots flagged for the power-on sequence, each counted as shown."""
+    return [self._shown(i) for i in range(MSG_SLOTS) if self.active(i) and self.slots[i].get("boot")]
 
   def status(self):
     ts, clk = self._now()
@@ -993,6 +1127,8 @@ class Messages:
       v = query_int(req, key)
       if v:
         s[key] = v
+    if query_int(req, "boot"):
+      s["boot"] = True
     self.slots[i] = s
     self.save()
     log("message %d set: %s" % (slot, title or lines[0]))
@@ -1567,6 +1703,9 @@ class WebApp:
     self.edge_ok = False
     self.last_push = None         # uptime of the last accepted push
     self.edge_ts = None           # (unix ts from the Burrow, uptime when received)
+    self.routes = None            # the gated routes poll() was given (Bluetooth uses them too)
+    self.on_reply = None          # hook: called with each accepted /ingest reply (messages ride on it)
+    self.push_extra = None        # hook: dict merged into every push (acks, say)
     self._push_due = 0
     self.push = True
     self.history = None
@@ -1900,6 +2039,8 @@ class WebApp:
         if k not in d:
           d[k] = ident[k]
       d["up"] = up
+      if self.push_extra:
+        d.update(self.push_extra())
       if self.joined:                      # the station's signal; junk while on the hotspot
         try:
           d["rssi"] = self.sta.status("rssi")
@@ -1933,6 +2074,11 @@ class WebApp:
           self._save_clock(int(reply["ts"]), up)
         if self.buffer and self.buffer.pending():
           self._drain(host, int(port or 8080))
+        if self.on_reply:
+          try:
+            self.on_reply(reply)
+          except Exception as e:
+            log("push reply hook:", e)
         return
       log("push:", target, "answered", status)
     except Exception as e:
@@ -2138,6 +2284,22 @@ class WebApp:
     log("renamed to '%s' from the web; restarting" % new)
     return {"ok": True, "name": new, "restart_s": 2}
 
+  def dispatch(self, req):
+    """A request through the gated routes (the ones poll() was given,
+    plus /name): (status, reply dict), or (None, None) when no route
+    matches. The web page and the Bluetooth link both come through here,
+    so both doors have the same lock (the PIN, and its lockout)."""
+    gated = list(self.routes or []) + [("/name", self._rename)]
+    for prefix, handler in gated:
+      if (b"GET " + prefix.encode()) in req or (b"POST " + prefix.encode()) in req:
+        if not self._pin_ok(req):
+          return 403, {"error": "pin", "locked": uptime_s() < self._pin_locked_until}
+        try:
+          return 200, handler(req)
+        except Exception as e:
+          return 200, {"error": str(e)}
+    return None, None
+
   def poll(self, data_fn, routes=None):
     """Serve one pending request, if any. Never raises.
 
@@ -2187,20 +2349,11 @@ class WebApp:
         pass
 
       handled = False
-      gated = list(routes or []) + [("/name", self._rename)]
-      for prefix, handler in gated:
-        if (b"GET " + prefix.encode()) in req or (b"POST " + prefix.encode()) in req:
-          if not self._pin_ok(req):
-            cl.sendall(HEADER_403 + b'{"error":"pin","locked":%s}' % (b"true" if uptime_s() < self._pin_locked_until else b"false"))
-            handled = True
-            break
-          try:
-            payload = json.dumps(handler(req)).encode("utf-8")
-          except Exception as e:
-            payload = json.dumps({"error": str(e)}).encode("utf-8")
-          cl.sendall(HEADER_JSON + payload)
-          handled = True
-          break
+      self.routes = routes
+      status, obj = self.dispatch(req)
+      if status:
+        cl.sendall((HEADER_403 if status == 403 else HEADER_JSON) + json.dumps(obj).encode("utf-8"))
+        handled = True
 
       if not handled and b"GET /history" in req:
         try:

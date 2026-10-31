@@ -146,3 +146,16 @@ that stopped reporting for 3 minutes. Both can notify a human through any ntfy-s
 default, since unplugged bins are normal. After changing schema.sql run
 `npx wrangler d1 execute wormhole --remote --file schema.sql` once (idempotent) to add the
 `events` and `alerts` tables.
+
+## Messages for a bin's screen
+
+`/api/messages` (cookie): `GET ?uid=` lists a bin's five slots and their delivery status;
+`POST {uid, slot, pin, title, lines[], start, end, count, boot}` sets one, `POST {uid, slot,
+pin, clear: true}` empties it. A team may fill slots 1-3 of its own bin (the bin whose number
+matches the team's), a teacher or admin any slot of any bin. The board's PIN travels with the
+message and the board checks it (the Surface never knows PINs). Every snapshot reply lists the
+undelivered messages (`messages: [...]`) for all bins; a Burrow hands a Bin its own on the next
+push, the Bin acks by `seq` in its data (`msg_seq`), and the next snapshot brings the ack here
+(`delivered_at`, `result` ok/refused). The dashboard's bin page has the editor (`msg.js`, the
+same widget the board's own page uses); `bluetooth.html` is the same editor over Web Bluetooth.
+The `messages` table is in schema.sql: run the d1 execute line above once after deploying.
