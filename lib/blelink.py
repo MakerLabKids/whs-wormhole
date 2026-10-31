@@ -42,6 +42,10 @@ class BleLink:
     self.name = (name or app.name)[:26]
     self.ble = bluetooth.BLE()
     self.ble.active(True)
+    try:
+      self.ble.config(gap_name=self.name)      # the device name a laptop reads once connected (else "MPY BTSTACK")
+    except Exception:
+      pass
     self.ble.irq(self._irq)
     ((self._tx, self._rx),) = self.ble.gatts_register_services(((UART_UUID, (_TX, _RX)),))
     self.ble.gatts_set_buffer(self._rx, LINE_MAX, True)   # append mode: writes pile up until read
