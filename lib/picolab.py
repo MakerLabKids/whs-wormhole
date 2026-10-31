@@ -350,14 +350,17 @@ class Display:
     # With `shows` set too (a list of classes with .frames and .draw(o, t),
     # see lib/wormshow.py) the two take turns after each hold: name,
     # marquee, name, a show, name, marquee, name, the next show...
-    # `cards`: a function returning (title, lines) or None, asked after
-    # every show (or in a show's turn when there are no shows): a message
-    # card that stays CARD_MS. See Messages.
+    # `cards`: a function returning a card, a list of cards, or None, asked
+    # after every show (or in a show's turn when there are no shows). A
+    # card is (title, lines) or (title, lines, ms); it stays ms (default
+    # CARD_MS); a list shows one after another. See Messages.
     self.marquee = None
     self.shows = None
     self.cards = None
     self._card = None                 # the card on screen, else None
     self._card_at = 0                 # when it went up
+    self._card_ms = self.CARD_MS      # how long this one stays
+    self._card_queue = []             # the cards after it
     # icon: "ok" / "burrow" / "none" / None, drawn in the bottom-right corner
     self.icon = None
     self._notice = None               # a card to show at the next chance (notice())
@@ -453,10 +456,16 @@ class Display:
   def _pop_notice(self, now):
     if not self._notice:
       return False
-    self._card, self._card_at, self._notice = self._notice, now, None
-    log("card: %s | %s" % (self._card[0], " | ".join(str(t) for t in self._card[1])))
-    self._draw_card()
+    card, self._notice = self._notice, None
+    self._put_card(card, now)
     return True
+
+  def _put_card(self, card, now):
+    """Show a card: (title, lines) or (title, lines, ms)."""
+    self._card, self._card_at = (card[0], card[1]), now
+    self._card_ms = card[2] if len(card) > 2 and card[2] else self.CARD_MS
+    log("card: %s | %s" % (card[0], " | ".join(str(t) for t in card[1])))
+    self._draw_card()
 
   def boot(self, steps):
     """Play a one-off sequence, then start the cycle with a fresh hold.
@@ -480,9 +489,7 @@ class Display:
           return
       elif kind == "card":
         if step[3] > 0:
-          self._card, self._card_at = (step[1], step[2]), now
-          self._boot_ms = step[3]
-          self._draw_card()
+          self._put_card((step[1], step[2], step[3]), now)
           return
       elif kind == "show":
         self._start_show(step[1], now)
@@ -512,10 +519,12 @@ class Display:
       self._show_tick(now)
       return
     if self._card:
-      if time.ticks_diff(now, self._card_at) >= (self._boot_ms if self._boot is not None else self.CARD_MS):
+      if time.ticks_diff(now, self._card_at) >= self._card_ms:
         self._card = None
         if self._boot is not None:
           self._boot_next(now)
+        elif self._card_queue:
+          self._put_card(self._card_queue.pop(0), now)
         elif not self._pop_notice(now):
           self._hold_at, self._x = now, None
           self._draw()
@@ -603,15 +612,19 @@ class Display:
     if not self.cards or not self.oled:
       return False
     try:
-      card = self.cards()
+      cards = self.cards()
     except Exception as e:
       log("card:", e)
       return False
-    if not card:
+    if not cards:
       return False
-    self._card, self._card_at = card, now
-    log("card: %s | %s" % (card[0], " | ".join(str(t) for t in card[1])))
-    self._draw_card()
+    if isinstance(cards, tuple):
+      cards = [cards]
+    cards = [c for c in cards if c]
+    if not cards:
+      return False
+    self._card_queue = cards[1:]
+    self._put_card(cards[0], now)
     return True
 
   def _draw_card(self):

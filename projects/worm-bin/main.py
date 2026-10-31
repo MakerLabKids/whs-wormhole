@@ -105,11 +105,12 @@ BLUETOOTH = True      # advertise as the board's name; the website's Bluetooth p
 # puts it in bin.json ("teacher_pin"); this is the fallback. Never on
 # the screen.
 TEACHER_PIN = ""
-# When no Burrow is taking the board's pushes, the screen shows a NOT
-# CONNECTED card between shows with the ways in: the board's own Wi-Fi
-# and address, and this page over Bluetooth (16 characters fit a line;
-# longer splits at a slash).
+# When no Burrow is taking the board's pushes, every cycle shows two NOT
+# CONNECTED cards after the worm show, NOT_CONNECTED_S in all: the ways
+# in (the board's own Wi-Fi and address; this page over Bluetooth, 16
+# characters fit a line, longer splits at a slash).
 HELP_URL = "mrklabs.com/whsbt"
+NOT_CONNECTED_S = 20
 # ===== end of config ==================================================
 
 
@@ -553,32 +554,32 @@ link_was = None                    # the link state the screen last reflected
 
 
 def diagnostics():
-  """The NOT CONNECTED card: how to reach this board right now."""
+  """The NOT CONNECTED cards: how to reach this board right now. Two
+  cards, NOT_CONNECTED_S between them: its own Wi-Fi, then Bluetooth."""
   ident = app.identity()
   net = ident.get("net") or app.ssid
-  lines = [("Wi-Fi " + net) if len(net) <= 10 else net, ident.get("ip") or app.ap_ip(), "or Bluetooth at"]
+  ms = NOT_CONNECTED_S * 500
+  wifi = ["No Burrow hears", "this bin. Wi-Fi:", net[:16], ident.get("ip") or app.ap_ip()]
   url = HELP_URL
   if len(url) > 16 and "/" in url:
     cut = url.rfind("/", 0, 17)
-    lines += [url[:cut], url[cut:]]
+    parts = [url[:cut], url[cut:]]
   else:
-    lines.append(url)
-  return "NOT CONNECTED", lines
+    parts = [url]
+  blue = ["Phone, Chrome:"] + parts + ["then connect to", app.name[:16]]
+  return [("NOT CONNECTED", wifi, ms), ("BLUETOOTH", blue, ms)]
 
 
 def next_card():
-  """What follows a worm show: the diagnostics when no Burrow is taking
-  our pushes (every other time, so the messages still get their turn),
-  else the next message."""
-  global diag_turn
-  if app.link() == "none":
-    diag_turn = not diag_turn
-    if diag_turn:
-      return diagnostics()
-  return messages.next()
+  """What follows a worm show: the diagnostics every time no Burrow is
+  taking our pushes, then the next message if there is one."""
+  cards = diagnostics() if app.link() == "none" else []
+  m = messages.next()
+  if m:
+    cards.append(m)
+  return cards
 
 
-diag_turn = False
 display.cards = next_card
 ROUTES = [("/set", set_handler), ("/cal", cal.handle), ("/msg", messages.handle)]
 app.routes = ROUTES
@@ -638,7 +639,7 @@ try:
         display.notice("CONNECTED", ["Burrow " + str(app.edge_name or "?"),
                                      "Internet: " + ("no" if app.edge_cloud is False else ("yes" if app.edge_cloud else "not reported"))])
       elif link == "none" and link_was in ("ok", "burrow"):
-        display.notice(*diagnostics())
+        display.notice(*diagnostics()[0][:2])
       link_was = link
 
     d = data_fn()

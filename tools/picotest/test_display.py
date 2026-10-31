@@ -285,3 +285,23 @@ assert d._card == ("NOT CONNECTED", ["Wi-Fi The Wrigglers"]), d._card
 while d._card: run(d, 10)
 assert d._card is None and d.oled.title()[0] == "Dirt Nerds", "then the name; the message waits for the next show"
 print("icon + notices OK")
+
+# ---- cards(): a list, each with its own time, shown one after another; then the name ----
+d = fresh(["Dirt Nerds", "x"]); d.shows = [ShowA]
+d.cards = lambda: [("NOT CONNECTED", ["a"], 10000), ("BLUETOOTH", ["b"], 10000), ("Msg", ["m"])]
+run(d, 5010)
+while d._show: run(d, 10)
+assert d._card == ("NOT CONNECTED", ["a"]) and len(d._card_queue) == 2, (d._card, d._card_queue)
+t0 = faketime.ticks_ms()
+while d._card == ("NOT CONNECTED", ["a"]): run(d, 10)
+assert abs(faketime.ticks_diff(faketime.ticks_ms(), t0) - 10000) <= 20 and d._card == ("BLUETOOTH", ["b"]), d._card
+while d._card == ("BLUETOOTH", ["b"]): run(d, 10)
+assert d._card == ("Msg", ["m"]), d._card
+t0 = faketime.ticks_ms()
+while d._card: run(d, 10)
+assert abs(faketime.ticks_diff(faketime.ticks_ms(), t0) - D.CARD_MS) <= 20 and d.oled.title()[0] == "Dirt Nerds"
+d.cards = lambda: []
+run(d, 5010)
+while d._show: run(d, 10)
+assert d._card is None, "an empty list: straight back to the name"
+print("card lists OK")
