@@ -102,7 +102,22 @@ actuator control at `/set?big=90`, `/set?small=45`, `/set?relay=1`.
 
 ## Calibration
 
-`MOIST_DRY_V` / `MOIST_WET_V` at the top of `main.py` are in VOLTS
+**Distance (compaction).** The VL53L0X reads long by a good margin with
+this driver (an empty viewer bin, 175 mm lid to the paper towel on the
+bottom, reads about 257), and it is useless past a metre, so calibrate it
+for the range a bin actually uses: the empty bin (easy to check before
+the bedding goes in) and the 30-50 mm gap a working bin sits at. On the
+dashboard's Surface calibration card: with the bin empty, type the
+measured depth and capture; then rest a box or book on the bottom so the
+lid-to-target gap is a measured 40 mm or so, type that, capture, Apply.
+One point sets the offset, two set a line; the correction lives in
+`cal.json` on the board and applies to everything (screen, JSON, Burrow).
+Readings are smoothed: `surface_now_mm` (a second or two, biased to the
+latest shot) is on the screen and the local page; `surface_mm` (the mean
+of the last minute) is what the Burrow records; `surface_raw_mm` is the
+uncalibrated short average that the calibration card captures.
+
+**Moisture.** `MOIST_DRY_V` / `MOIST_WET_V` at the top of `main.py` are in VOLTS
 (the ADS1115 reads volts, not Pico counts). Watch `moist1_v` on the
 dashboard with the probe dry in air, then in a cup of water up to the
 marked line, and edit the two numbers.

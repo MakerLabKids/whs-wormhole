@@ -147,6 +147,38 @@ def banner(title, lines=()):
   print("=" * 40)
 
 
+class Smoother:
+  """Two views of a noisy reading: `now`, an exponential average biased to
+  the latest samples (alpha 0.5 at 2 samples/s is a second or two: what
+  a screen should show), and `avg`, the plain mean of the last `n`
+  samples (120 at 2/s = a minute: what the record should keep). feed()
+  returns (now, avg). reset() on a reconnect so a stale history does not
+  drag a fresh part."""
+
+  def __init__(self, alpha=0.5, n=120):
+    self.alpha, self.n = alpha, n
+    self.reset()
+
+  def reset(self):
+    self.now = None
+    self._ring, self._i, self._sum, self.count = [0] * self.n, 0, 0, 0
+
+  def feed(self, x):
+    self.now = x if self.now is None else self.now + self.alpha * (x - self.now)
+    if self.count < self.n:
+      self.count += 1
+    else:
+      self._sum -= self._ring[self._i]
+    self._ring[self._i] = x
+    self._sum += x
+    self._i = (self._i + 1) % self.n
+    return self.now, self.avg
+
+  @property
+  def avg(self):
+    return None if not self.count else self._sum / self.count
+
+
 class Throttle:
   """True at most once every interval_ms. First call is True immediately."""
 

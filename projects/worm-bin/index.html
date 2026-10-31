@@ -158,7 +158,7 @@ if (window.Cal) {
     });
     distCal = Cal.create(document.getElementById('calbox2'), {
       title: 'CALIBRATE DISTANCE (compaction)',
-      hint: 'Put a target at a measured distance, type the mm, and capture. Do a near and a far point.',
+      hint: 'Empty bin first: type the measured lid-to-bottom mm and capture. Then a box or book at a measured ~40 mm for the near point. The raw number is already a 2 s average; let it settle before capturing.',
       unit: 'mm', lowName: 'near', highName: 'far', entered: true,
       itemsFrom: function (d) { return [{ id: 'distance', label: 'Surface', raw: d.surface_raw_mm }]; }
     });
@@ -206,7 +206,7 @@ function tick() {
       put('tout', dispT(j.out_temp_c)); put('hout', j.out_hum_pct);
       put('m1', j.moist1_pct); put('m1v', j.moist1_v);
       put('m2', j.moist2_pct); put('m2v', j.moist2_v);
-      put('lt', j.light_pct); put('lux', j.lux); put('snd', j.sound_pct); put('dist', j.surface_mm);
+      put('lt', j.light_pct); put('lux', j.lux); put('snd', j.sound_pct); put('dist', j.surface_now_mm != null ? j.surface_now_mm : j.surface_mm);
       if (moistCal) moistCal.update(j);
       if (distCal) distCal.update(j);
 

@@ -216,11 +216,23 @@ def compaction():
   # Time-of-flight aimed down from the lid at the bedding surface. The
   # reading is the gap to the surface in mm; watch it grow as bedding
   # settles and compacts, or jump when someone digs in the bin.
+  #
+  # Single shots bounce by a few mm, so the raw shots go through a
+  # Smoother: surface_now_mm (a second or two, biased to now) is what the
+  # screen and the local page show; surface_mm (the mean of the last
+  # minute, one push interval) is what the Burrow records. Both are
+  # calibrated through the shared engine ("distance" in cal.json: one
+  # point for the offset, two for a line); surface_raw_mm is the
+  # uncalibrated short average, the number to type a known distance
+  # against when calibrating.
+  smooth = picolab.Smoother(alpha=0.5, n=int(60000 / READ_EVERY_MS))
+
   def connect():
     from vl53l0x import VL53L0X
     tof = VL53L0X(picolab.i2c())
     tof.init_sensor()
     tof.ping()   # the first shot after init reads 0; throw it away
+    smooth.reset()
     return tof
 
   def read(dev):
@@ -232,10 +244,10 @@ def compaction():
     # chip's own "no target in range" code.
     if raw == 0 or raw >= 8190:
       raise OSError("VL53L0X no measurement (%d)" % raw)
-    # Calibrated two-point (put a target at a measured distance, enter
-    # it, capture near + far) via the shared engine; else the raw mm.
-    surf = round(cal.apply("distance", raw, digits=0)) if "distance" in cal.data else raw
-    return {"surface_mm": surf, "surface_raw_mm": raw}
+    now, avg = smooth.feed(raw)
+    fix = (lambda x: cal.apply("distance", x, digits=1)) if "distance" in cal.data else (lambda x: x)
+    return {"surface_mm": round(fix(avg)), "surface_now_mm": round(fix(now)),
+            "surface_raw_mm": round(now), "surface_shot_mm": raw}
 
   return picolab.Sensor("VL53L0X compaction (0x29)", connect, read)
 
@@ -452,8 +464,8 @@ def screen_rows(d):
       rows.append(("LIGHT: %s" % fmt(d["light_pct"], "%.0f%%"), "light"))
   if d.get("sound_pct") is not None:
     rows.append(("SOUND: %s" % fmt(d["sound_pct"], "%.0f%%"), "sensor"))
-  if d.get("surface_mm") is not None:
-    rows.append(("DIST: %s" % fmt(d["surface_mm"], "%d mm"), "sensor"))
+  if d.get("surface_now_mm") is not None:
+    rows.append(("DIST: %s" % fmt(d["surface_now_mm"], "%d mm"), "sensor"))
   big, small, rly = d.get("big", 90), d.get("small", 90), d.get("relay", 0)
   if rly or big != 90 or small != 90:
     rows.append(("SRV: %d/%d%s" % (big, small, " RLY" if rly else ""), "sensor"))   # RLY = relay on
