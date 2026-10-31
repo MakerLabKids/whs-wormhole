@@ -190,9 +190,13 @@
      (a=1 &hellip; z=26) <b>plus the first digit</b> of the address's last number; then the
      <b>second-to-last letter</b> as a number <b>plus the last digit</b>. "The Wrigglers" at
      192.168.4.16: h&nbsp;(8)&nbsp;+&nbsp;1&nbsp;=&nbsp;9, r&nbsp;(18)&nbsp;+&nbsp;6&nbsp;=&nbsp;24,
-     PIN <span class="pill">924</span>. Only letters count. On its own hotspot a board is at
-     192.168.4.1 (digits 1 and 1). A rename restarts the board under its new name, Wi-Fi name
-     and PIN. Five wrong tries lock changes for a minute.</p>
+     PIN <span class="pill">924</span>. Only letters count. The last number of the address is the
+     <b>bin number</b>, on both networks: a board's own hotspot is 192.168.4.&lt;bin&gt; and on the
+     classroom network it takes &lt;room subnet&gt;.&lt;bin&gt; as a fixed address, so lid, screen,
+     URL and PIN agree and the PIN is the same from either side. Bins are numbered once across the
+     fleet (<span class="pill">tools/fleet/flash.py --renumber</span>, from 30 up; never 1, 10,
+     16&ndash;23 or 100+). A rename restarts the board under its new name, Wi-Fi name and PIN.
+     Five wrong tries lock changes for a minute.</p>
 
   <h2>Version numbers</h2>
   <hr class="rule g">

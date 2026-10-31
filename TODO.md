@@ -14,6 +14,11 @@ record of what got done.
       picolab 0.2.1 (flash buffer, title marquee, smoothed distance), the new
       `lib/vl53l0x.py` (full init: the old one read ~80 mm long and died at close
       range), and the worm-bin `main.py` (continuous-mode ranging, LABEL: value rows).
+- [ ] **Bins are renumbered fleet-wide, 30 to 79** (`roster.csv`, 2026-10-31): the bin number
+      is now the board's address on both networks and part of its PIN. Re-label the lids to
+      match before the reflash (the reflash writes the new number into each board), and
+      re-run `tools/fleet/flash.py --renumber` first if you want a different start than 30
+      (`bin_first` in fleet.json).
 - [ ] **Recalibrate every bin's distance sensor after the reflash** (the old
       calibration belongs to the old driver): on the dashboard's Surface card,
       capture the empty bin depth (lid to the paper towel, ~175 mm on the viewer

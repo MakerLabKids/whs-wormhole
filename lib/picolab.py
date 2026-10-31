@@ -334,7 +334,8 @@ class Display:
 
   HOLD_MS = 5000      # the title shows (still, or scrolling if long) this long between marquee runs
   SCROLL_MS = 40      # one scroll step...
-  SCROLL_PX = 2       # ...moves this far (50 px/s: a 60-char line takes ~12 s)
+  SCROLL_PX = 4       # ...moves this far (100 px/s, ~12 letters/s: a 60-char line crosses in ~6 s;
+                      #    the step rate is pinned by the ~25 ms an I2C refresh takes, so speed = step size)
 
   def __init__(self, addr=0x3C):
     self.addr = addr
@@ -817,6 +818,21 @@ def query_int(req, key, default=None):
 # All opt-in through files on the board; demos without them behave as before.
 # ---------------------------------------------------------------------
 BIN_FILE = "bin.json"      # {"team": "Dirt Vader", "period": 3, "bin": 7, "room": 1}
+# The bin number IS the board's address: 192.168.4.<bin> on its own hotspot
+# and <tunnel subnet>.<bin> (static, not a DHCP lease) on the classroom
+# network, so the number on the lid, the screen, the PIN and the URL agree.
+# Numbers a bin cannot have: 1 (the router), 10 (the Burrow), 16-23 (the
+# hotspot hands those to phones), 100+ (the Tunnels' DHCP pool).
+AP_NET = "192.168.4."
+
+
+def valid_octet(n):
+  try:
+    n = int(n)
+  except (TypeError, ValueError):
+    return False
+  return 2 <= n <= 99 and n != 10 and not 16 <= n <= 23
+
 PORT = 80                  # web port (tests override)
 PUSH_EVERY_S = 60          # how often a joined station POSTs /ingest to its Burrow
 PUSH_TIMEOUT_S = 3         # per attempt; the loop stalls at most this long
@@ -1283,11 +1299,16 @@ class WebApp:
 
     # Fleet identity (team card), written by the flash script. Optional.
     self.bin = None
+    self.num = None               # the bin number = the address's last octet (see AP_NET)
     try:
       with open(BIN_FILE) as f:
         b = json.load(f)
         if isinstance(b, dict):
           self.bin = b
+          if valid_octet(b.get("bin")):
+            self.num = int(b["bin"])
+          elif b.get("bin") is not None:
+            log("bin.json: bin %r cannot be an address (2-99, not 10, not 16-23): DHCP + 192.168.4.1" % (b.get("bin"),))
     except Exception:
       pass
 
@@ -1413,15 +1434,16 @@ class WebApp:
           pass
       self.ap = network.WLAN(network.AP_IF)
       self.ap.active(True)
-      self.ap.ifconfig(("192.168.4.1", "255.255.255.0", "192.168.4.1", "192.168.4.1"))
+      ip = self.ap_ip()
+      self.ap.ifconfig((ip, "255.255.255.0", ip, ip))
       self.ap.config(essid=self.ssid, security=0)
       for _ in range(50):
         if self.ap.active():
           break
         time.sleep(0.1)
-      self.ip = "192.168.4.1"
+      self.ip = ip
       self._ap_hold_since = None
-      log("hotspot '" + self.ssid + "' open at http://192.168.4.1")
+      log("hotspot '" + self.ssid + "' open at http://" + ip)
     except Exception as e:
       log("could not open hotspot:", e)
       self.ap = None
@@ -1442,8 +1464,32 @@ class WebApp:
     except Exception:
       return False
 
+  def ap_ip(self):
+    """Our hotspot address: 192.168.4.<bin>, or .1 for a board with no card."""
+    return AP_NET + str(self.num if self.num else 1)
+
+  def _fix_address(self, name):
+    """On the classroom network, trade the DHCP lease for <subnet>.<bin>
+    (same mask, gateway and DNS the lease came with). Only there: a
+    rescue hotspot's pool is unknown, so its lease stays."""
+    if not self.num or not self.creds or name != self.creds.get("ssid"):
+      return
+    try:
+      ip, mask, gw, dns = self.sta.ifconfig()
+      want = ip.rsplit(".", 1)[0] + "." + str(self.num)
+      if want == ip:
+        return
+      if gw.rsplit(".", 1)[-1] == str(self.num):
+        log("address: .%d is the gateway here; keeping the lease %s" % (self.num, ip))
+        return
+      self.sta.ifconfig((want, mask, gw, dns))
+      log("address: lease", ip, "-> static", want, "(bin %d)" % self.num)
+    except Exception as e:
+      log("address: could not set the static address:", e)
+
   def _on_joined(self, name):
     self.joined = name
+    self._fix_address(name)
     self.ip = self.sta.ifconfig()[0]
     self._joined_at = uptime_s()
     self._lost_at = None
@@ -1758,9 +1804,10 @@ class WebApp:
 
   def locate(self):
     """The number that finds this board when it has no screen: the last
-    octet of its IP when joined (browse to it), or its PicoLab number
-    when hosting its own AP (join that SSID). StatusLight blinks it."""
-    if self.joined:
+    octet of its address (the bin number, on either network), or its
+    PicoLab number for a board with no card on its own hotspot (join
+    that SSID). StatusLight blinks it."""
+    if self.joined or self.num:
       try:
         return int(self.ip.rsplit(".", 1)[-1])
       except Exception:
@@ -1805,7 +1852,7 @@ class WebApp:
           "Name:   " + self.name,
           "Board:  " + self.uid,
           "Wi-Fi:  join '" + self.ssid + "'",
-          "Browse: http://192.168.4.1",
+          "Browse: http://" + self.ip,
       ]
       if self.rescue_target:
         lines.append("Rescue net: " + self.rescue_target)

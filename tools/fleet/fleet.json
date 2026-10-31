@@ -4,6 +4,7 @@
   "password_file": "~/.config/wormhole/wifi-password",
   "firmware": "firmware/RPI_PICO2_W-20260406-v1.28.0.uf2",
   "project": "projects/worm-bin",
+  "bin_first": 30,
   "rooms": {"1": {"periods": [1, 2], "bins": 17}, "2": {"periods": [3, 4], "bins": 17}, "3": {"periods": [5, 6], "bins": 16}},
   "wipe_first": true
 }

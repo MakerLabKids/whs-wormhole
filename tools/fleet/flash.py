@@ -101,6 +101,34 @@ def write_roster(rows):
     os.replace(tmp, ROSTER)
 
 
+# The bin number is the board's address (192.168.4.<bin> on its hotspot,
+# <tunnel>.<bin> static on the classroom network; see picolab.valid_octet),
+# so bins are numbered once across the whole fleet, from fleet.json's
+# "bin_first" (default 30: 50 bins -> 30..79), never 1 (router), 10 (Burrow),
+# 16-23 (hotspot DHCP leases) or 100+ (the Tunnels' DHCP pool).
+BIN_FIRST = 30
+
+
+def valid_octet(n):
+    try:
+        n = int(n)
+    except (TypeError, ValueError):
+        return False
+    return 2 <= n <= 99 and n != 10 and not 16 <= n <= 23
+
+
+def bin_numbers(count, first=BIN_FIRST):
+    """`count` usable bin numbers from `first` up, skipping the reserved ones."""
+    out, n = [], int(first)
+    while len(out) < count:
+        if n > 99:
+            sys.exit("only %d usable bin numbers from %d; lower bin_first" % (len(out), first))
+        if valid_octet(n):
+            out.append(n)
+        n += 1
+    return out
+
+
 def init_roster(fleet, force=False):
     if os.path.exists(ROSTER) and not force:
         sys.exit("roster.csv exists; use --init --force to rebuild it (uids would be lost)")
@@ -112,15 +140,30 @@ def init_roster(fleet, force=False):
         per_period = [spec["bins"] // len(periods) + (1 if k < spec["bins"] % len(periods) else 0)
                       for k in range(len(periods))]
         for period, n in zip(periods, per_period):
-            for b in range(1, n + 1):
+            for b in range(n):
                 if i >= len(pool):
                     sys.exit("names.txt has only %d names; add more" % len(pool))
-                rows.append({"team": pool[i], "period": period, "bin": b, "room": int(room),
+                rows.append({"team": pool[i], "period": period, "bin": 0, "room": int(room),
                              "uid": "", "flashed_at": "", "version": "", "notes": ""})
                 i += 1
+    renumber(rows, fleet.get("bin_first", BIN_FIRST))
     write_roster(rows)
-    print("roster.csv: %d bins across %d rooms, %d names unused" % (len(rows), len(fleet["rooms"]), len(pool) - i))
+    print("roster.csv: %d bins across %d rooms (numbered %s-%s), %d names unused"
+          % (len(rows), len(fleet["rooms"]), rows[0]["bin"], rows[-1]["bin"], len(pool) - i))
     return rows
+
+
+def renumber(rows, first=BIN_FIRST):
+    """Give every row its fleet-wide bin number, in roster order. Returns
+    [(team, old, new)] for the rows whose number changed. Boards already
+    flashed with the old number need a re-flash (bin.json) to move."""
+    changed = []
+    for row, n in zip(rows, bin_numbers(len(rows), first)):
+        old = row.get("bin")
+        if str(old) != str(n):
+            changed.append((row["team"], old, n))
+        row["bin"] = n
+    return changed
 
 
 def pick_row(rows, uid):
@@ -251,6 +294,9 @@ def flash_one(rn, port, fleet, rows, password, dry=False):
     if row is None:
         raise RuntimeError("roster is full: every line has a uid. Add names/bins and re-run.")
     team = row["team"]
+    if not valid_octet(row["bin"]):
+        raise RuntimeError("bin %r for %s cannot be an address (2-99, not 10, not 16-23): run --renumber"
+                           % (row["bin"], team))
     print("  board %s -> %s (period %s, bin %s, room %s)%s" % (
         uid, team, row["period"], row["bin"], row["room"], "" if is_new else "  [already in roster: re-flash]"))
 
@@ -335,6 +381,8 @@ def wait_for_board(rn, fleet, seen_ports, dry=False):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--init", action="store_true", help="create roster.csv from names.txt and fleet.json")
+    ap.add_argument("--renumber", action="store_true",
+                    help="give every roster row its fleet-wide bin number (= its address) from fleet.json bin_first")
     ap.add_argument("--force", action="store_true", help="with --init: overwrite an existing roster")
     ap.add_argument("--check", action="store_true", help="print what a connected board is")
     ap.add_argument("--port", help="serial port (default: first Pico found)")
@@ -343,6 +391,24 @@ def main():
     ap.add_argument("--mp", default=os.environ.get("MP", "mpremote"), help="mpremote executable")
     a = ap.parse_args()
     fleet = load_fleet()
+
+    if a.renumber:
+
+        rows = read_roster()
+
+        changed = renumber(rows, fleet.get("bin_first", BIN_FIRST))
+
+        write_roster(rows)
+
+        for team, old, new in changed:
+
+            print("  %-24s bin %s -> %s" % (team, old, new))
+
+        print("roster.csv: %d rows renumbered %s-%s, %d changed (re-flash those boards)"
+
+              % (len(rows), rows[0]["bin"], rows[-1]["bin"], len(changed)))
+
+        return
 
     if a.init:
         init_roster(fleet, force=a.force)

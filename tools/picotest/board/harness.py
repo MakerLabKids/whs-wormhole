@@ -62,7 +62,8 @@ for f in ("boot.txt", "clock.txt"):
     except OSError:
         pass
 app = picolab.WebApp()
-check("boot: joined WormHole", app.joined == "WormHole" and app.ip == "192.168.81.120")
+check("boot: joined WormHole as <subnet>.<bin> (bin 7, static, not the .120 lease)", app.joined == "WormHole" and app.ip == "192.168.81.7"
+      and network.WLAN.instances[network.STA_IF].ifcfg[0] == "192.168.81.7")
 check("boot: no hotspot while joined", app.ap is None)
 check("identity carries bin", app.identity().get("bin", {}).get("team") == "Dirt Vader")
 step(8)                                           # first push is due 5 s after joining
@@ -72,7 +73,7 @@ d = json.loads(http_get("/data").split(b"\r\n\r\n", 1)[1])
 check("/data has bin + edge + mode", d.get("bin", {}).get("bin") == 7 and d.get("edge") == "127.0.0.1:8211" and d["mode"] == "joined")
 # the PIN: changes need it, reads do not, five misses lock the door for a minute
 pin = app.pin()
-check("pin follows the rule (Dirt Vader @ .120: i=9+1, e=5+0)", pin == picolab.pin_for("Dirt Vader", "192.168.81.120") == "105")
+check("pin follows the rule (Dirt Vader @ .7: i=9+7, e=5+7)", pin == picolab.pin_for("Dirt Vader", "192.168.81.7") == "1612")
 r = http_get("/set?angle=90")
 check("/set without the PIN is refused", r.startswith(b"HTTP/1.0 403") and b'"pin"' in r and SETS == [])
 r = http_get("/set?angle=90&pin=" + pin)
@@ -100,7 +101,7 @@ step(2)
 check("loss noticed", app.joined is None and app.ap is None)
 check("buffer empty at the loss", app.buffer is not None and app.buffer.pending() == 0)
 step(65)
-check("hotspot opened 60 s after loss (station off)", app.ap is not None and app.ip == "192.168.4.1"
+check("hotspot opened 60 s after loss (station off) at 192.168.4.<bin>", app.ap is not None and app.ip == "192.168.4.7"
       and not network.WLAN.instances[network.STA_IF].active())
 check("mode is ap", app.identity()["mode"] == "ap")
 scans = network.WORLD["scans"]
@@ -118,7 +119,7 @@ for name in app.buffer.files:
     print("   buffered in", name, [(r[0], r[1]) for r in app.buffer.records(name)])
 network.WORLD["present"] = set(["WormHole"])
 step(130)                                         # next rescan finds it and joins
-check("rejoined after network returned", app.joined == "WormHole" and app.ip == "192.168.81.120")
+check("rejoined after network returned", app.joined == "WormHole" and app.ip == "192.168.81.7")
 check("hotspot closed on rejoin (rp2: one interface at a time)", app.ap is None and app.identity()["mode"] == "joined")
 step(10)
 check("push resumed after rejoin", app.edge_ok)
@@ -133,6 +134,7 @@ network.WORLD["present"] = set(["WormHole"])
 scans = network.WORLD["scans"]
 step(790)                                         # hold starts at the first deferred rescan (+120), lasts 600
 check("rescan happens anyway after 10 min of hotspot use", network.WORLD["scans"] > scans and app.joined == "WormHole")
+check("same PIN on the hotspot and the classroom network", picolab.pin_for("Dirt Vader", "192.168.4.7") == pin)
 # rescue ladder: wormmaster beats WormHole when present
 network.WORLD["stations"] = []
 network.WORLD["present"] = set()

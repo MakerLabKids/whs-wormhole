@@ -12,7 +12,7 @@ cat > "$TMP/burrow.json" <<J
 {"edge":"burrow1","room":1,"listen":"127.0.0.1","port":8211,"data_dir":"$TMP/data","www_dir":"$TMP/www",
  "peers":{},"cloud":{"url":"","token_file":"/nonexistent","live_key_file":"/nonexistent"},"sweep":{"enabled":false}}
 J
-for i in $(seq 1 20); do ss -ltn 2>/dev/null | grep -q ':8211 ' || break; sleep 0.5; done   # a previous run's Burrow letting go
+for i in $(seq 1 40); do python3 -c "import socket; s=socket.socket(); s.bind(('127.0.0.1', 8211)); s.close()" 2>/dev/null && break; sleep 0.5; done   # a previous run's Burrow letting go
 (cd "$REPO/edge/burrow" && BURROW_CONFIG="$TMP/burrow.json" python3 -m burrow > "$TMP/burrow.log" 2>&1) & BPID=$!
 sleep 1.5
 cp "$REPO/lib/picolab.py" "$HERE/board/picolab.py"

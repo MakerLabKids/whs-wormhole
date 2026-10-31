@@ -74,9 +74,9 @@ d = fresh(["Dirt Nerds", "IN: 24.1C 71%"]); d.marquee = "Woodstock High School a
 assert run(d, 4990) == [], "nothing moves during the hold"
 seen = run(d, 20)
 assert seen and seen[0][0] == d.marquee and seen[0][1] == 128, seen[:2]    # enters from the right
-seen = run(d, 13000)                   # one full crossing (632 px at 50 px/s = 12.6 s)
+seen = run(d, 7000)                    # one full crossing (632 px at 100 px/s = 6.3 s)
 xs = [x for t, x, _ in seen if t == d.marquee]
-assert xs[0] == 126 and all(b - a == -2 for a, b in zip(xs, xs[1:])), xs[:5]   # 2 px every step
+assert xs[0] == 128 - D.SCROLL_PX and all(b - a == -D.SCROLL_PX for a, b in zip(xs, xs[1:])), xs[:5]   # one step per SCROLL_MS
 assert 0 < xs[-1] + len(d.marquee) * 8 <= D.SCROLL_PX, xs[-1]                 # last frame: a sliver left, then gone
 back = [c for c in seen if c[0] == "Dirt Nerds"]
 assert back and back[0][1] == (128 - 10 * 8) // 2 and d._mq is False, (back[:1], d._mq)   # home, centered

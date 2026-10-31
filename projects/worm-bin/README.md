@@ -112,18 +112,28 @@ that rewards effort). Two numbers written one after the other:
 2. the **second-to-last letter** of the name as a number **plus the
    last digit** of the address's last number.
 
-"The Wrigglers" browsed at 192.168.4.16: h is 8, plus 1 = **9**; r is
-18, plus 6 = **24**; PIN **924**. Only letters count (spaces, digits
-and punctuation are skipped). On its own hotspot every board is at
-192.168.4.1, so there the digits are 1 and 1; on the classroom network
-the address is the one on the screen. Renaming a board (dashboard,
-"Board name", needs the current PIN) restarts it under the new name,
-which is also its new Wi-Fi name and its new PIN. Five wrong PINs in a
-row lock every change for a minute.
+"The Wrigglers", bin 16, browsed at 192.168.4.16: h is 8, plus 1 =
+**9**; r is 18, plus 6 = **24**; PIN **924**. Only letters count
+(spaces, digits and punctuation are skipped).
+
+The last number of the address is the bin number, on both networks: a
+board hosts its own hotspot at 192.168.4.<bin>, and on the classroom
+network it takes <room subnet>.<bin> as a fixed address instead of a
+DHCP lease. So the number on the lid, the screen, the URL and the PIN
+all agree, and the PIN is the same wherever you reach the board from.
+Bins are numbered once across the whole fleet (the roster, `tools/fleet`,
+from 30 up), never 1, 10, 16-23 or 100+, which belong to the router,
+the Burrow, the hotspot's own phone leases and the DHCP pool. A board
+with no team card stays at 192.168.4.1 and a DHCP lease.
+
+Renaming a board (dashboard, "Board name", needs the current PIN)
+restarts it under the new name, which is also its new Wi-Fi name and
+its new PIN. Five wrong PINs in a row lock every change for a minute.
 
 ## Dashboard
 
-Join the PicoLabN network, browse to http://192.168.4.1: live cards
+Join the board's own network (its team name), browse to the address on
+its screen (192.168.4.<bin>): live cards
 for both airs, both moistures, light, sound, compaction, and every probe,
 plus sliders for both servos and a relay button. JSON at `/data`,
 actuator control at `/set?big=90`, `/set?small=45`, `/set?relay=1`.

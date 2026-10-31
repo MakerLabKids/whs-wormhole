@@ -30,10 +30,37 @@ class FlashTest(unittest.TestCase):
         for r in rows:
             by_room.setdefault(r["room"], []).append(r)
         self.assertEqual([len(by_room[k]) for k in sorted(by_room)], [17, 17, 16])
-        # periods split within a room; bins numbered per period from 1
+        # periods split within a room; bins numbered once across the fleet from bin_first
         p1 = [r for r in rows if r["room"] == 1 and r["period"] == 1]
-        self.assertEqual([r["bin"] for r in p1], list(range(1, 10)))
+        self.assertEqual([r["bin"] for r in p1], list(range(30, 39)))
+        self.assertEqual([r["bin"] for r in rows], list(range(30, 80)))
+        self.assertTrue(all(flash.valid_octet(r["bin"]) for r in rows))
         self.assertEqual(flash.read_roster()[0]["team"], "Compost Cowboys")
+
+    def test_bin_numbers_skip_the_reserved_addresses(self):
+        self.assertEqual(flash.bin_numbers(12, 8), [8, 9, 11, 12, 13, 14, 15, 24, 25, 26, 27, 28])
+        for bad in (0, 1, 10, 16, 23, 100, "x", None):
+            self.assertFalse(flash.valid_octet(bad), bad)
+        for good in (2, 9, 11, 15, 24, 99):
+            self.assertTrue(flash.valid_octet(good), good)
+
+    def test_renumber_keeps_rows_and_reports_changes(self):
+        rows = flash.init_roster(self.fleet)
+        rows[0]["uid"] = "aaaa"
+        for r in rows:
+            r["bin"] = 1                                   # the old per-period numbering
+        changed = flash.renumber(rows, 30)
+        self.assertEqual([r["bin"] for r in rows], list(range(30, 80)))
+        self.assertEqual(len(changed), 50)
+        self.assertEqual(changed[0], ("Compost Cowboys", 1, 30))
+        self.assertEqual(rows[0]["uid"], "aaaa")
+        self.assertEqual(flash.renumber(rows, 30), [])     # already right: nothing changes
+
+    def test_flash_refuses_an_unusable_bin_number(self):
+        rows = flash.init_roster(self.fleet)
+        rows[0]["bin"] = 16
+        with self.assertRaises(RuntimeError):
+            flash.flash_one(flash.FakeRunner(), "/dev/ttyFAKE0", self.fleet, rows, "pw", dry=True)
 
     def test_pick_new_then_reflash(self):
         rows = flash.init_roster(self.fleet)

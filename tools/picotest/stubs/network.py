@@ -14,7 +14,7 @@ class WLAN:
             if other is not None and other is not self and other._active:
                 raise OSError("rp2: AP and STA cannot both be active")
         self._active = bool(v)
-        if not v: self._ssid = None
+        if not v: self._ssid = None; self.static = False
     def scan(self):
         if not self._active: raise OSError("scan on inactive interface")
         WORLD["scans"] += 1
@@ -29,8 +29,9 @@ class WLAN:
             self._pending -= 1; return False
         return True
     def ifconfig(self, cfg=None):
-        if cfg: self.ifcfg = cfg; return
-        if self.kind == STA_IF: return (WORLD["ip"], "255.255.255.0", "192.168.81.1", "192.168.81.1")
+        if cfg: self.ifcfg = cfg; self.static = True; return
+        if self.kind == STA_IF and not getattr(self, "static", False):
+            return (WORLD["ip"], "255.255.255.0", "192.168.81.1", "192.168.81.1")
         return self.ifcfg
     def config(self, *a, **k):
         if "essid" in k: self._essid = k["essid"]
