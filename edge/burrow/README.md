@@ -40,8 +40,9 @@ burrow/           the service (python3 -m burrow)
   clock.py        clock quality from chrony (ntp | peer | free)
 setup-pi.sh       one-time OS preparation on a fresh Pi OS Lite (partition, chrony, static IP...)
 install.sh        (re)deploy the code into /opt/burrow, systemd unit
-tools/update-burrow.sh N  from a laptop on the LAN: unlock (reboot), git pull, install.sh,
-                  lock (reboot), waiting through both; `update-burrow.sh 0 1` does two
+tools/update-burrow.sh N  from a machine on the LAN: copy edge/ tools/ web/ into ~/wormhole on
+                  the Pi (no git there), install.sh, unlocking/locking around it if the root
+                  was read-only; `update-burrow.sh 0 1` does two
 iperf3              server always on (port 5201, ~4 MB idle). Real throughput from any Pi,
                   laptop or Bin on the LAN: `iperf3 -c 192.168.8N.10 -t 5` (Portal's Pi: .80.10).
                   2026-10-28: laptop cable -> Portal -> burrow0 710 Mbit/s; burrow1 -> Tunnel 1 ->
