@@ -33,7 +33,12 @@
   .sensor .multi b { color: var(--navy); }
   .sensor .links { margin-top: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .sensor .links .rd { font-weight: bold; font-size: 13.5px; }
-  @media (max-width: 640px) { .sensor { grid-template-columns: 1fr; } }
+  .sensor.screen { border-left-color: var(--navy); }
+  /* what the screen itself shows: two pixel-exact captures side by side */
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 4px 0 10px 0; }
+  .shots figure { margin: 0; }
+  .shots figure img { background: #1E293B; border-radius: 12px; }
+  @media (max-width: 640px) { .sensor { grid-template-columns: 1fr; } .shots { grid-template-columns: 1fr; } }
 
   /* click a wiring diagram to blow it up full-screen */
   .sensor figure img { cursor: zoom-in; }
@@ -81,6 +86,34 @@
     <p><a class="ext" href="https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/projects/everything/package.json"><b>Install everything</b></a>
        &nbsp;·&nbsp; <a class="ext" href="https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/everything">what's inside</a></p>
   </div>
+
+  <h2>The screen</h2>
+  <hr class="rule">
+
+  <section class="sensor screen" id="display">
+    <figure><img src="wiring/display.svg" alt="OLED display wiring" loading="lazy">
+      <figcaption>Not a sensor, but it is in every wiring diagram on this page: the same four wires
+        (3V3, GND, SDA=GP0, SCL=GP1) that every <a class="term" href="glossary.html#i2c">I2C</a> part shares.</figcaption></figure>
+    <div>
+      <h3>The little screen <span class="part">OLED 128&times;64</span></h3>
+      <p class="what">shows what the station knows, with no phone and no computer</p>
+      <p>Four wires put it on the I2C bus at address <code>0x3C</code>, and every program in this
+         guide draws on it. Power on and you get the start-up card for three seconds; then one row
+         per part that is plugged in and reporting, with the team name across the top.</p>
+      <div class="shots">
+        <figure><img src="img/oled/startup.svg" alt="The start-up card: WOODSTOCK HIGH SCHOOL, Maker Lab Kids, Wormhole version" loading="lazy">
+          <figcaption>Power on: the start-up card.</figcaption></figure>
+        <figure><img src="img/oled/data.svg" alt="The data screen: the team name underlined across the top, then AIR, PRESS, MOIST and DIST rows" loading="lazy">
+          <figcaption>Then the readings. Every five seconds the top row scrolls the school and
+            program line, and a long team name scrolls on its own.</figcaption></figure>
+      </div>
+      <p class="multi"><b>Blank screen?</b> Wiring, not code: swap SDA and SCL first. If the screen is
+         missing, the board's <a class="term" href="glossary.html#led">LED</a> stops showing part codes and blinks the board's number instead, so you can
+         still find its web page. <a href="reset.html">Fix a Board</a> has a one-file screen test.</p>
+      <p class="links"><a class="btn" href="https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/examples/05-display/package.json">Install the screen test</a>
+        <a class="rd ext" href="https://github.com/MakerLabKids/whs-wormhole/tree/main/examples/05-display">Example README</a></p>
+    </div>
+  </section>
 
   <h2>Heat &amp; air</h2>
   <hr class="rule o">

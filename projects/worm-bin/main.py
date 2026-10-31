@@ -82,6 +82,10 @@ READ_EVERY_MS = 500   # sensor sweep cadence (default 500 ms)
 # have time to shine a light on a sensor and watch it react.
 PAGE_SEC_LIGHT = 10   # a page with a light sensor (shine a light, watch it move)
 PAGE_SEC_SENSOR = 5   # any other page
+# The title row: the team name holds for 5 s, then this line scrolls
+# through, then the name holds again. "" turns the marquee off. A name too
+# long for the screen scrolls instead of holding; it still gets its 5 s.
+MARQUEE = "Woodstock High School and Maker Lab Kids - Vermiculture PBL by:"
 # ===== end of config ==================================================
 
 
@@ -475,6 +479,7 @@ picolab.banner("WORM BIN COMMAND CENTER  v" + picolab.VERSION, [
 ])
 
 display = picolab.Display()
+display.marquee = MARQUEE
 # The capstone gets a proper opening card (the little demos stay fast).
 display.show([
     "   WOODSTOCK",
@@ -505,6 +510,7 @@ try:
     app.poll(data_fn, routes=[("/set", set_handler), ("/cal", cal.handle)])
     servo_big.step()      # ramp the servos toward their targets every pass
     servo_small.step()
+    display.tick()        # the title marquee, between sensor sweeps
     if not tick.ready():
       continue
 
@@ -530,7 +536,7 @@ try:
     if len(pages) > 1 and time.ticks_diff(now, page_deadline) >= 0:
       page = (page + 1) % len(pages)
       page_deadline = time.ticks_add(now, screen_dwell(pages[page]) * 1000)
-    title = app.ssid if len(pages) == 1 else app.ssid[:11] + " %d/%d" % (page + 1, len(pages))
+    title = app.ssid if len(pages) == 1 else app.ssid + " %d/%d" % (page + 1, len(pages))
     lines = [title] + [text for text, _ in pages[page]]
     display.show(lines)
 

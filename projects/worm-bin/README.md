@@ -57,13 +57,35 @@ to 0 to show the raw reading everywhere.
 
 ## The screen
 
-The OLED shows one row per part that is reporting, nothing for parts that
-are absent. A lean bin (one BME280, a probe, a moisture bank, the distance
-sensor) fits on a single screen and never pages. Only when more rows exist
-than fit (six under the title) does it page, and then only through rows
-that exist, lingering on a page with a light sensor so you can shine a
-torch at it. Servo and relay get a row only once something has been
-commanded.
+Power on: the start-up card for three seconds, then one screen built from
+whatever is reporting.
+
+<img src="../../docs/img/oled/startup.svg" width="300" alt="start-up card"> <img src="../../docs/img/oled/data.svg" width="300" alt="a lean bin">
+
+The team name (the board's Wi-Fi name) sits centered across the top,
+underlined. The readings are `LABEL: value` rows, one per part that is
+reporting and nothing for parts that are absent, stacked up from the
+bottom edge, so whatever is left over is air under the name. A lean bin
+(one BME280, a probe, a moisture bank, the distance sensor) fits on a
+single screen and never pages. Six readings tighten the row spacing; only
+when more rows exist than fit (six under the title) does it page, and then
+only through rows that exist, lingering on a page with a light sensor so
+you can shine a torch at it. Servo and relay get a row only once something
+has been commanded.
+
+<img src="../../docs/img/oled/full.svg" width="300" alt="six readings"> <img src="../../docs/img/oled/marquee.svg" width="300" alt="the marquee">
+
+The top row is also a marquee: the name holds for five seconds, then
+`MARQUEE` (the school and program line, in the config block) scrolls
+through, then the name holds again. A name too wide for the screen (more
+than 16 characters) scrolls instead of holding and still gets its five
+seconds. `MARQUEE = ""` turns the scroll off.
+
+<img src="../../docs/img/oled/longname.svg" width="300" alt="a long team name scrolling">
+
+The pictures above are not photos: `micropython tools/gen-oled.py` runs
+the real driver and layout code off-board and writes the screen buffer out
+as SVG, so they are exactly the pixels the board draws.
 
 A lean bin recipe, for a board with one BME280, a probe, a moisture sensor
 on GP26, the distance sensor and the OLED: in the config block set

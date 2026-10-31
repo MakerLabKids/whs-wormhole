@@ -329,6 +329,16 @@ const i2cLegend = (pwrName) => [
   { color: W.scl, text: "SCL: GP1 (pin 2) -> OLED + sensor" },
 ];
 
+projects["display"] = () => diagram(
+  "display wiring", "the OLED screen alone: the same four wires every I2C part shares",
+  [1, 2, 36, 38], () => oledI2C(), [
+    { color: W.pwr, text: "VCC -> 3V3 (pin 36) via the red rail" },
+    { color: W.gnd, text: "GND -> GND (pin 38) via the black rail" },
+    { color: W.sda, text: "SDA -> GP0 (pin 1)" },
+    { color: W.scl, text: "SCL -> GP1 (pin 2)" },
+    { text: "every sensor diagram starts from this" },
+  ]);
+
 projects["distance-station"] = () => diagram(
   "distance-station wiring", "VL53L0X laser distance + OLED on the shared I2C bus",
   [1, 2, 36, 38], () => bodyI2C("VL53L0X", "0x29", C.orange), i2cLegend("VIN"));

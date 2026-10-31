@@ -156,7 +156,8 @@
   <div class="note g"><b>Watch it on the board's own screen.</b> If an OLED is attached, the self-test
      mirrors its progress and final verdict onto the display, so you can run it with no monitor: run
      the command, watch the little screen tick through and land on <b>READY!</b> or
-     <b>NOT READY</b>.</div>
+     <b>NOT READY</b>. (What the screen shows in normal use is on the
+     <a href="stations.html#display">Sensors page</a>.)</div>
 
   <h2>Plug the sensors into any I2C pair</h2>
   <hr class="rule">
@@ -182,8 +183,12 @@
   <hr class="rule g">
   <p>The software that runs on the Pico carries a version (<span class="pill">picolab.VERSION</span>).
      A board reports it with no computer attached: the self-test shows it in the healthy message and
-     on the OLED, and the worm-bin shows it on its start-up screen (<i>Wormhole v0.1.1</i>). It bumps
+     on the OLED, and the worm-bin shows it on its start-up screen. It bumps
      on any change to on-Pico code, not for website or docs edits.</p>
+  <figure style="margin: 8px 0 14px 0; max-width: 300px;">
+    <img src="img/oled/startup.svg" alt="The worm-bin start-up card on the OLED: WOODSTOCK HIGH SCHOOL, Maker Lab Kids, Wormhole v0.2.1" style="width: 100%; border-radius: 12px;">
+    <figcaption style="color: var(--gray); font-size: 12.5px; margin-top: 4px;">The start-up card, three seconds after power on: the version is the last line.</figcaption>
+  </figure>
   <div class="tablewrap"><table>
     <tr><th>Version</th><th>Meaning</th></tr>
     <tr><td><span class="pill">0.1.x</span></td><td>routine change (patch)</td></tr>

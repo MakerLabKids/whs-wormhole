@@ -29,7 +29,7 @@ from machine import I2C, Pin, unique_id
 #   1.0.0  go-live: after this, no breaking changes.
 # Shown by the self-test (header + healthy message + OLED) and the worm-bin
 # startup screen, so a board tells you what it runs with no computer attached.
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 _i2c = None
 
@@ -264,11 +264,25 @@ class StatusLight:
 class Display:
   """SSD1306 wrapper that never raises. Retries the display every 3 s."""
 
+  HOLD_MS = 5000      # the title shows (still, or scrolling if long) this long between marquee runs
+  SCROLL_MS = 40      # one scroll step...
+  SCROLL_PX = 2       # ...moves this far (50 px/s: a 60-char line takes ~12 s)
+
   def __init__(self, addr=0x3C):
     self.addr = addr
     self.oled = None
     self._retry = Throttle(3000)
     self._was_ok = False
+    # The title row. A name that fits (16 chars) sits centered; a longer
+    # one scrolls through. With `marquee` set (and tick() called every
+    # pass): show the name HOLD_MS, scroll the marquee through, repeat.
+    self.marquee = None
+    self._mq = False                  # True while the marquee text is crossing
+    self._x = None                    # x of whatever is scrolling (None: nothing yet)
+    self._hold_at = time.ticks_ms()   # when the current hold began
+    self._step_at = self._hold_at     # the last scroll step
+    self._lines, self._bar, self._title = None, None, True
+    self._title_seen = False
 
   @property
   def present(self):
@@ -329,18 +343,59 @@ class Display:
 
     See layout() for where they go. With a bar, 5 rows max; else 7.
     """
+    if title and not self._title_seen:          # the first titled screen starts the first hold
+      self._title_seen, self._hold_at = True, time.ticks_ms()
+    self._lines, self._bar, self._title = lines, bar, title
+    self._draw()
+
+  def tick(self):
+    """Call every loop pass: scrolls a long title, and runs the marquee."""
+    if not self._title or not self._lines or not self.oled:
+      return
+    now = time.ticks_ms()
+    name = str(self._lines[0])
+    long = len(name) * self.FONT > 128
+    if not self._mq and not long:               # a short name holds still
+      if not self.marquee or time.ticks_diff(now, self._hold_at) < self.HOLD_MS:
+        return
+      self._mq, self._x = True, 128             # the marquee enters from the right
+    else:
+      if time.ticks_diff(now, self._step_at) < self.SCROLL_MS:
+        return
+      text = self.marquee if self._mq else name
+      self._x = 128 if self._x is None else self._x - self.SCROLL_PX
+      if self._x + len(text) * self.FONT <= 0:  # this pass has left the screen
+        if self._mq:
+          self._mq, self._hold_at = False, now  # back to the name
+        elif self.marquee and time.ticks_diff(now, self._hold_at) >= self.HOLD_MS:
+          self._mq = True                       # the name has had its HOLD_MS
+        self._x = 128
+    self._step_at = now
+    self._draw()
+
+  def _draw(self):
     if not self.oled and self._retry.ready():
       self._connect()
     if not self.oled:
       return
+    lines, bar, title = self._lines, self._bar, self._title
     try:
       o = self.oled
       o.fill(0)
       rows = [str(t)[:16] for t in (lines[:5] if bar is not None else lines[:7])]
       for text, y in zip(rows, self.layout(len(rows), title, bar is not None)):
+        if y == 0 and title and len(rows) > 1:
+          continue                              # the title row is drawn below
         o.text(text, 0, y)
-      if title and rows and len(rows) > 1:
-        o.hline(0, self.RULE_Y, len(rows[0]) * self.FONT, 1)
+      if title and len(rows) > 1:
+        text = self.marquee if self._mq else str(lines[0])
+        w = len(text) * self.FONT
+        if not self._mq and w <= 128:           # a name that fits: centered, held still
+          x = (128 - w) // 2
+        else:                                   # scrolling: tick() moves it
+          x = 0 if self._x is None else self._x
+        o.text(text, x, 0)                      # framebuf clips what is off-screen
+        o.hline(max(0, x), self.RULE_Y, min(128, x + w) - max(0, x), 1)
       if bar is not None:
         width = int(min(1.0, max(0.0, bar)) * 128)
         o.rect(0, 58, 128, 6, 1)
