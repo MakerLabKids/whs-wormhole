@@ -635,7 +635,8 @@ try:
     if link != link_was:
       display.icon = link
       if link in ("ok", "burrow"):
-        display.notice("CONNECTED", ["Burrow " + str(app.edge_name or "?"), "Internet: " + ("yes" if link == "ok" else "no")])
+        display.notice("CONNECTED", ["Burrow " + str(app.edge_name or "?"),
+                                     "Internet: " + ("no" if app.edge_cloud is False else ("yes" if app.edge_cloud else "not reported"))])
       elif link == "none" and link_was in ("ok", "burrow"):
         display.notice(*diagnostics())
       link_was = link

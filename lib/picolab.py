@@ -1977,8 +1977,8 @@ class WebApp:
 
   def link(self):
     """How the board is doing upstream, for the screen's status icon:
-    "ok" (a Burrow takes our pushes and has the internet), "burrow" (takes
-    them, no internet), "none" (no Burrow is taking them), or None while it
+    "ok" (a Burrow takes our pushes and has the internet, or does not say),
+    "burrow" (takes them, says it has no internet), "none" (no Burrow is taking them), or None while it
     is too early to say (no Burrows configured, or no push tried yet)."""
     if not (self.push and self.creds):
       return None
@@ -1988,7 +1988,7 @@ class WebApp:
       return None
     if not self.edge_ok:
       return "none"
-    return "ok" if self.edge_cloud else "burrow"
+    return "burrow" if self.edge_cloud is False else "ok"   # an older Burrow says nothing about it: not "no"
 
   def _fix_address(self, name):
     """On the classroom network, trade the DHCP lease for <subnet>.<bin>
