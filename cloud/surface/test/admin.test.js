@@ -100,6 +100,7 @@ describe("admin api + roles", () => {
     j = await r.json();
     expect(j.edges[0]).toMatchObject({ edge: "burrow1", room: 1, ts: T0, clk: "ntp", version: "0.1" });
     expect(j.edges[0].last_seen).toBeGreaterThan(0);
+    expect(Array.isArray(j.edges[0].bins)).toBe(true);
 
     r = await get("/api/admin/sessions", { cookie: admin.cookie });
     j = await r.json();

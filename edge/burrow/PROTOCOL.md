@@ -15,8 +15,10 @@ plus three things the push loop adds:
 | `up`   | int    | seconds since boot (dedup + "did it reboot?") |
 | `rssi` | int    | station RSSI in dBm when joined |
 
-Reply: `{"ok": true, "ts": 1760600000, "edge": "burrow1", "room": 1}`.
+Reply: `{"ok": true, "ts": 1760600000, "edge": "burrow1", "room": 1, "cloud": true}`.
 `ts` is the Burrow's unix time; the Bin keeps it to label its own graph.
+`cloud` says whether this Burrow reached the Surface on its last pass; the
+Bin's screen shows it (the status icon, the CONNECTED card).
 When the website has messages waiting for this Bin's screen the reply
 also carries `"messages": [...]`, each `{uid, slot, seq, pin, by, title,
 lines, start, end, count, boot}` or `{uid, slot, seq, pin, by, clear: true}`

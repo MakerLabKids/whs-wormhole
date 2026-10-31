@@ -308,3 +308,9 @@ textarea { width: 100%; min-height: 120px; }
 .signal .cl .v { font-weight: bold; margin-left: auto; font-variant-numeric: tabular-nums; }
 .signal .cl.great .v { color: var(--green); } .signal .cl.good .v { color: #4E7F1F; } .signal .cl.fair .v { color: var(--orange); } .signal .cl.weak .v { color: var(--red); }
 .device h3 .btn { margin-left: auto; }
+
+/* the bins under a Burrow on the Devices page */
+.device details.bins { margin-top: 8px; }
+.device details.bins summary { cursor: pointer; font-size: 13px; color: var(--ink, #e2e8f0); }
+.device details.bins .tablewrap { margin-top: 6px; }
+.device details.bins td .lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }

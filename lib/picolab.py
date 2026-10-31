@@ -358,6 +358,9 @@ class Display:
     self.cards = None
     self._card = None                 # the card on screen, else None
     self._card_at = 0                 # when it went up
+    # icon: "ok" / "burrow" / "none" / None, drawn in the title row's top-right corner
+    self.icon = None
+    self._notice = None               # a card to show at the next chance (notice())
     # boot(steps): a one-off sequence played before the cycle starts; see boot()
     self._boot = None
     self._boot_at = 0
@@ -440,6 +443,21 @@ class Display:
     if not self._show and not self._card and not self._boot:   # a show, a card or the boot sequence keeps the screen
       self._draw()
 
+  def notice(self, title, lines):
+    """Show a card as soon as nothing is playing (now, if the name or the
+    marquee is up; after the current show, card or boot step otherwise)."""
+    self._notice = (title, lines)
+    if not self._show and not self._card and self._boot is None and self.oled:
+      self._pop_notice(time.ticks_ms())
+
+  def _pop_notice(self, now):
+    if not self._notice:
+      return False
+    self._card, self._card_at, self._notice = self._notice, now, None
+    log("card: %s | %s" % (self._card[0], " | ".join(str(t) for t in self._card[1])))
+    self._draw_card()
+    return True
+
   def boot(self, steps):
     """Play a one-off sequence, then start the cycle with a fresh hold.
     Each step is one of
@@ -479,6 +497,8 @@ class Display:
           self._boot[0:0] = [("card", t, l, self.CARD_MS) for t, l in cards]
     self._boot = None
     self._hold_at, self._x = now, None
+    if self._pop_notice(now):
+      return
     if self._lines:
       self._draw()
 
@@ -496,7 +516,7 @@ class Display:
         self._card = None
         if self._boot is not None:
           self._boot_next(now)
-        else:
+        elif not self._pop_notice(now):
           self._hold_at, self._x = now, None
           self._draw()
       return
@@ -562,7 +582,7 @@ class Display:
       self._show, self._hold_at, self._x = None, now, None
       if self._boot is not None:
         self._boot_next(now)
-      elif not self._start_card(now):           # a message after the show, if there is one
+      elif not self._pop_notice(now) and not self._start_card(now):   # a notice, else a message, after the show
         self._draw()
       return
     t = min(elapsed // period, s.frames - 1)
@@ -621,6 +641,21 @@ class Display:
       log("OLED lost:", e)
       self.oled = None
 
+  def _draw_icon(self, o):
+    """The link, top right: a filled dot (Burrow + internet), a hollow one
+    (Burrow, no internet), an X (no Burrow). Drawn over whatever is there."""
+    k = self.icon
+    if not k:
+      return
+    o.fill_rect(119, 0, 9, 8, 0)
+    if k == "ok":
+      o.ellipse(123, 3, 3, 3, 1, True)
+    elif k == "burrow":
+      o.ellipse(123, 3, 3, 3, 1)
+    else:
+      o.line(120, 0, 126, 6, 1)
+      o.line(126, 0, 120, 6, 1)
+
   def _draw(self):
     if not self.oled and self._retry.ready():
       self._connect()
@@ -644,6 +679,7 @@ class Display:
           x = 0 if self._x is None else self._x
         o.text(text, x, 0)                      # framebuf clips what is off-screen
         o.hline(max(0, x), self.RULE_Y, min(128, x + w) - max(0, x), 1)
+        self._draw_icon(o)
       if bar is not None:
         width = int(min(1.0, max(0.0, bar)) * 128)
         o.rect(0, 58, 128, 6, 1)
@@ -1793,6 +1829,9 @@ class WebApp:
     self._edge_i = 0
     self.edge = None              # "host:port" that last accepted a push
     self.edge_ok = False
+    self.edge_name = None         # that Burrow's name ("burrow1")
+    self.edge_cloud = None        # whether it had the internet when it last answered
+    self.pushes = 0               # push attempts so far (0: too early to call the link down)
     self.last_push = None         # uptime of the last accepted push
     self.edge_ts = None           # (unix ts from the Burrow, uptime when received)
     self.routes = None            # the gated routes poll() was given (Bluetooth uses them too)
@@ -1935,6 +1974,21 @@ class WebApp:
   def ap_ip(self):
     """Our hotspot address: 192.168.4.<bin>, or .1 for a board with no card."""
     return AP_NET + str(self.num if self.num else 1)
+
+  def link(self):
+    """How the board is doing upstream, for the screen's status icon:
+    "ok" (a Burrow takes our pushes and has the internet), "burrow" (takes
+    them, no internet), "none" (no Burrow is taking them), or None while it
+    is too early to say (no Burrows configured, or no push tried yet)."""
+    if not (self.push and self.creds):
+      return None
+    if not self.joined:                        # on our own hotspot: no Burrow can hear us
+      return "none"
+    if not self.pushes:
+      return None
+    if not self.edge_ok:
+      return "none"
+    return "ok" if self.edge_cloud else "burrow"
 
   def _fix_address(self, name):
     """On the classroom network, trade the DHCP lease for <subnet>.<bin>
@@ -2153,6 +2207,7 @@ class WebApp:
     # On failure the next tick tries the next Burrow in the list.
     target = self.edges[self._edge_i % len(self.edges)]
     host, _, port = target.partition(":")
+    self.pushes += 1
     try:
       status, reply = _http_post_json(host, int(port or 8080), "/ingest", body)
       if status == 200 and reply and reply.get("ok"):
@@ -2160,6 +2215,8 @@ class WebApp:
           log("push: Burrow", reply.get("edge", "?"), "at", target, "accepted us")
         self.edge = target
         self.edge_ok = True
+        self.edge_name = reply.get("edge")
+        self.edge_cloud = reply.get("cloud")
         self.last_push = up
         if reply.get("ts"):
           self.edge_ts = (int(reply["ts"]), up)

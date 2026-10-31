@@ -105,6 +105,11 @@ BLUETOOTH = True      # advertise as the board's name; the website's Bluetooth p
 # puts it in bin.json ("teacher_pin"); this is the fallback. Never on
 # the screen.
 TEACHER_PIN = ""
+# When no Burrow is taking the board's pushes, the screen shows a NOT
+# CONNECTED card between shows with the ways in: the board's own Wi-Fi
+# and address, and this page over Bluetooth (16 characters fit a line;
+# longer splits at a slash).
+HELP_URL = "mrklabs.com/whsbt"
 # ===== end of config ==================================================
 
 
@@ -541,10 +546,40 @@ boot_card_at = time.ticks_ms()
 light = picolab.StatusLight()
 app = picolab.WebApp()
 messages = picolab.Messages(app, teacher_pin=(app.bin or {}).get("teacher_pin") or TEACHER_PIN)   # the message slots (msg.json)
-display.cards = messages.next
 display.CARD_MS = MESSAGE_S * 1000
 app.on_reply = messages.on_reply   # messages set on the website ride down on the Burrow's reply...
 app.push_extra = messages.push_fields   # ...and the acks ride back up with the next push
+link_was = None                    # the link state the screen last reflected
+
+
+def diagnostics():
+  """The NOT CONNECTED card: how to reach this board right now."""
+  ident = app.identity()
+  net = ident.get("net") or app.ssid
+  lines = [("Wi-Fi " + net) if len(net) <= 10 else net, ident.get("ip") or app.ap_ip(), "or Bluetooth at"]
+  url = HELP_URL
+  if len(url) > 16 and "/" in url:
+    cut = url.rfind("/", 0, 17)
+    lines += [url[:cut], url[cut:]]
+  else:
+    lines.append(url)
+  return "NOT CONNECTED", lines
+
+
+def next_card():
+  """What follows a worm show: the diagnostics when no Burrow is taking
+  our pushes (every other time, so the messages still get their turn),
+  else the next message."""
+  global diag_turn
+  if app.link() == "none":
+    diag_turn = not diag_turn
+    if diag_turn:
+      return diagnostics()
+  return messages.next()
+
+
+diag_turn = False
+display.cards = next_card
 ROUTES = [("/set", set_handler), ("/cal", cal.handle), ("/msg", messages.handle)]
 app.routes = ROUTES
 ble = None
@@ -596,6 +631,14 @@ try:
     else:
       slots.append(DS.ok)
     picolab.status(light, slots, display, app)
+    link = app.link()                  # the status icon, and a card when the link comes or goes
+    if link != link_was:
+      display.icon = link
+      if link in ("ok", "burrow"):
+        display.notice("CONNECTED", ["Burrow " + str(app.edge_name or "?"), "Internet: " + ("yes" if link == "ok" else "no")])
+      elif link == "none" and link_was in ("ok", "burrow"):
+        display.notice(*diagnostics())
+      link_was = link
 
     d = data_fn()
     # One screen if everything reporting fits; otherwise page through what

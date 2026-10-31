@@ -83,6 +83,7 @@ check("/name rejects an empty name", b"error" in r and app._restart_at is None)
 for i in range(5):
     http_get("/set?angle=1&pin=0000")
 r = http_get("/set?angle=1&pin=" + pin)
+check("link(): a Burrow without the internet reads 'burrow'", app.link() == "burrow")
 check("five wrong PINs lock even the right one", r.startswith(b"HTTP/1.0 403") and b'"locked": true' in r.replace(b'":t', b'": t'))
 faketime.advance(61)
 r = http_get("/set?angle=2&pin=" + pin)
@@ -115,6 +116,7 @@ check("no rescan while a phone is on the hotspot", network.WORLD["scans"] == sca
 network.WORLD["stations"] = []
 buffered = app.buffer.pending()
 check("pushes buffered while lost (%d)" % buffered, buffered >= 5)
+check("link(): no Burrow reads 'none' while lost", app.link() == "none")
 for name in app.buffer.files:
     print("   buffered in", name, [(r[0], r[1]) for r in app.buffer.records(name)])
 network.WORLD["present"] = set(["WormHole"])

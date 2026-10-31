@@ -92,14 +92,22 @@ async function bootstrap(request, env) {
 
 async function edges(env) {
   const { results } = await env.DB.prepare(
-    "SELECT edge_id, room, ts, clk, status, roster_at, updated_at FROM edges ORDER BY edge_id",
+    "SELECT edge_id, room, ts, clk, status, snapshot, roster_at, updated_at FROM edges ORDER BY edge_id",
   ).all();
   return json({
     ok: true,
     edges: results.map((r) => {
       const status = safeParse(r.status, {}) || {};
+      // the bins in this Burrow's now-table: heard by it directly (entry.edge is itself) or learnt from a peer
+      const snap = safeParse(r.snapshot, {}) || {};
+      const bins = Object.keys(snap).map((uid) => {
+        const e = snap[uid] || {}, d = e.d || {}, b = d.bin || {};
+        return { uid, name: e.name || d.name || null, team: e.team ?? b.team ?? null, period: e.period ?? b.period ?? null,
+          bin: e.bin ?? b.bin ?? null, ts: e.ts ?? null, clk: e.clk ?? null, src: e.src ?? null, ip: d.ip ?? null,
+          via: e.edge && e.edge !== r.edge_id ? e.edge : null, buffered: d.buffered ?? null };
+      }).sort((a, b) => (b.ts || 0) - (a.ts || 0));
       return { edge: r.edge_id, room: r.room, ts: r.ts, clk: r.clk, last_seen: r.updated_at, roster_at: r.roster_at,
-        version: status.version ?? null, status };
+        version: status.version ?? null, status, bins };
     }),
   });
 }

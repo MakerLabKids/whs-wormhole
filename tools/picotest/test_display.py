@@ -30,13 +30,16 @@ for n in range(2, 6):
 
 
 class FakeOled:
-    def __init__(self): self.calls = []; self.lines = []; self.shows = 0
+    def __init__(self): self.calls = []; self.lines = []; self.shows = 0; self.icons = []
     def fill(self, c): pass
     def show(self): self.shows += 1
     def rect(self, *a): pass
     def fill_rect(self, *a): pass
     def text(self, s, x, y): self.calls.append((s, x, y))
     def hline(self, x, y, w, c): self.lines.append((x, y, w))
+    def ellipse(self, *a): self.icons.append(("ellipse",) + a)
+    def line(self, *a): self.icons.append(("line",) + a)
+    icons = None
     def title(self):
         t = [c for c in self.calls if c[2] == 0]
         return t[0] if t else None
@@ -251,3 +254,34 @@ assert run(d, 4990) == [] and run(d, 20) and d._mq, "a fresh 5 s hold, then the 
 # no boot messages and nothing else: boot([]) is a no-op cycle start
 d = fresh(["Dirt Nerds", "x"]); d.boot([("cards", lambda: [])]); assert d._boot is None
 print("boot sequence OK")
+
+# ---- the status icon (top right of the title row) and notices ----
+d = fresh(["Dirt Nerds", "x"])
+assert d.oled.icons == [], "no icon until told"
+d.icon = "ok"; d.oled.icons = []; d._draw()
+assert d.oled.icons == [("ellipse", 123, 3, 3, 3, 1, True)], d.oled.icons
+d.icon = "burrow"; d.oled.icons = []; d._draw()
+assert d.oled.icons == [("ellipse", 123, 3, 3, 3, 1)], d.oled.icons
+d.icon = "none"; d.oled.icons = []; d._draw()
+assert [i[0] for i in d.oled.icons] == ["line", "line"], d.oled.icons
+d.icon = None; d.oled.icons = []; d.show(["WOODSTOCK", "x"], title=False)
+assert d.oled.icons == [], "cards and the splash carry no icon"
+# a notice shows at once when the name is up, holds CARD_MS, then the name holds afresh
+d = fresh(["Dirt Nerds", "x"]); d.marquee = "m"; d.shows = [ShowA]
+run(d, 1000); d.oled.calls = []
+d.notice("CONNECTED", ["Burrow burrow1", "Internet: yes"])
+assert d._card == ("CONNECTED", ["Burrow burrow1", "Internet: yes"]) and d.oled.title() == ("CONNECTED", 28, 0), (d._card, d.oled.title())
+t0 = faketime.ticks_ms()
+while d._card: run(d, 10)
+assert abs(faketime.ticks_diff(faketime.ticks_ms(), t0) - D.CARD_MS) <= 20 and d.oled.title()[0] == "Dirt Nerds"
+assert run(d, 4990) == [] and run(d, 20), "a fresh hold after the notice"
+# a notice during a show waits for the show, and comes before the message card
+d = fresh(["Dirt Nerds", "x"]); d.shows = [ShowA]; d.cards = lambda: ("Msg", ["m"])
+run(d, 5010); assert d._show
+d.notice("NOT CONNECTED", ["Wi-Fi The Wrigglers"])
+assert d._show and d._card is None, "the show keeps the screen"
+while d._show: run(d, 10)
+assert d._card == ("NOT CONNECTED", ["Wi-Fi The Wrigglers"]), d._card
+while d._card: run(d, 10)
+assert d._card is None and d.oled.title()[0] == "Dirt Nerds", "then the name; the message waits for the next show"
+print("icon + notices OK")

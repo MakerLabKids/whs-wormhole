@@ -39,6 +39,9 @@ record of what got done.
 - [ ] **Surface (Cloudflare) deploy + `ALERT_URL`** (carried over): `wrangler deploy`
       from your laptop, and the alert URL as `https://`.
 
+- [ ] **Make mrklabs.com/whsbt redirect to whs.makerlabkids.com/bluetooth**: it is what the
+      NOT CONNECTED card on every screen shows (`HELP_URL` in the worm-bin config).
+
 ## Bench board (The Wrigglers, now bin 38)
 
 - [ ] **Eyeball the screen cycle** (flashed 2026-10-31 afternoon): card 2 s, name 5 s,

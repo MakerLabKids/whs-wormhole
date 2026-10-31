@@ -103,6 +103,18 @@ board's PIN (asked once per phone, see below). The slots live on the
 board in `msg.json`; the editor is `msg.js`, which the install puts on
 the Pico next to `cal.js`.
 
+### Is it connected?
+
+The title row's top-right corner carries the link: a filled dot when a
+Burrow is taking the board's pushes and has the internet, a hollow dot
+when it takes them but has no internet, an X when no Burrow hears the
+board (its own hotspot, or every Burrow out of reach). The moment a
+Burrow accepts the board, a CONNECTED card names it and says "Internet:
+yes/no". While nothing hears it, a NOT CONNECTED card takes every other
+message turn in the cycle with the ways in: the board's Wi-Fi name and
+address, and `HELP_URL` (the Bluetooth page; 16 characters fit a line, a
+longer one splits at a slash).
+
 Who set what is always recorded. On the website it is the login. On the
 board's page and over Bluetooth, the first thing a phone or laptop must
 do is give its owner's name: the page says the name is logged with every

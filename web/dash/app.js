@@ -936,7 +936,24 @@
       '<dt>Opal</dt><dd>' + tun + '</dd>' +
       '<dt>throughput</dt><dd>' + links + '</dd>' +
       (isNum(s.castings) ? '<dt>castings</dt><dd>' + s.castings + (s.unverified ? ' <span class="bad">(' + s.unverified + ' unverified)</span>' : '') + '</dd>' : '') +
-      '</dl></div>';
+      '</dl>' + binsUnder(meta.bins) + '</div>';
+  }
+  /* the bins a Burrow knows: the ones pushing to it, and the ones it learnt from a peer (via). Click to expand. */
+  function binsUnder(bins) {
+    if (!Array.isArray(bins)) return '';
+    var now = nowS(), mine = bins.filter(function (b) { return !b.via; }), peers = bins.length - mine.length;
+    var fresh = bins.filter(function (b) { return isNum(b.ts) && now - b.ts < 300; }).length;
+    if (!bins.length) return '<details class="bins"><summary>no bins heard</summary><div class="muted small">No bin has pushed to this Burrow and no peer has told it about one.</div></details>';
+    return '<details class="bins"><summary>' + mine.length + ' bin' + (mine.length === 1 ? '' : 's') + ' pushing here' + (peers ? ', ' + peers + ' via other Burrows' : '') +
+      ' <span class="muted">(' + fresh + ' heard in the last 5 min)</span></summary>' +
+      '<div class="tablewrap"><table><thead><tr><th>team</th><th>bin</th><th>period</th><th>last reading</th><th>how</th><th>address</th></tr></thead><tbody>' +
+      bins.map(function (b) {
+        var st = isNum(b.ts) ? (now - b.ts < 300 ? 'ok' : (now - b.ts < 3600 ? 'warn' : 'stale')) : 'stale';
+        return '<tr><td><span class="lamp tile-' + st + '"></span> <a href="/bin/' + encodeURIComponent(b.uid) + '">' + esc(b.team || b.name || b.uid) + '</a>' + (b.name && b.team && b.name !== b.team ? ' <span class="muted">' + esc(b.name) + '</span>' : '') + '</td>' +
+          '<td class="num">' + (b.bin != null ? esc(b.bin) : '–') + '</td><td class="num">' + (b.period != null ? esc(b.period) : '–') + '</td>' +
+          '<td>' + (isNum(b.ts) ? esc(ago(b.ts)) + ' <span class="muted">clock ' + esc(b.clk || '?') + '</span>' : '–') + (b.buffered > 0 ? ' <span class="bad">' + b.buffered + ' buffered</span>' : '') + '</td>' +
+          '<td>' + (b.via ? 'via <b>' + esc(b.via) + '</b>' : esc(b.src || 'push')) + '</td><td class="mono">' + esc(b.ip || '') + '</td></tr>';
+      }).join('') + '</tbody></table></div></details>';
   }
   var LEVEL_ICON = { alert: '🔴', warn: '🟠', info: '·' };
   function eventsHTML(events, title) {
@@ -996,9 +1013,15 @@
       var box = el('div'); main.appendChild(box);
       var t = setInterval(load, 60000);
       function load() {
-        Promise.all([api('/api/status'), api('/api/events').catch(function () { return null; })]).then(function (r) {
+        Promise.all([api('/api/status'), api('/api/events').catch(function () { return null; }), api('/api/now').catch(function () { return null; })]).then(function (r) {
           var s = r[0], ev = (r[1] && r[1].events) || s.recent_events || [];
-          box.innerHTML = devicesHTML([{ name: s.edge, status: s, meta: { room: s.room, last_seen: s.ts } }]) +
+          var nowBins = (r[2] && (r[2].bins || r[2])) || {};
+          var bins = Object.keys(nowBins).filter(function (u) { return nowBins[u] && typeof nowBins[u] === 'object' && 'd' in nowBins[u]; }).map(function (u) {
+            var e = nowBins[u], d = e.d || {}, b = d.bin || {};
+            return { uid: u, name: e.name || d.name, team: e.team != null ? e.team : b.team, period: e.period != null ? e.period : b.period, bin: e.bin != null ? e.bin : b.bin,
+              ts: e.ts, clk: e.clk, src: e.src, ip: d.ip, via: e.edge && e.edge !== s.edge ? e.edge : null, buffered: d.buffered };
+          });
+          box.innerHTML = devicesHTML([{ name: s.edge, status: s, meta: { room: s.room, last_seen: s.ts, bins: bins } }]) +
             '<div class="card">' + eventsHTML(ev.slice().reverse(), 'This Burrow\'s recent events') + '</div>' +
             '<p class="muted">This is the Burrow\'s own view. The Surface\'s Devices page shows every room side by side, with alerts.</p>';
         }).catch(function (e) { box.innerHTML = '<div class="notice err">' + esc(e.message) + '</div>'; });
@@ -1027,7 +1050,7 @@
         body.className = 'devices-wrap';
         body.innerHTML = '<div class="card">' + alertsHTML(r[1]) + '</div>' +
           '<h3>Devices <small class="muted">(refreshes every 60 s)</small></h3>' +
-          devicesHTML(rows.map(function (x) { return { name: x.edge, status: x.status || {}, meta: { room: x.room, last_seen: x.last_seen } }; })) +
+          devicesHTML(rows.map(function (x) { return { name: x.edge, status: x.status || {}, meta: { room: x.room, last_seen: x.last_seen, bins: x.bins } }; })) +
           '<div class="card">' + eventsHTML((r[2] && r[2].events) || [], 'Recent events, all rooms') + '</div>';
         var tb = body.querySelector('#alert-test');
         if (tb) tb.onclick = function () {
