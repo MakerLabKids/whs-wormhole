@@ -6,6 +6,13 @@ mirrors castings with the other two Burrows, uploads to the **Surface**
 (Cloudflare) whenever any internet exists, and serves the local dashboards.
 Standard library only; nothing to pip install.
 
+If every Burrow is dark (a Pi down, a router out, spring break with
+nobody to fix it) the Bins do not lose anything: each keeps its rows
+on its own flash (months' worth at one a minute) and hands them over
+in batches, oldest first, to the first Burrow that answers again
+(`POST /ingest/batch`, see PROTOCOL.md). Backfilled rows keep their
+own timestamps and seal into the castings of their own windows.
+
 Design: https://makerlabkids.github.io/whs-wormhole/design/ · Build guide:
 https://makerlabkids.github.io/whs-wormhole/design/burrow.html · Wire protocol:
 [PROTOCOL.md](PROTOCOL.md)
@@ -15,7 +22,7 @@ burrow/           the service (python3 -m burrow)
   service.py      wiring + background loops (fsync, seal, peers, cloud, sweep, reclaim)
   store.py        open log -> castings (gz + sidecar meta), mirrors, retention
   rollups.py      5-minute / hourly aggregates in SQLite (derived, rebuildable)
-  server.py       HTTP on :8080 (ingest, dashboards, API, SSE, peer endpoints)
+  server.py       HTTP on :8080 (ingest + backfill, dashboards, API, SSE, peer endpoints)
   peers.py        pull replication from the other Burrows
   cloud.py        snapshot / casting / rollup upload, verify read-back, clock fix
   sweep.py        pull fallback: poll /data on quiet Bins

@@ -16,6 +16,7 @@
 #     or open their own access point, serving index.html and /data.
 
 import json
+import os
 import socket
 import time
 import machine
@@ -91,6 +92,41 @@ def uptime_s():
 
 def _uptime():
   return uptime_s()
+
+
+def _bump_boot():
+  """Boot counter in a file: the n-th power-up or reset of this board."""
+  n = 0
+  try:
+    with open(BOOT_FILE) as f:
+      n = int(f.read().strip() or 0)
+  except Exception:
+    pass
+  n += 1
+  try:
+    with open(BOOT_FILE, "w") as f:
+      f.write(str(n))
+  except Exception:
+    pass
+  return n
+
+
+def _read_clock():
+  """A starting point for wall time when no Burrow has spoken yet: the
+  RTC if a previous boot of this power cycle set it, else the time saved
+  in CLOCK_FILE (so the estimate is late by the length of the power cut
+  plus up to 10 min; the Burrow corrects that when the rows arrive)."""
+  try:
+    t = int(time.time())
+    if t > 1700000000:
+      return t - uptime_s()
+  except Exception:
+    pass
+  try:
+    with open(CLOCK_FILE) as f:
+      return int(f.read().strip())
+  except Exception:
+    return None
 
 
 def log(*args):
@@ -769,6 +805,17 @@ AP_HOLD_MAX_S = 600        # ...unless a phone is on the hotspot: then wait up t
 # (MicroPython's rp2 port does not route between two active interfaces), so
 # the board ALTERNATES: hotspot while lost, a ~15 s switch to station mode
 # every RESCAN_EVERY_S to look for the ladder, back to the hotspot if nothing.
+# The flash buffer: every push the Burrows did not get, kept on the board
+# until one does. A month with every Burrow dark is the design case (spring
+# break): at one record a minute and ~12 bytes a record that is ~500 KB.
+BUF_DIR = "buf"
+BUF_MAX_BYTES = 1500000    # then the oldest file is thinned 4x, again, then dropped
+BUF_FILE_RECORDS = 720     # a new file every 12 h of records (or when the field set changes)
+BUF_BATCH = 60             # rows per /ingest/batch POST...
+BUF_BATCHES_PER_TICK = 8   # ...and POSTs per push tick while catching up (~8 h of rows a minute)
+BUF_SCALE = 10             # values are stored as tenths
+CLOCK_FILE = "clock.txt"   # the last unix time a Burrow told us, saved every 10 min
+BOOT_FILE = "boot.txt"     # boot counter: records say which boot's clock they were stamped by
 HIST_STEP_S = 300          # history ring: one sample every 5 min...
 HIST_SLOTS = 288           # ...for 24 hours
 HIST_MAX_METRICS = 24
@@ -792,6 +839,293 @@ def _flatten_numeric(d, out):
         if isinstance(x, (int, float)) and not isinstance(x, bool):
           out["%s_%d" % (k, i)] = x
   return out
+
+
+# ---- varint / zigzag helpers for the buffer records -----------------
+def _vw(out, n):
+  while n >= 0x80:
+    out.append((n & 0x7F) | 0x80)
+    n >>= 7
+  out.append(n)
+
+
+def _vr(buf, i):
+  n, shift = 0, 0
+  while True:
+    b = buf[i]
+    i += 1
+    n |= (b & 0x7F) << shift
+    if not b & 0x80:
+      return n, i
+    shift += 7
+
+
+def _zz(n):
+  return n * 2 if n >= 0 else -n * 2 - 1
+
+
+def _unzz(u):
+  return (u >> 1) if not (u & 1) else -((u + 1) >> 1)
+
+
+def _fixed(v):
+  return int(round(v * BUF_SCALE))
+
+
+def _unfixed(n):
+  return n // BUF_SCALE if n % BUF_SCALE == 0 else n / BUF_SCALE
+
+
+class Buffer:
+  """Pushes the Burrows did not get, packed on flash until one does.
+
+  One file at a time is open for appending; a file holds up to
+  BUF_FILE_RECORDS records with one field set (a JSON header line names
+  the fields, the boot, and the scale). A record is: varint(seconds since
+  the previous record), a flags byte (bit 0 = the clock was an estimate,
+  bit 1 = no clock at all), varint(presence bitmask), then one zigzag
+  varint per present field holding the change since that field's last
+  stored value. Steady readings cost a byte a field; a whole record of a
+  lean bin is about 12 bytes.
+
+  Sending: batch() hands the oldest rows (from the cursor), ack() moves
+  the cursor (persisted, so a reboot mid-file resends at most one
+  batch) and deletes a file once every row of it was accepted.
+
+  Eviction: over max_bytes the oldest file is rewritten keeping every
+  4th record; a file thinned to 1-in-64 (hourly) is deleted instead.
+  """
+
+  def __init__(self, path=BUF_DIR, max_bytes=BUF_MAX_BYTES):
+    self.path = path
+    self.max_bytes = max_bytes
+    self._cur = None          # [name, fields, last_ts, last_vals(list), n]
+    try:
+      os.mkdir(path)
+    except OSError:
+      pass
+    self.counts = self._read_json("index.json") or {}
+    self.cursor = self._read_json("cursor.json")   # {"file": name, "i": n}
+    self.files = sorted(f for f in os.listdir(path) if f.endswith(".rec"))
+    self.size = 0
+    for f in self.files:
+      self.size += self._size_of(f)
+      if f not in self.counts or f == self.files[-1]:
+        self.counts[f] = sum(1 for _ in self.records(f))   # the file open at the last boot
+    for f in list(self.counts):
+      if f not in self.files:
+        del self.counts[f]
+    self.seq = (int(self.files[-1][:8]) + 1) if self.files else 1
+    if self.cursor and self.cursor.get("file") not in self.files:
+      self.cursor = None
+
+  # ---- small files ---------------------------------------------------
+  def _p(self, name):
+    return self.path + "/" + name
+
+  def _size_of(self, name):
+    try:
+      return os.stat(self._p(name))[6]
+    except OSError:
+      return 0
+
+  def _read_json(self, name):
+    try:
+      with open(self._p(name)) as f:
+        return json.load(f)
+    except Exception:
+      return None
+
+  def _write_json(self, name, obj):
+    try:
+      with open(self._p(name), "w") as f:
+        json.dump(obj, f)
+    except OSError as e:
+      log("buffer: write", name, "failed:", e)
+
+  def total(self):
+    return sum(self.counts.values())
+
+  def pending(self):
+    """Rows not yet acknowledged."""
+    n = self.total()
+    if self.cursor:
+      n -= self.cursor.get("i", 0)
+    return n
+
+  # ---- writing -------------------------------------------------------
+  def _rotate(self, fields, boot, thin=1):
+    name = "%08d.rec" % self.seq
+    self.seq += 1
+    head = json.dumps({"v": 1, "boot": boot, "fields": fields, "scale": BUF_SCALE, "thin": thin}) + "\n"
+    with open(self._p(name), "w") as f:
+      f.write(head)
+    self.files.append(name)
+    self.counts[name] = 0
+    self.size += len(head)
+    self._cur = [name, fields, 0, [0] * len(fields), 0]
+    self._write_json("index.json", self.counts)
+    return name
+
+  @staticmethod
+  def _encode(fields, last_ts, last_vals, ts, clk, vals):
+    rec = bytearray()
+    _vw(rec, max(0, ts - last_ts))
+    rec.append(0 if clk == "ok" else (1 if clk == "est" else 2))
+    mask = 0
+    for i in range(len(fields)):
+      if vals.get(fields[i]) is not None:
+        mask |= 1 << i
+    _vw(rec, mask)
+    for i in range(len(fields)):
+      if mask & (1 << i):
+        v = _fixed(vals[fields[i]])
+        _vw(rec, _zz(v - last_vals[i]))
+        last_vals[i] = v
+    return rec
+
+  def add(self, ts, clk, boot, d):
+    vals = _flatten_numeric(d, {})
+    cur = self._cur
+    # A file's field list only grows: a reading that is absent for a while
+    # (a probe unplugged) is a gap in the mask, not a new file. A field
+    # never seen in this file starts a new one with the union.
+    if cur is None or cur[4] >= BUF_FILE_RECORDS:
+      self._rotate(sorted(vals), boot)
+      cur = self._cur
+    elif any(k not in cur[1] for k in vals):
+      self._rotate(sorted(set(cur[1]) | set(vals)), boot)
+      cur = self._cur
+    rec = self._encode(cur[1], cur[2], cur[3], ts, clk, vals)
+    try:
+      with open(self._p(cur[0]), "ab") as f:
+        f.write(rec)
+    except OSError as e:
+      log("buffer: append failed:", e)
+      return
+    cur[2] = max(cur[2], ts)
+    cur[4] += 1
+    self.counts[cur[0]] = cur[4]
+    self.size += len(rec)
+    if self.size > self.max_bytes:
+      self._evict()
+
+  # ---- reading -------------------------------------------------------
+  def _head_and_body(self, name):
+    with open(self._p(name), "rb") as f:
+      data = f.read()
+    nl = data.find(b"\n")
+    head = json.loads(data[:nl])
+    return head, data, nl + 1
+
+  def records(self, name):
+    """Yield (ts, clk, boot, d) for every record in a file."""
+    try:
+      head, data, i = self._head_and_body(name)
+    except Exception as e:
+      log("buffer: unreadable", name, e)
+      return
+    fields, boot, scale = head["fields"], head.get("boot"), head.get("scale", BUF_SCALE)
+    last_vals = [0] * len(fields)
+    ts = 0
+    end = len(data)
+    while i < end:
+      try:
+        dt, i = _vr(data, i)
+        flags = data[i]
+        i += 1
+        mask, i = _vr(data, i)
+        d = {}
+        for k in range(len(fields)):
+          if mask & (1 << k):
+            u, i = _vr(data, i)
+            last_vals[k] += _unzz(u)
+            d[fields[k]] = _unfixed(last_vals[k]) if scale == BUF_SCALE else last_vals[k] / scale
+      except IndexError:
+        break                                     # torn tail (power cut mid-record)
+      ts += dt
+      yield ts, ("ok", "est", "none")[flags & 3], boot, d
+
+  def batch(self, n=BUF_BATCH):
+    """(file, start_index, rows) for the oldest unsent rows, rows being
+    dicts ready for /ingest/batch. ([], when nothing is waiting.)"""
+    if not self.files:
+      return None, 0, []
+    name = self.files[0]
+    start = self.cursor["i"] if self.cursor and self.cursor.get("file") == name else 0
+    rows = []
+    k = 0
+    for ts, clk, boot, d in self.records(name):
+      if k >= start:
+        rows.append({"ts": ts, "clk": clk, "boot": boot, "d": d})
+        if len(rows) >= n:
+          break
+      k += 1
+    return name, start, rows
+
+  def ack(self, name, upto):
+    """Rows [0, upto) of `name` were accepted."""
+    if name not in self.counts:
+      return
+    if upto >= self.counts[name] and (self._cur is None or self._cur[0] != name):
+      try:
+        os.remove(self._p(name))
+      except OSError:
+        pass
+      self.size -= self._size_of(name)
+      self.files.remove(name)
+      self.counts.pop(name, None)
+      self.cursor = None
+      self._write_json("index.json", self.counts)
+      try:
+        os.remove(self._p("cursor.json"))
+      except OSError:
+        pass
+    else:
+      self.cursor = {"file": name, "i": upto}
+      self._write_json("cursor.json", self.cursor)
+
+  # ---- eviction ------------------------------------------------------
+  def _evict(self):
+    while self.size > self.max_bytes and self.files:
+      name = self.files[0]
+      if self._cur and self._cur[0] == name:
+        return                                    # only the open file left: let it grow
+      try:
+        head = self._head_and_body(name)[0]
+      except Exception:
+        head = {"thin": 64}
+      thin = head.get("thin", 1)
+      if thin >= 64:
+        log("buffer: full, dropping", name)
+        self.ack(name, self.counts.get(name, 0))
+        continue
+      kept = []
+      for k, rec in enumerate(self.records(name)):
+        if k % 4 == 0:
+          kept.append(rec)
+      fields = head["fields"]
+      body = bytearray()
+      last_ts, last_vals = 0, [0] * len(fields)
+      for ts, clk, boot, d in kept:
+        body += self._encode(fields, last_ts, last_vals, ts, clk, d)
+        last_ts = ts
+      head["thin"] = thin * 4
+      newhead = json.dumps(head) + "\n"
+      try:
+        with open(self._p(name), "wb") as f:
+          f.write(newhead.encode())
+          f.write(body)
+      except OSError as e:
+        log("buffer: thin failed:", e)
+        return
+      self.size = sum(self._size_of(f) for f in self.files)
+      self.counts[name] = len(kept)
+      if self.cursor and self.cursor.get("file") == name:
+        self.cursor = {"file": name, "i": self.cursor["i"] // 4}
+        self._write_json("cursor.json", self.cursor)
+      self._write_json("index.json", self.counts)
+      log("buffer: full, thinned", name, "to 1 in", thin * 4)
 
 
 class History:
@@ -954,6 +1288,10 @@ class WebApp:
     self._push_due = 0
     self.push = True
     self.history = None
+    self.buffer = None
+    self.boot = _bump_boot()
+    self._clock_est = _read_clock()   # unix time at boot if a Burrow ever told us (else None)
+    self._clock_saved = 0
 
     # Mission-control mode: if wifi.json exists on the board
     # ({"ssid": "WormHole", "password": "supersecret"}), JOIN that
@@ -972,6 +1310,13 @@ class WebApp:
       self.push = creds.get("push", True) is not False
       if creds.get("history", True) is not False:
         self.history = History()
+      if self.push and creds.get("buffer", True) is not False:
+        try:
+          self.buffer = Buffer()
+          if self.buffer.total():
+            log("buffer: %d rows waiting for a Burrow" % self.buffer.total())
+        except Exception as e:
+          log("buffer: disabled:", e)
       try:
         sta = network.WLAN(network.STA_IF)
         sta.active(True)
@@ -1198,8 +1543,30 @@ class WebApp:
     return False
 
   # ---- push loop -----------------------------------------------------
+  def wall(self):
+    """(unix time, clk): clk is "ok" when a Burrow set the clock this
+    boot, "est" when it is the saved/RTC estimate, "none" when it is
+    seconds since boot. The Burrow re-bases est/none rows on arrival."""
+    up = uptime_s()
+    if self.edge_ts:
+      ts, at = self.edge_ts
+      return ts + (up - at), "ok"
+    if self._clock_est is not None:
+      return self._clock_est + up, "est"
+    return up, "none"
+
+  def _save_clock(self, ts, up):
+    if up - self._clock_saved < 600:
+      return
+    self._clock_saved = up
+    try:
+      with open(CLOCK_FILE, "w") as f:
+        f.write(str(int(ts)))
+    except Exception:
+      pass
+
   def _uplink_tick(self, data_fn):
-    if not (self.push and self.joined and self.edges):
+    if not self.push or not self.creds:
       return
     up = uptime_s()
     if up < self._push_due:
@@ -1216,9 +1583,15 @@ class WebApp:
         d["rssi"] = self.sta.status("rssi")
       except Exception:
         pass
+      if self.buffer:
+        d["buffered"] = self.buffer.pending()
       body = json.dumps(d).encode("utf-8")
     except Exception as e:
       log("push: could not build payload:", e)
+      return
+    ts, clk = self.wall()
+    if not (self.joined and self.edges):
+      self._keep(ts, clk, d)
       return
     # ONE candidate per tick: a dead Burrow costs at most PUSH_TIMEOUT_S of
     # stall per minute, never a stacked 4 x 3 s freeze of the sensor loop.
@@ -1235,6 +1608,9 @@ class WebApp:
         self.last_push = up
         if reply.get("ts"):
           self.edge_ts = (int(reply["ts"]), up)
+          self._save_clock(int(reply["ts"]), up)
+        if self.buffer and self.buffer.pending():
+          self._drain(host, int(port or 8080))
         return
       log("push:", target, "answered", status)
     except Exception as e:
@@ -1242,8 +1618,45 @@ class WebApp:
         log("push:", target, "unreachable (" + str(e) + "), trying the next Burrow next minute")
     self.edge_ok = False
     self._edge_i += 1
+    self._keep(ts, clk, d)
     # retry sooner than a full minute while hunting for a Burrow
     self._push_due = up + (15 if len(self.edges) > 1 else PUSH_EVERY_S)
+
+  def _keep(self, ts, clk, d):
+    if not self.buffer:
+      return
+    try:
+      self.buffer.add(ts, clk, self.boot, d)
+    except Exception as e:
+      log("buffer: could not keep the row:", e)
+
+  def _drain(self, host, port):
+    """Hand the Burrow the backlog, oldest first, a few batches a tick."""
+    import gc
+    for _ in range(BUF_BATCHES_PER_TICK):
+      name, start, rows = self.buffer.batch(BUF_BATCH)
+      if not rows:
+        return
+      ts, clk = self.wall()
+      body = {"id": self.uid, "name": self.name, "boot": self.boot, "now": ts, "clk": clk, "rows": rows}
+      if self.bin:
+        body["bin"] = self.bin
+      n = len(rows)
+      try:
+        status, reply = _http_post_json(host, port, "/ingest/batch", json.dumps(body).encode("utf-8"), timeout=10)
+      except Exception as e:
+        log("buffer: batch failed:", e)
+        return
+      finally:
+        body = rows = None
+        gc.collect()
+      if status != 200 or not reply or not reply.get("ok"):
+        log("buffer: Burrow refused a batch:", status, reply)
+        return
+      self.buffer.ack(name, start + n)
+      log("buffer: %d rows delivered (%d kept, %d dup, %d unplaceable), %d to go"
+          % (n, reply.get("n", 0), reply.get("dup", 0), reply.get("dropped", 0), self.buffer.pending()))
+      feed()
 
   def now_ts(self):
     """Unix time, if a Burrow ever told us; else None (the Pico has no clock)."""

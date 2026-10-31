@@ -93,6 +93,8 @@ class Handler(BaseHTTPRequestHandler):
         path = urllib.parse.urlsplit(self.path).path
         if path == "/ingest":
             return self._ingest()
+        if path == "/ingest/batch":
+            return self._ingest_batch()
         if path == "/api/event":
             return self._event()
         self._json({"error": "not found"}, 404)
@@ -167,6 +169,21 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": False, "error": "no id"}, 400)
         self._json({"ok": True, "ts": row["ts"], "edge": self.svc.cfg["edge"],
                     "room": self.svc.cfg["room"]})
+
+    def _ingest_batch(self):
+        body = self._read_body()
+        if body is None:
+            return self._json({"ok": False, "error": "bad length"}, 400)
+        try:
+            d = json.loads(body.decode("utf-8"))
+            if not isinstance(d, dict):
+                raise ValueError("not an object")
+        except Exception as e:
+            return self._json({"ok": False, "error": "bad json: %s" % e}, 400)
+        reply = self.svc.ingest_batch(d, ip=self.client_address[0])
+        if reply is None:
+            return self._json({"ok": False, "error": "need id and rows"}, 400)
+        self._json(reply)
 
     def _event(self):
         """The tunnel watchdog (a separate root process on this Pi) hands its events in here."""

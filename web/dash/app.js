@@ -505,7 +505,7 @@
         (d.ip ? ' · <span class="mono">' + esc(d.ip) + '</span>' : '') + (isNum(d.rssi) ? ' · ' + d.rssi + ' dBm' : '') + '</div></div>' +
         '<div class="nowrow">' + [['air temp', d.in_temp_c, '°C'], ['air humidity', d.in_hum_pct, '%'], ['air pressure', isNum(d.in_press_hpa) ? Math.round(d.in_press_hpa) : null, ' hPa'], ['room temp', d.out_temp_c, '°C'], ['soil moisture 1', d.moist1_pct, '%'], ['soil moisture 2', d.moist2_pct, '%'],
           ['soil temp', Array.isArray(d.probe_temps_c) ? d.probe_temps_c.filter(isNum).map(function (x) { return f1(x); }).join(' · ') : null, '°C'],
-          ['surface', isNum(d.surface_mm) ? Math.round(d.surface_mm) : null, ' mm'], ['light', d.light_pct, '%'], ['parts', (function () { var p = partsOk(d); return p.total ? p.ok + '/' + p.total : null; })(), '']]
+          ['surface', isNum(d.surface_mm) ? Math.round(d.surface_mm) : null, ' mm'], ['light', d.light_pct, '%'], ['parts', (function () { var p = partsOk(d); return p.total ? p.ok + '/' + p.total : null; })(), ''], ['buffered', isNum(d.buffered) && d.buffered > 0 ? d.buffered : null, ' rows']]
           .filter(function (x) { return x[1] != null && x[1] !== ''; })
           .map(function (x) { return '<div class="rd"><span class="k">' + x[0] + '</span><span class="v">' + (typeof x[1] === 'number' ? f1(x[1]) : esc(x[1])) + '<small>' + x[2] + '</small></span></div>'; }).join('') +
         '</div>' + '<div class="spacer"></div><a class="btn ghost sm" href="/">← wall</a>';

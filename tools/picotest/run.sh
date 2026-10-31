@@ -15,5 +15,5 @@ J
 (cd "$REPO/edge/burrow" && BURROW_CONFIG="$TMP/burrow.json" python3 -m burrow > "$TMP/burrow.log" 2>&1) & BPID=$!
 sleep 1.5
 cp "$REPO/lib/picolab.py" "$HERE/board/picolab.py"
-cd "$HERE/board" && micropython harness.py
+cd "$HERE/board" && micropython harness.py || { echo "---- burrow.log (tail) ----"; tail -25 "$TMP/burrow.log"; rm -f "$HERE/board/picolab.py"; exit 1; }
 rm -f "$HERE/board/picolab.py"

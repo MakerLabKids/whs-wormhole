@@ -10,3 +10,9 @@ firmware/rpi/*.img
 firmware/rpi/*.sha256
 firmware/rpi/download.log
 .chatlog/
+
+# picotest harness leaves the Pico's own state files behind
+tools/picotest/board/buf/
+tools/picotest/board/boot.txt
+tools/picotest/board/clock.txt
+tools/picotest/board/picolab.py

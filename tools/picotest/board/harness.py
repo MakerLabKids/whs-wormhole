@@ -34,10 +34,30 @@ def http_get(path):
     s.close()
     return out
 
+def http_burrow(path):
+    s = socket.socket(); s.connect(socket.getaddrinfo("127.0.0.1", 8211)[0][-1])
+    s.send(("GET %s HTTP/1.0\r\n\r\n" % path).encode())
+    out = b""
+    while True:
+        c = s.recv(4096)
+        if not c:
+            break
+        out += c
+    s.close()
+    return out.split(b"\r\n\r\n", 1)[1]
+
 checks = []
 def check(name, cond):
     checks.append((name, bool(cond))); print(("PASS " if cond else "FAIL ") + name)
 
+import os
+for f in (os.listdir("buf") if "buf" in os.listdir() else []):   # a clean board for every run
+    os.remove("buf/" + f)
+for f in ("boot.txt", "clock.txt"):
+    try:
+        os.remove(f)
+    except OSError:
+        pass
 app = picolab.WebApp()
 check("boot: joined WormHole", app.joined == "WormHole" and app.ip == "192.168.81.120")
 check("boot: no hotspot while joined", app.ap is None)
@@ -52,10 +72,11 @@ step(3, 300)
 h = json.loads(http_get("/history").split(b"\r\n\r\n", 1)[1])
 check("/history has samples", h["n"] >= 3 and "in_temp_c" in h["m"] and "probe_temps_c_0" in h["m"] and len(h["t"]) == h["n"])
 check("/history nulls for missing", h["m"]["probe_temps_c_0"][0] is not None and "relay" not in h["m"])
-# lose the network
+# lose the network: every push from here on goes to the flash buffer
 network.WORLD["present"] = set()
 step(2)
 check("loss noticed", app.joined is None and app.ap is None)
+check("buffer empty at the loss", app.buffer is not None and app.buffer.pending() == 0)
 step(65)
 check("hotspot opened 60 s after loss (station off)", app.ap is not None and app.ip == "192.168.4.1"
       and not network.WLAN.instances[network.STA_IF].active())
@@ -69,12 +90,19 @@ scans = network.WORLD["scans"]
 step(130)
 check("no rescan while a phone is on the hotspot", network.WORLD["scans"] == scans and app.ap is not None)
 network.WORLD["stations"] = []
+buffered = app.buffer.pending()
+check("pushes buffered while lost (%d)" % buffered, buffered >= 5)
+for name in app.buffer.files:
+    print("   buffered in", name, [(r[0], r[1]) for r in app.buffer.records(name)])
 network.WORLD["present"] = set(["WormHole"])
 step(130)                                         # next rescan finds it and joins
 check("rejoined after network returned", app.joined == "WormHole" and app.ip == "192.168.81.120")
 check("hotspot closed on rejoin (rp2: one interface at a time)", app.ap is None and app.identity()["mode"] == "joined")
 step(10)
 check("push resumed after rejoin", app.edge_ok)
+check("buffer drained into the Burrow", app.buffer.pending() == 0)
+st = json.loads(http_burrow("/api/status"))
+check("Burrow counted the backfill rows", st.get("counts", {}).get("backfill", 0) == buffered)
 # hotspot hold has a limit: a phone on the hotspot for 10 min still gets a rescan
 network.WORLD["present"] = set()
 step(70)

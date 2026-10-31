@@ -41,6 +41,7 @@ class Service:
         self.live_key = Cloud._read(cfg["cloud"].get("live_key_file"))
         self.store.on_sealed.append(self._on_sealed)
         self.counts = {"ingest": 0, "push": 0, "pull": 0, "rejected": 0}
+        self._backfill_seen = {}
         self._stop = threading.Event()
         self._replay_open()
         if not self.rollups.uids() and self.store.metas:
@@ -86,6 +87,63 @@ class Service:
         self.counts["ingest"] += 1
         self.counts[src] = self.counts.get(src, 0) + 1
         return row
+
+    def ingest_batch(self, body, ip=None):
+        """Backfill from a Bin's flash buffer: rows it could not push while
+        every Burrow was out of reach. Rows keep their own timestamps and
+        go into the open log as src "backfill" (sealed into the castings
+        of their own windows, never into the now-table). A row stamped by
+        an estimated clock ("est"/"none") is re-based by the difference
+        between our clock and the Bin's `now`, if it comes from the same
+        boot as `now`; an estimate from an earlier boot stays as it is.
+        Rows that still land before 2017 or in the future are dropped."""
+        uid = body.get("id")
+        rows = body.get("rows")
+        if not uid or not isinstance(uid, str) or len(uid) > 64 or not isinstance(rows, list):
+            return None
+        now = util.now()
+        try:
+            shift = now - int(body.get("now") or now)
+        except (TypeError, ValueError):
+            shift = 0
+        boot = body.get("boot")
+        ident = {k: body[k] for k in ("name", "bin") if body.get(k) is not None}
+        n = dup = dropped = 0
+        for r in rows:
+            try:
+                ts = int(r["ts"])
+                clk = r.get("clk", "none")
+                if clk != "ok":
+                    if r.get("boot") == boot:
+                        ts += shift
+                    clk = "est"
+                if ts < 1500000000 or ts > now + 600:
+                    dropped += 1
+                    continue
+                key = (uid, ts)
+                if key in self._backfill_seen:
+                    dup += 1
+                    continue
+                self._backfill_seen[key] = True
+                if len(self._backfill_seen) > 50000:
+                    for k in list(self._backfill_seen)[:10000]:
+                        del self._backfill_seen[k]
+                d = dict(r.get("d") or {})
+                d.update(ident)
+                d["id"] = uid
+                if ip and not d.get("ip"):
+                    d["ip"] = ip
+                row = {"ts": ts, "clk": "bin-" + clk, "uid": uid, "name": ident.get("name"),
+                       "room": self.cfg["room"], "edge": self.cfg["edge"], "src": "backfill", "d": d}
+                self.store.append(row)
+                n += 1
+            except (KeyError, TypeError, ValueError):
+                dropped += 1
+        self.counts["backfill"] = self.counts.get("backfill", 0) + n
+        if n or dropped:
+            log("backfill: %s sent %d rows: %d kept, %d dup, %d unplaceable (shift %+ds)"
+                % (ident.get("name") or uid, len(rows), n, dup, dropped, shift))
+        return {"ok": True, "n": n, "dup": dup, "dropped": dropped, "ts": now}
 
     def _on_sealed(self, meta, rows):
         try:

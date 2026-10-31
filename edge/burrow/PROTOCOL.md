@@ -18,6 +18,36 @@ plus three things the push loop adds:
 Reply: `{"ok": true, "ts": 1760600000, "edge": "burrow1", "room": 1}`.
 `ts` is the Burrow's unix time; the Bin keeps it to label its own graph.
 
+## Bin -> Burrow: `POST /ingest/batch`  (backfill after an outage)
+
+While no Burrow answers (or the Bin has no network at all) the Bin keeps
+every minute's row in a packed buffer on its own flash (`buf/`, about
+12 bytes a row, ~1.5 MB budget: months at one row a minute; past the
+budget the oldest file is thinned to 1-in-4, 1-in-16, 1-in-64, then
+dropped). The first accepted `/ingest` after that starts the drain:
+up to 8 batches of 60 rows per push tick, oldest first, so a month of
+backlog arrives in about an hour and a half.
+
+Body: `{"id", "name", "bin"?, "boot": <boot counter>, "now": <Bin's
+unix time>, "clk": "ok"|"est"|"none", "rows": [{"ts", "clk", "boot",
+"d": {metric: number, ...}}, ...]}`. Row metrics are the numeric fields
+of `/data`, lists flattened (`probe_temps_c_0`). A row's `clk` says
+what stamped it: `ok` = a Burrow set the Bin's clock this boot; `est` =
+the Bin resumed from the last time it saved (so the stamp is late by the
+power cut); `none` = seconds since boot. The Burrow re-bases `est`/`none`
+rows from the same `boot` as `now` by (its clock - `now`); estimates
+from an earlier boot stay as they are. Rows that still land before 2017
+or after now are dropped; a row with a `ts` already backfilled for that
+Bin is a duplicate (a resend after a lost reply).
+
+Rows go into the open log with `src: "backfill"` and `clk: "bin-ok"` /
+`"bin-est"`, keep their own `ts`, seal into the castings of their own
+windows (a window sealed earlier gets a second casting, `<id>-2`, and
+its rollups are recomputed from the later one), and never touch the
+now-table. Reply: `{"ok": true, "n": kept, "dup": .., "dropped": ..,
+"ts": <unix>}`. The Bin advances its cursor by the whole batch on any
+`ok`. `/data` carries `buffered`: rows still waiting on the Bin.
+
 Any Burrow accepts any Bin. The Bin tries, in order: `<own subnet>.10`,
 then `192.168.80.21`, `.22`, `.23` (the Tunnels' WAN addresses, which
 forward 8080 to their Burrow). Overridable with `"edges": [...]` in `bin.json`.
