@@ -337,6 +337,7 @@ class Display:
                       #    on the wall clock, so the pace is the same however fast the loop runs
   SHOW_FPS = 20       # a show's frames come this fast (an I2C refresh is ~25 ms, so this is the ceiling)
   SHOW_HOLD_MS = 600  # ...and its last frame lingers this long
+  CARD_MS = 4000      # a card (a message from `cards`) stays this long after a show
 
   def __init__(self, addr=0x3C):
     self.addr = addr
@@ -349,8 +350,14 @@ class Display:
     # With `shows` set too (a list of classes with .frames and .draw(o, t),
     # see lib/wormshow.py) the two take turns after each hold: name,
     # marquee, name, a show, name, marquee, name, the next show...
+    # `cards`: a function returning (title, lines) or None, asked after
+    # every show (or in a show's turn when there are no shows): a message
+    # card that stays CARD_MS. See Messages.
     self.marquee = None
     self.shows = None
+    self.cards = None
+    self._card = None                 # the card on screen, else None
+    self._card_at = 0                 # when it went up
     self._show = None                 # the show now playing (an instance), else None
     self._show_t = 0                  # its next frame
     self._show_drawn = 0              # frames drawn so far (fewer than frames when the loop stalled)
@@ -426,7 +433,7 @@ class Display:
     if title and not self._title_seen:          # the first titled screen starts the first hold
       self._title_seen, self._hold_at = True, time.ticks_ms()
     self._lines, self._bar, self._title = lines, bar, title
-    if not self._show:                          # a running show keeps the screen; the rows wait
+    if not self._show and not self._card:       # a show or a card keeps the screen; the rows wait
       self._draw()
 
   def tick(self):
@@ -437,6 +444,11 @@ class Display:
     now = time.ticks_ms()
     if self._show:
       self._show_tick(now)
+      return
+    if self._card:
+      if time.ticks_diff(now, self._card_at) >= self.CARD_MS:
+        self._card, self._hold_at, self._x = None, now, None
+        self._draw()
       return
     name = str(self._lines[0])
     long = len(name) * self.FONT > 128
@@ -465,12 +477,16 @@ class Display:
     """The name has had its HOLD_MS: start what follows it. The marquee
     and the shows take turns; with only one of them set it is always that
     one. False when there is nothing to follow it."""
-    if self.shows and (self._show_next or not self.marquee):
+    turn = self._show_next or not self.marquee
+    if turn and self.shows:
       cls = self.shows[self._show_idx % len(self.shows)]
       self._show_idx += 1
       self._show, self._show_t, self._show_at, self._show_next = cls(), 0, now, False
       self._show_drawn = 0
       self._show_tick(now)                      # frame 0 right away
+      return True
+    if turn and self._start_card(now):          # no shows: a card takes the show's turn
+      self._show_next = False
       return True
     if self.marquee:
       self._mq, self._x, self._scroll_at, self._show_next = True, 128, now, True
@@ -488,7 +504,8 @@ class Display:
     if elapsed >= (s.frames - 1) * period + self.SHOW_HOLD_MS:
       log("%s: %d of %d frames in %d ms" % (getattr(s, "name", "show"), self._show_drawn, s.frames, elapsed))
       self._show, self._hold_at, self._x = None, now, None
-      self._draw()
+      if not self._start_card(now):             # a message after the show, if there is one
+        self._draw()
       return
     t = min(elapsed // period, s.frames - 1)
     if t < self._show_t:
@@ -503,6 +520,48 @@ class Display:
       self._show, self.oled = None, None
       return
     self._show_t, self._show_drawn = t + 1, self._show_drawn + 1
+
+  def _start_card(self, now):
+    if not self.cards or not self.oled:
+      return False
+    try:
+      card = self.cards()
+    except Exception as e:
+      log("card:", e)
+      return False
+    if not card:
+      return False
+    self._card, self._card_at = card, now
+    log("card: %s | %s" % (card[0], " | ".join(str(t) for t in card[1])))
+    self._draw_card()
+    return True
+
+  def _draw_card(self):
+    """A message: its title centered and underlined like the name, its
+    lines centered in the space below."""
+    title, lines = self._card
+    try:
+      o = self.oled
+      o.fill(0)
+      title = str(title)[:16]
+      rows = [str(t)[:16] for t in lines[:5]]
+      top = 0
+      if title:
+        w = len(title) * self.FONT
+        x = (128 - w) // 2
+        o.text(title, x, 0)
+        o.hline(x, self.RULE_Y, w, 1)
+        top = self.RULE_Y + 2
+      pitch = 10
+      block = len(rows) * pitch - (pitch - self.FONT)
+      y = top + max(0, (self.PANEL - top - block) // 2)
+      for text in rows:
+        o.text(text, (128 - len(text) * self.FONT) // 2, y)
+        y += pitch
+      o.show()
+    except Exception as e:
+      log("OLED lost:", e)
+      self.oled = None
 
   def _draw(self):
     if not self.oled and self._retry.ready():
@@ -822,6 +881,122 @@ def pin_for(name, ip):
 
 PIN_MAX_FAILS = 5          # wrong PINs in a row before...
 PIN_LOCK_S = 60            # ...every PIN-gated request is refused for this long
+
+
+MSG_FILE = "msg.json"
+MSG_SLOTS = 3
+MSG_LINES = 5
+MSG_WIDTH = 16         # the 8 px font: 16 characters across the screen
+
+
+def _msg_text(s):
+  """A message field: printable ASCII (what the font has), trimmed to the screen."""
+  return "".join(c for c in str(s or "") if 32 <= ord(c) < 127).strip()[:MSG_WIDTH]
+
+
+class Messages:
+  """Three message slots for the screen, set from the dashboard, kept in
+  msg.json. A slot has a title and up to 5 lines (16 characters each),
+  and optionally a start and/or end time (unix seconds) or a number of
+  showings (0 or absent: forever). The Display shows one after each worm
+  show, taking the live slots in turn (display.cards = messages.next).
+
+  /msg is PIN-gated like every change (so is reading it: the page asks
+  once). /msg -> the slots and the board's clock; /msg?slot=1&title=..
+  &l1=..&l5=..&start=..&end=..&count=..&now=.. sets slot 1;
+  /msg?slot=1&clear=1 empties it. `now` is the phone's clock: a board no
+  Burrow has told the time takes it, so dated messages work on the hotspot.
+  """
+
+  def __init__(self, app=None, path=MSG_FILE):
+    self.app = app
+    self.path = path
+    self.slots = [None] * MSG_SLOTS
+    self._rot = 0
+    try:
+      with open(path) as f:
+        data = json.load(f)
+      for i in range(min(MSG_SLOTS, len(data))):
+        self.slots[i] = data[i] or None
+    except Exception:
+      pass
+
+  def save(self):
+    try:
+      with open(self.path, "w") as f:
+        json.dump(self.slots, f)
+    except Exception as e:
+      log("messages save failed:", e)
+
+  def _now(self):
+    return self.app.wall() if self.app else (0, "none")
+
+  def active(self, i):
+    """Is slot i due now? (Dated slots need a clock: none until a Burrow
+    or a phone has set one.)"""
+    s = self.slots[i]
+    if not s or not (s.get("title") or any(s.get("lines") or [])):
+      return False
+    if s.get("count") and s.get("shown", 0) >= s["count"]:
+      return False
+    if s.get("start") or s.get("end"):
+      ts, clk = self._now()
+      if clk == "none":
+        return False
+      if s.get("start") and ts < s["start"]:
+        return False
+      if s.get("end") and ts > s["end"]:
+        return False
+    return True
+
+  def next(self):
+    """The next message due, as (title, lines), counted as shown; None if none."""
+    for k in range(MSG_SLOTS):
+      i = (self._rot + k) % MSG_SLOTS
+      if self.active(i):
+        self._rot = i + 1
+        s = self.slots[i]
+        s["shown"] = s.get("shown", 0) + 1
+        if s.get("count"):                      # a counted slot keeps its count across a reboot
+          self.save()
+        return s.get("title", ""), list(s.get("lines") or [])
+    return None
+
+  def status(self):
+    ts, clk = self._now()
+    return {"slots": self.slots, "active": [self.active(i) for i in range(MSG_SLOTS)], "now": int(ts), "clk": clk}
+
+  def handle(self, req):
+    """Route handler, see the class note."""
+    hint = query_int(req, "now")
+    if hint and self.app and hasattr(self.app, "clock_hint"):
+      self.app.clock_hint(hint)
+    slot = query_int(req, "slot")
+    if slot is None:
+      return self.status()
+    if not 1 <= slot <= MSG_SLOTS:
+      return {"error": "slot 1-%d" % MSG_SLOTS}
+    i = slot - 1
+    if query_str(req, "clear") is not None:
+      self.slots[i] = None
+      self.save()
+      log("message %d cleared" % slot)
+      return self.status()
+    title = _msg_text(query_str(req, "title"))
+    lines = [_msg_text(query_str(req, "l%d" % n)) for n in range(1, MSG_LINES + 1)]
+    while lines and not lines[-1]:
+      lines.pop()
+    if not title and not any(lines):
+      return {"error": "an empty message"}
+    s = {"title": title, "lines": lines, "shown": 0}
+    for key in ("start", "end", "count"):
+      v = query_int(req, key)
+      if v:
+        s[key] = v
+    self.slots[i] = s
+    self.save()
+    log("message %d set: %s" % (slot, title or lines[0]))
+    return self.status()
 
 
 def query_str(req, key, default=None):
@@ -1689,6 +1864,17 @@ class WebApp:
     if self._clock_est is not None:
       return self._clock_est + up, "est"
     return up, "none"
+
+  def clock_hint(self, ts):
+    """A clock from a phone (the dashboard sends its time with changes):
+    taken as the estimate until a Burrow sets the real one."""
+    if self.edge_ts or not ts or ts < 1.5e9:
+      return
+    up = uptime_s()
+    self._clock_est = ts - up
+    self._clock_saved = -600
+    self._save_clock(ts, up)
+    log("clock set from a phone: %d (est)" % ts)
 
   def _save_clock(self, ts, up):
     if up - self._clock_saved < 600:

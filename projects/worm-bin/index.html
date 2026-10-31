@@ -68,6 +68,7 @@
       <div id="renamemsg" style="font-size:12px;color:#86efac;min-height:14px"></div>
       <div style="font-size:11px;color:#94a3b8">Needs the PIN. The board restarts as its new
         name (new Wi-Fi name, new PIN).</div></div>
+    <div class="card wide"><div id="msgbox"></div></div>
 
     <div class="card"><h3>WIRING &amp; PINS</h3>
       <div class="wirenote">Hold the board with the <b>USB at the top</b>. Pins are numbered 1&ndash;40:
@@ -142,6 +143,7 @@
 
   <div id="status">connecting...</div>
 <script src="/cal.js"></script>
+<script src="/msg.js"></script>
 <script>
 var misses = 0, relayOn = 0, holdoff = 0;
 var units = 'C';
@@ -178,6 +180,16 @@ if (!moistCal) {
     'this dashboard works without it.</div>';
   var _cb2 = document.getElementById('calbox2');
   if (_cb2 && _cb2.parentElement) _cb2.parentElement.style.display = 'none';
+}
+// Messages for the screen: the same optional-add-on rule as calibration (msg.js).
+if (window.Msg) {
+  try { Msg.create(document.getElementById('msgbox')); } catch (e) {}
+}
+if (!window.Msg) {
+  var _mb = document.getElementById('msgbox');
+  if (_mb) _mb.innerHTML = '<h3>MESSAGES ON THE SCREEN</h3><div style="font-size:12px;color:#94a3b8">' +
+    'The message editor loads from the board (msg.js). If this stays blank, reinstall the ' +
+    'worm-bin project so msg.js lands on the Pico.</div>';
 }
 function $(id) { return document.getElementById(id); }
 function put(id, v) { $(id).textContent = (v === null || v === undefined) ? '--' : v; }

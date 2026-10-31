@@ -189,3 +189,31 @@ d = fresh([long, "x"]); d.marquee = ""; d.shows = [ShowA]
 seen = phases(d, 15000)
 assert seen[:3] == ["name", "show", "name"], seen
 print("worm show cycle OK")
+
+# ---- cards: a message after each show, CARD_MS, then the name holds again ----
+cards = [("Go Worms!", ["line one", "", "sixteen chars!!!"]), None, ("B", ["b"])]
+d = fresh(["Dirt Nerds", "x"]); d.marquee = ""; d.shows = [ShowA]; d.cards = lambda: cards.pop(0) if cards else None
+run(d, 5010); show = d._show
+while d._show: run(d, 10)
+assert d._card == ("Go Worms!", ["line one", "", "sixteen chars!!!"]), d._card
+t = d.oled.title(); assert t == ("Go Worms!", 28, 0) and (28, 9, 72) in d.oled.lines, (t, d.oled.lines)   # centered, underlined
+ys = sorted(y for s, _, y in d.oled.calls if y)
+assert ys == [23, 33, 43] and ("sixteen chars!!!", 0, 43) in d.oled.calls, d.oled.calls     # 3 rows at 10 px, centered in the band
+d.oled.calls = []; d.show(["Dirt Nerds", "MOIST: 50%"])
+assert d.oled.calls == [], "the rows wait behind the card"
+t0 = faketime.ticks_ms()
+while d._card: run(d, 10)
+assert abs(faketime.ticks_diff(faketime.ticks_ms(), t0) - D.CARD_MS) <= 20 and d.oled.title()[0] == "Dirt Nerds"
+assert run(d, 4990) == [] and run(d, 20), "then a fresh hold"
+while d._show: run(d, 10)
+assert d._card is None, "no card this time: cards() said None"
+run(d, 5010)
+while d._show: run(d, 10)
+assert d._card == ("B", ["b"]), d._card
+# no shows at all: the card takes the show's turn (name, card, name, card...)
+d = fresh(["Dirt Nerds", "x"]); d.marquee = "m"; d.cards = lambda: ("Hi", ["there"])
+run(d, 5010)
+while d._mq: run(d, 10)
+run(d, 5010)
+assert d._card == ("Hi", ["there"]), d._card
+print("cards OK")

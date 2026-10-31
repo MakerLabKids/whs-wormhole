@@ -90,6 +90,9 @@ PAGE_SEC_SENSOR = 5   # any other page
 # its 5 s.
 MARQUEE = "Woodstock High School and Maker Lab Kids - Vermiculture PBL by:"
 WORM_SHOWS = True
+# Messages from the dashboard (three slots, PIN): one shows after each
+# worm show, for this many seconds.
+MESSAGE_S = 4
 # ===== end of config ==================================================
 
 
@@ -522,6 +525,9 @@ time.sleep_ms(2000)
 
 light = picolab.StatusLight()
 app = picolab.WebApp()
+messages = picolab.Messages(app)   # the three dashboard message slots (msg.json)
+display.cards = messages.next
+display.CARD_MS = MESSAGE_S * 1000
 tick = picolab.Throttle(READ_EVERY_MS)
 heartbeat = picolab.Throttle(5000)
 page = 0                         # OLED page (only moves when rows overflow a screen)
@@ -537,7 +543,7 @@ app.announce("Worm Bin Command Center Active!")
 try:
   while True:
     light.poll()
-    app.poll(data_fn, routes=[("/set", set_handler), ("/cal", cal.handle)])
+    app.poll(data_fn, routes=[("/set", set_handler), ("/cal", cal.handle), ("/msg", messages.handle)])
     servo_big.step()      # ramp the servos toward their targets every pass
     servo_small.step()
     display.tick()        # the title marquee and the worm shows, between sensor sweeps

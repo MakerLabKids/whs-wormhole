@@ -78,13 +78,30 @@ has been commanded.
 The top row is also a marquee, and the screen runs a cycle: the name
 holds for five seconds, `MARQUEE` (the school and program line, in the
 config block) scrolls through, the name holds another five seconds, then
-one of the ten animated worm shows plays (`lib/wormshow.py`, gallery at
-docs/splash.html; they go in order, the next one each time round, so it
-is predictable), and it starts again from the name. The readings keep
-updating underneath and come back the moment a show ends. A name too
-wide for the screen (more than 16 characters) scrolls instead of holding
-and still gets its five seconds. `MARQUEE = ""` turns the scroll off,
-`WORM_SHOWS = False` the shows.
+one of the twelve shows plays (`lib/wormshow.py`, gallery at
+docs/splash.html: the school's wolverine zooming in, the Maker Lab Kids
+gear, then ten worms; they go in order, the next one each time round, so
+it is predictable), then a message if the team left one (below), and it
+starts again from the name. The readings keep updating underneath and
+come back the moment a show ends. A name too wide for the screen (more
+than 16 characters) scrolls instead of holding and still gets its five
+seconds. `MARQUEE = ""` turns the scroll off, `WORM_SHOWS = False` the
+shows.
+
+### Messages on the screen
+
+The dashboard has a MESSAGES card with three slots. Fill one in (a
+title, up to five lines of 16 characters) and after each show the screen
+holds it for `MESSAGE_S` seconds (4), the live slots taking turns. A slot
+can have a start and/or end time, or a number of showings; blank means
+forever. Saving needs the board's PIN (asked once per phone, see below).
+The slots live on the board in `msg.json`; the editor is `msg.js`, which
+the install puts on the Pico next to `cal.js`.
+
+A dated message needs the board to know the time. A Burrow sets it; so
+does saving a message, which sends the phone's clock along, so this works
+on the bin's own hotspot too (the board then calls its clock an estimate
+until a Burrow confirms it).
 
 <img src="../../docs/img/oled/longname.svg" width="300" alt="a long team name scrolling">
 

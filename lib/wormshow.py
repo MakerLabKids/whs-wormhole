@@ -13,6 +13,8 @@ SHOWS lists them in order. Demo rendering off-board: tools/gen-splash.py.
 """
 import math
 import time
+import framebuf
+import micropython
 
 W, H = 128, 64
 ON, OFF = 1, 0
@@ -63,6 +65,78 @@ def ease(t, n):
   """0..1 over n frames, smooth at both ends."""
   u = min(1.0, max(0.0, t / float(n)))
   return u * u * (3 - 2 * u)
+
+
+# ---- logos (lib/logos.py: MONO_HLSB bitmaps made by tools/gen-logos.py) --
+def logo(which):
+  """(FrameBuffer, w, h) of a logo; blit it with o.blit(fb, x, y)."""
+  import logos
+  w, h, data = getattr(logos, which)
+  return framebuf.FrameBuffer(bytearray(data), w, h, framebuf.MONO_HLSB), w, h
+
+
+@micropython.viper
+def _scale(src: ptr8, sw: int, sh: int, dst: ptr8, dw: int, dh: int):
+  """Nearest-neighbour resize of a MONO_HLSB bitmap (viper: ~4 ms for a
+  full-screen frame on a Pico, where plain Python takes ~100)."""
+  ss = (sw + 7) >> 3
+  ds = (dw + 7) >> 3
+  for dy in range(dh):
+    sy = (dy * sh) // dh
+    for dx in range(dw):
+      sx = (dx * sw) // dw
+      if src[sy * ss + (sx >> 3)] & (0x80 >> (sx & 7)):
+        dst[dy * ds + (dx >> 3)] |= 0x80 >> (dx & 7)
+
+
+def blit_scaled(o, data, w, h, cx, cy, s):
+  """Draw bitmap data (w x h, MONO_HLSB) centred on (cx, cy) at scale s."""
+  if s >= 1:
+    o.blit(framebuf.FrameBuffer(bytearray(data), w, h, framebuf.MONO_HLSB), cx - w // 2, cy - h // 2)
+    return
+  dw, dh = max(1, int(w * s)), max(1, int(h * s))
+  buf = bytearray(((dw + 7) >> 3) * dh)
+  _scale(data, w, h, buf, dw, dh)
+  o.blit(framebuf.FrameBuffer(buf, dw, dh, framebuf.MONO_HLSB), cx - dw // 2, cy - dh // 2)
+
+
+# ---- the school: the wolverine zooms in, lands with a shake, then the name --
+class School:
+  name = "Woodstock High"
+  frames = 100
+  SHAKE = (-3, 3, -2, 2, -1, 1, 0, 0)
+
+  def __init__(self):
+    import logos
+    self.w, self.h, self.data = logos.WHS
+
+  def draw(self, o, t):
+    cx, cy = W // 2, self.h // 2
+    if t < 30:
+      blit_scaled(o, self.data, self.w, self.h, cx, cy, ease(t, 29))
+      return
+    dx = self.SHAKE[t - 30] if t < 38 else 0
+    blit_scaled(o, self.data, self.w, self.h, cx + dx, cy, 1)
+    if t >= 42:
+      s = "WOODSTOCK HIGH"
+      n = min(len(s), (t - 42) // 2 + 1)
+      o.text(s[:n], (W - len(s) * 8) // 2, 56)
+
+
+# ---- Maker Lab Kids: the gear, flask and rocket, wiped in -----------------
+class MakerLab:
+  name = "Maker Lab Kids"
+  frames = 70
+
+  def __init__(self):
+    self.fb, self.w, self.h = logo("MLK")
+
+  def draw(self, o, t):
+    x, y = (W - self.w) // 2, (H - self.h) // 2
+    o.blit(self.fb, x, y)
+    if t < 16:                                  # reveal left to right over 0.8 s
+      shown = (t + 1) * self.w // 16
+      o.fill_rect(x + shown, y, self.w - shown, self.h, OFF)
 
 
 # ---- 1. one big worm crossing, with a grin -------------------------------
@@ -355,7 +429,7 @@ class Radar:
       o.text("!!", 100, 34)
 
 
-SHOWS = [BigWorm, WormParty, Wormhole, Underground, Pulse, Compost, Face, Scientist, Conga, Radar]
+SHOWS = [School, MakerLab, BigWorm, WormParty, Wormhole, Underground, Pulse, Compost, Face, Scientist, Conga, Radar]
 
 
 def play(display, loop=True, only=None, fps=20, hold_ms=600):

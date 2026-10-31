@@ -26,12 +26,17 @@
 </div></nav>
 <div class="wrap">
   <h1>Worm screens</h1>
-  <p>Ten little animations for the 128&times;64 screen on every bin. A bin plays one between
-     turns of its title marquee, in this order, round and round, with the readings back in
-     between.
+  <p>Twelve little animations for the 128&times;64 screen on every bin: the two logos, then ten
+     worms. A bin plays one between turns of its title marquee, in this order, round and round,
+     with the readings back in between, and after each one a message the team typed in on the
+     dashboard, if they left one.
      These are the real pixels: the same code that runs on the Pico was run on a desktop and
      every frame captured, so what you see here is what the screen does, three times bigger.</p>
   <div class="shows">
+    <figure class="show"><img src="img/oled/splash-school.gif" alt="Woodstock High" loading="lazy">
+      <figcaption><b>Woodstock High</b> The wolverine zooms in from nothing, lands with a shake, and the school's name types in under it. The real mascot, traced to one-bit pixels.</figcaption></figure>
+    <figure class="show"><img src="img/oled/splash-makerlab.gif" alt="Maker Lab Kids" loading="lazy">
+      <figcaption><b>Maker Lab Kids</b> The gear, the flask and the rocket, wiped in and held.</figcaption></figure>
     <figure class="show"><img src="img/oled/splash-bigworm.gif" alt="Big Worm" loading="lazy">
       <figcaption><b>Big Worm</b> One fat worm crosses the screen, grinning, and the name comes up under it.</figcaption></figure>
     <figure class="show"><img src="img/oled/splash-wormparty.gif" alt="Worm Party" loading="lazy">
@@ -53,7 +58,9 @@
     <figure class="show"><img src="img/oled/splash-radar.gif" alt="Worm Radar" loading="lazy">
       <figcaption><b>Worm Radar</b> A radar sweep finds worms. Each blip wiggles when the beam passes. WORMS FOUND.</figcaption></figure>
   </div>
-  <p>They live in <span class="pill">lib/wormshow.py</span>, each one a few dozen lines of circles,
+  <p>The logos are <span class="pill">lib/logos.py</span>, bitmaps that <span class="pill">tools/gen-logos.py</span>
+     makes from the artwork (solid for the outlines, a checker for the colour fills: the only grey a one-bit
+     screen has). The rest live in <span class="pill">lib/wormshow.py</span>, each one a few dozen lines of circles,
      lines and text. Make your own: copy one, give it a name and a <span class="pill">draw(o, t)</span>,
      add it to <span class="pill">SHOWS</span>. A board can run all of them in a loop as a demo
      (<span class="pill">tools/splash_demo.py</span>), and <span class="pill">tools/gen-splash.py</span>

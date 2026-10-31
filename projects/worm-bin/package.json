@@ -46,6 +46,14 @@
     [
       "fs:lib/wormshow.py",
       "github:MakerLabKids/whs-wormhole/lib/wormshow.py"
+    ],
+    [
+      "fs:lib/logos.py",
+      "github:MakerLabKids/whs-wormhole/lib/logos.py"
+    ],
+    [
+      "fs:msg.js",
+      "github:MakerLabKids/whs-wormhole/web/msg.js"
     ]
   ]
 }
