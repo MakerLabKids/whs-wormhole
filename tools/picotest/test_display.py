@@ -255,13 +255,13 @@ assert run(d, 4990) == [] and run(d, 20) and d._mq, "a fresh 5 s hold, then the 
 d = fresh(["Dirt Nerds", "x"]); d.boot([("cards", lambda: [])]); assert d._boot is None
 print("boot sequence OK")
 
-# ---- the status icon (top right of the title row) and notices ----
+# ---- the status icon (bottom right) and notices ----
 d = fresh(["Dirt Nerds", "x"])
 assert d.oled.icons == [], "no icon until told"
 d.icon = "ok"; d.oled.icons = []; d._draw()
-assert d.oled.icons == [("ellipse", 123, 3, 3, 3, 1, True)], d.oled.icons
+assert d.oled.icons == [("ellipse", 124, 60, 3, 3, 1, True)], d.oled.icons
 d.icon = "burrow"; d.oled.icons = []; d._draw()
-assert d.oled.icons == [("ellipse", 123, 3, 3, 3, 1)], d.oled.icons
+assert d.oled.icons == [("ellipse", 124, 60, 3, 3, 1)], d.oled.icons
 d.icon = "none"; d.oled.icons = []; d._draw()
 assert [i[0] for i in d.oled.icons] == ["line", "line"], d.oled.icons
 d.icon = None; d.oled.icons = []; d.show(["WOODSTOCK", "x"], title=False)

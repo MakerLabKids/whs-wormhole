@@ -105,7 +105,7 @@ the Pico next to `cal.js`.
 
 ### Is it connected?
 
-The title row's top-right corner carries the link: a filled dot when a
+The screen's bottom-right corner carries the link: a filled dot when a
 Burrow is taking the board's pushes and has the internet, a hollow dot
 when it takes them but has no internet, an X when no Burrow hears the
 board (its own hotspot, or every Burrow out of reach). The moment a

@@ -358,7 +358,7 @@ class Display:
     self.cards = None
     self._card = None                 # the card on screen, else None
     self._card_at = 0                 # when it went up
-    # icon: "ok" / "burrow" / "none" / None, drawn in the title row's top-right corner
+    # icon: "ok" / "burrow" / "none" / None, drawn in the bottom-right corner
     self.icon = None
     self._notice = None               # a card to show at the next chance (notice())
     # boot(steps): a one-off sequence played before the cycle starts; see boot()
@@ -642,19 +642,20 @@ class Display:
       self.oled = None
 
   def _draw_icon(self, o):
-    """The link, top right: a filled dot (Burrow + internet), a hollow one
-    (Burrow, no internet), an X (no Burrow). Drawn over whatever is there."""
+    """The link, bottom right: a filled dot (Burrow + internet), a hollow
+    one (Burrow, no internet), an X (no Burrow). Drawn over whatever is
+    there (the last character of a full-width bottom row, or the bar)."""
     k = self.icon
     if not k:
       return
-    o.fill_rect(119, 0, 9, 8, 0)
+    o.fill_rect(120, 56, 8, 8, 0)
     if k == "ok":
-      o.ellipse(123, 3, 3, 3, 1, True)
+      o.ellipse(124, 60, 3, 3, 1, True)
     elif k == "burrow":
-      o.ellipse(123, 3, 3, 3, 1)
+      o.ellipse(124, 60, 3, 3, 1)
     else:
-      o.line(120, 0, 126, 6, 1)
-      o.line(126, 0, 120, 6, 1)
+      o.line(121, 57, 127, 63, 1)
+      o.line(127, 57, 121, 63, 1)
 
   def _draw(self):
     if not self.oled and self._retry.ready():
@@ -679,11 +680,12 @@ class Display:
           x = 0 if self._x is None else self._x
         o.text(text, x, 0)                      # framebuf clips what is off-screen
         o.hline(max(0, x), self.RULE_Y, min(128, x + w) - max(0, x), 1)
-        self._draw_icon(o)
       if bar is not None:
         width = int(min(1.0, max(0.0, bar)) * 128)
         o.rect(0, 58, 128, 6, 1)
         o.fill_rect(0, 58, width, 6, 1)
+      if title and len(rows) > 1:
+        self._draw_icon(o)
       o.show()
     except Exception as e:
       log("OLED lost:", e)
