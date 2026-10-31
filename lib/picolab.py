@@ -819,7 +819,7 @@ BOOT_FILE = "boot.txt"     # boot counter: records say which boot's clock they w
 HIST_STEP_S = 300          # history ring: one sample every 5 min...
 HIST_SLOTS = 288           # ...for 24 hours
 HIST_MAX_METRICS = 24
-HIST_SKIP = ("big", "small", "relay", "probes", "probe_count", "up")
+HIST_SKIP = ("big", "small", "relay", "probes", "probe_count", "up", "buffered")
 
 
 def _flatten_numeric(d, out):
@@ -986,6 +986,8 @@ class Buffer:
 
   def add(self, ts, clk, boot, d):
     vals = _flatten_numeric(d, {})
+    if not vals:
+      return                                    # nothing measured yet (parts still connecting)
     cur = self._cur
     # A file's field list only grows: a reading that is absent for a while
     # (a probe unplugged) is a gap in the mask, not a new file. A field
@@ -1579,10 +1581,11 @@ class WebApp:
         if k not in d:
           d[k] = ident[k]
       d["up"] = up
-      try:
-        d["rssi"] = self.sta.status("rssi")
-      except Exception:
-        pass
+      if self.joined:                      # the station's signal; junk while on the hotspot
+        try:
+          d["rssi"] = self.sta.status("rssi")
+        except Exception:
+          pass
       if self.buffer:
         d["buffered"] = self.buffer.pending()
       body = json.dumps(d).encode("utf-8")
