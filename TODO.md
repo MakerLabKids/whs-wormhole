@@ -27,8 +27,9 @@ record of what got done.
 - [ ] **Messages (2026-10-31 evening) need three deploys**: Surface `wrangler deploy` (done
       2026-10-31) plus `npx wrangler d1 execute wormhole --remote --file schema.sql` (the new
       `messages` and `bin_messages` tables, done 2026-10-31); the Burrow code to the Pis
-      (burrow0 and burrow1 done 2026-10-31 18:49 over Ethernet, `tools/update-burrow.sh`;
-      burrow2 and burrow3 at school) (the /ingest reply carries website messages, the
+      (burrow0, burrow1 and burrow3 done 2026-10-31 over Ethernet, `tools/update-burrow.sh`;
+      burrow2 still to do: its Pi was offline on Opal 2's cable port when the host was
+      plugged in there) (the /ingest reply carries website messages, the
       snapshot reply lists them); and the Pico reflash (picolab 0.2.2, lib/blelink.py,
       lib/logos.py, msg.js, and bin.json gets the fleet `teacher_pin`, 2718 in fleet.json:
       change it there first if you want another). Until all three are out, website messages
