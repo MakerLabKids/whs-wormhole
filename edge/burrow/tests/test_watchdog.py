@@ -151,6 +151,7 @@ class FakeRouter:
     NEXT_STATE = "connected"
     NEXT_VISIBLE = ["BYLD", "WormHole-Core"]
     NEXT_UNREACHABLE = False
+    NEXT_AUTO = False
     NEXT_FORWARDS = []
     LOG = []
 
@@ -173,6 +174,11 @@ class FakeRouter:
             return {"res": list(FakeRouter.NEXT_FORWARDS)}
         if (obj, method) == ("wifi", "get_config"):
             return {"res": [{"ifaces": [{"bssid": "94:83:C4:00:00:01"}]}, {"ifaces": [{"bssid": "94:83:C4:00:00:02"}]}]}
+        if (obj, method) == ("repeater", "get_config"):
+            return {"auto": FakeRouter.NEXT_AUTO, "smart_reconnect": True}
+        if (obj, method) == ("repeater", "set_config"):
+            FakeRouter.NEXT_AUTO = bool((params or {}).get("auto"))
+            return []
         return {}
 
 
@@ -395,3 +401,20 @@ class Runs(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AutoConnectTest(unittest.TestCase):
+    """The Opal rejoins by itself: the watchdog switches "auto" on when it finds it off."""
+    def setUp(self):
+        FakeRouter.LOG = []
+        FakeRouter.NEXT_AUTO = False
+
+    def test_switches_auto_connect_on_once(self):
+        st = {}
+        r = FakeRouter("192.168.82.1")
+        wd.ensure_auto_connect(r, st, 1000)
+        self.assertIn(("repeater", "set_config", {"auto": True}), FakeRouter.LOG)
+        self.assertTrue(any("auto-connect was off" in e[1] for e in st.get("events", [])))
+        FakeRouter.LOG = []
+        wd.ensure_auto_connect(r, st, 1100)           # now on: nothing to do
+        self.assertNotIn(("repeater", "set_config", {"auto": True}), FakeRouter.LOG)

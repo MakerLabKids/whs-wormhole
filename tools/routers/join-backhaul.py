@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """join-backhaul.py N: tell Tunnel N's Opal (192.168.8N.1) to join the Portal's
 hidden 5 GHz backhaul (WormHole-Core) right now, the way the Pi's watchdog
-does every two minutes. For the evening when the Pi is down and the Tunnel
-flashes white: run it from any laptop on that Tunnel's LAN.
+does every two minutes, and switch on the Opal's own auto-connect to saved
+networks so it never needs telling again. For the evening when the Pi is
+down and the Tunnel flashes white: run it from any laptop on that Tunnel's LAN.
 
 The backhaul key and the router admin password come from the repo's .env
 (backhaul_key, router_admin); nothing is printed.
@@ -54,6 +55,10 @@ def main():
   if not key:
     print("no backhaul_key in .env")
     return 1
+  rc = call(host, "repeater", "get_config")
+  if isinstance(rc, dict) and "auto" in rc and not rc.get("auto"):
+    call(host, "repeater", "set_config", {"auto": True})
+    print("Tunnel %d: auto-connect to saved networks was OFF; switched on (it rejoins by itself from now on)" % n)
   st = call(host, "repeater", "get_status")
   if isinstance(st, dict) and st.get("bssid", "").lower() == BACKHAUL["bssid"] and (st.get("wpa_status") or {}).get("wpa_state") == "COMPLETED":
     print("Tunnel %d is already on the backhaul" % n)

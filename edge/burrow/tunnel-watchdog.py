@@ -83,6 +83,23 @@ def upstreams_of(cfg):
     return [flat] if flat.get("ssid") else []
 
 
+def ensure_auto_connect(r, st, now):
+    """The Opal must rejoin its saved networks by itself after a power cycle
+    (repeater config "auto"); a Tunnel with it off sits flashing white until
+    this watchdog runs, which is minutes after ITS Pi boots, or never if the
+    Pi is down (2026-10-31). Switch it on whenever it is found off."""
+    try:
+        rc = r.call("repeater", "get_config") or {}
+    except Exception:
+        return
+    if isinstance(rc, dict) and "auto" in rc and not rc.get("auto"):
+        try:
+            r.call("repeater", "set_config", {"auto": True})
+            event(st, now, "opal auto-connect was off: switched on")
+        except Exception as e:
+            event(st, now, "could not switch opal auto-connect on: %s" % str(e)[:80])
+
+
 def connect_params(up):
     params = {k: up[k] for k in ("ssid", "key", "bssid", "device", "band", "encryption") if up.get(k)}
     if up.get("encryption") == "none":
@@ -389,6 +406,7 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
     try:
         r.login(cfg["password"])
         status = r.call("repeater", "get_status") or {}
+        ensure_auto_connect(r, st, now)
     except Exception as e:
         # The Opal's LAN itself is gone: nothing to join or reboot, just report
         # and get our own radio up so the report leaves the building.
