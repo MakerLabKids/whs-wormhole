@@ -14,7 +14,9 @@ export const SILENT_S = 120;           // a Burrow snapshots every 60 s; two mis
                                        // neighbours' peer.down alert normally arrives well before this)
 const EVENT_CAP = 100;                 // per POST
 const LEVELS = new Set(["info", "warn", "alert"]);
-const RENOTIFY_S = 15 * 60;            // same alert key again only after this
+// An open alert notifies ONCE (plus once when it closes). It is retried only while the
+// notifier has never managed to deliver it. (Until 2026-10-30 it re-sent every 15 min, which
+// with four unplugged Burrows was a buzz every few minutes around the clock.)
 
 export function alertUrl(env) {
   const u = (env.ALERT_URL || "").trim();
@@ -131,10 +133,10 @@ export async function testNotify(env) {
   return json({ ok: n.ok, target: describeTarget(env), stored, kind: notifierKind(alertUrl(env) || ""), auth: env.ALERT_TOKEN ? "token" : (/^https?:\/\/[^/]*@/.test(alertUrl(env) || "") ? "basic" : "none"), error: n.error || null, ts: t });
 }
 
-// Open (or refresh) an alert under `key`; notifies on open and when RENOTIFY_S has passed.
-async function openAlert(env, key, edge, title, text, priority = "high", tags = "warning", t = now()) {
+// Open (or refresh) an alert under `key`; notifies on open, and again only if that failed.
+export async function openAlert(env, key, edge, title, text, priority = "high", tags = "warning", t = now()) {
   const open = await env.DB.prepare("SELECT id, last_notified FROM alerts WHERE key = ?1 AND closed_at IS NULL").bind(key).first();
-  if (open && open.last_notified && t - open.last_notified < RENOTIFY_S) return { id: open.id, notified: false };
+  if (open && open.last_notified) return { id: open.id, notified: false };
   const n = await notify(env, title, text, priority, tags);
   if (open) {
     await env.DB.prepare("UPDATE alerts SET text = ?1, last_notified = ?2, notify_error = ?3 WHERE id = ?4")
@@ -146,7 +148,7 @@ async function openAlert(env, key, edge, title, text, priority = "high", tags = 
   return { id: r.meta?.last_row_id, notified: n.ok, opened: true };
 }
 
-async function closeAlert(env, key, title, text, t = now()) {
+export async function closeAlert(env, key, title, text, t = now()) {
   const open = await env.DB.prepare("SELECT id, opened_at FROM alerts WHERE key = ?1 AND closed_at IS NULL").bind(key).first();
   if (!open) return null;
   const n = await notify(env, title, text, "default", "white_check_mark");

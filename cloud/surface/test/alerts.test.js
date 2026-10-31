@@ -176,3 +176,26 @@ describe("test alert from the Devices page", () => {
     expect(await r.json()).toMatchObject({ ok: false, error: "no ALERT_URL", target: null, auth: "none", stored: { url: "", token: null, account: null } });
   });
 });
+
+describe("an open alert nags nobody", () => {
+  beforeAll(applySchema);
+
+  it("notifies once on open, not again while it stays open, and once on close", async () => {
+    const { openAlert, closeAlert } = await import("../src/alerts.js");
+    const sent = [];
+    const real = globalThis.fetch;
+    globalThis.fetch = async (u, init) => { sent.push(init.headers.Title); return new Response("ok", { status: 200 }); };
+    const env2 = Object.assign(Object.create(env), { ALERT_URL: "https://ntfy.sh/t" });
+    try {
+      const t0 = 1_800_000_000;
+      expect((await openAlert(env2, "edge:nag", "nag", "nag down", "x", "high", "warning", t0)).notified).toBe(true);
+      for (const dt of [60, 15 * 60 + 1, 3600, 86400]) {
+        expect((await openAlert(env2, "edge:nag", "nag", "nag down", "x", "high", "warning", t0 + dt)).notified).toBe(false);
+      }
+      expect((await closeAlert(env2, "edge:nag", "nag back", "y", t0 + 90000)).notified).toBe(true);
+      expect(sent).toEqual(["nag down", "nag back"]);
+    } finally {
+      globalThis.fetch = real;
+    }
+  });
+});
