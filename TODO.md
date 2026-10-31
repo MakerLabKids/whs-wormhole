@@ -30,9 +30,9 @@ record of what got done.
       snapshot reply lists them); and the Pico reflash (picolab 0.2.2, lib/blelink.py,
       lib/logos.py, msg.js). Until all three are out, website messages queue harmlessly
       (status "waiting for the bin").
-- [ ] **Try the Bluetooth page from a phone**: whs.makerlabkids.com/bluetooth.html in Chrome
-      on Android (or Edge/Chrome on a laptop), Connect, pick "The Wrigglers", PIN 1126 on
-      the bench. Not tested with a real phone yet (the container has no Bluetooth).
+- [ ] **Bluetooth from a phone**: the page worked from a laptop (Chrome, 2026-10-31 evening,
+      the bench board over the dev server). Still to try: Chrome on Android against the
+      deployed page, whs.makerlabkids.com/bluetooth. Vivaldi/Brave/Opera have no chooser.
 - [ ] **Surface (Cloudflare) deploy + `ALERT_URL`** (carried over): `wrangler deploy`
       from your laptop, and the alert URL as `https://`.
 
