@@ -16,3 +16,7 @@ Expected: 18 PASS lines and `18 checks, 0 failed`. The stubs are tiny on
 purpose; they model exactly what the firmware touches (scan, connect,
 isconnected, ifconfig, status('rssi'), AP config). Real radios are, of
 course, the real test; this catches logic errors before you walk to a bin.
+
+Off-board layout check for the OLED rows (no Burrow needed):
+
+    micropython tools/picotest/test_display.py

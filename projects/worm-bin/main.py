@@ -479,7 +479,7 @@ display.show([
     " Maker Lab Kids",
     "",
     " Wormhole v" + picolab.VERSION,
-])
+], gap=0)
 time.sleep_ms(3000)
 
 light = picolab.StatusLight()

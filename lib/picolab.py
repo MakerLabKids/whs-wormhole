@@ -293,12 +293,24 @@ class Display:
     except Exception:
       self.oled = None
 
-  def show(self, lines, bar=None):
-    """Draw text rows plus an optional 0.0-1.0 bar at the bottom.
+  @staticmethod
+  def layout(count, gap=2):
+    """y of each of `count` rows on the 64 px panel (8 px font).
 
     Up to 5 rows sit at a roomy 11 px pitch. Six rows tighten to 10 px and
     seven to 9 px (the 8 px font still clears), so a station with more to
-    say can keep it on ONE screen instead of paging. With a bar, 5 rows max.
+    say can keep it on ONE screen instead of paging. The first row is the
+    title; `gap` extra pixels under it set it apart from the readings
+    (2 px fits every case: seven rows end exactly on the last pixel row).
+    """
+    pitch = 11 if count <= 5 else (10 if count == 6 else 9)
+    return [idx * pitch + (gap if idx else 0) for idx in range(count)]
+
+  def show(self, lines, bar=None, gap=2):
+    """Draw text rows plus an optional 0.0-1.0 bar at the bottom.
+
+    See layout() for the pitch. With a bar, 5 rows max. gap=0 for a card
+    whose first row is not a title.
     """
     if not self.oled and self._retry.ready():
       self._connect()
@@ -308,9 +320,8 @@ class Display:
       o = self.oled
       o.fill(0)
       rows = lines[:5] if bar is not None else lines[:7]
-      pitch = 11 if len(rows) <= 5 else (10 if len(rows) == 6 else 9)
-      for idx, text in enumerate(rows):
-        o.text(str(text)[:16], 0, idx * pitch)
+      for text, y in zip(rows, self.layout(len(rows), gap)):
+        o.text(str(text)[:16], 0, y)
       if bar is not None:
         width = int(min(1.0, max(0.0, bar)) * 128)
         o.rect(0, 58, 128, 6, 1)
