@@ -27,6 +27,15 @@ async function mayMessage(env, session, uid, slot) {
   return null;
 }
 
+// what matters for "did this slot change": the text and its rules, not who or when
+function normSlot(s) {
+  if (!s || typeof s !== "object") return null;
+  const lines = (Array.isArray(s.lines) ? s.lines : []).map((x) => String(x ?? ""));
+  while (lines.length && !lines[lines.length - 1]) lines.pop();
+  if (!String(s.title ?? "") && !lines.some(Boolean)) return null;
+  return { title: String(s.title ?? ""), lines, start: s.start || null, end: s.end || null, count: s.count || 0, boot: !!s.boot };
+}
+
 async function slotsOf(env, uid) {
   const { results } = await env.DB.prepare(
     "SELECT slot, seq, title, lines, start_ts, end_ts, count, boot, cleared, set_by, set_at, delivered_at, result FROM messages WHERE uid = ?1",
@@ -87,10 +96,15 @@ export async function apiMessages(request, env, session) {
   if (deny) return deny;
   const pin = String(body.pin ?? "").replace(/\D/g, "").slice(0, 6);
   if (!pin) return err(400, "the board's PIN is required");
-  // pull before push: a save based on an older view of the board is refused
+  // pull before push: a save is refused only if THIS slot on the board differs from what the page
+  // showed for it (`seen`); the board's revision moves with every slot, including the website's own
+  // deliveries, so the revision alone would cry wolf
   const board = await boardOf(env, uid);
   if (board && isInt(body.rev) && body.rev !== board.rev) {
-    return err(409, "the board's messages changed since you loaded them; reload and look first", { board });
+    const theirs = normSlot(board.slots[slot - 1]);
+    if (!("seen" in body) || JSON.stringify(normSlot(body.seen)) !== JSON.stringify(theirs)) {
+      return err(409, "this slot changed on the board since you loaded it", { board, slot, theirs: board.slots[slot - 1] });
+    }
   }
   let row;
   if (body.clear) {

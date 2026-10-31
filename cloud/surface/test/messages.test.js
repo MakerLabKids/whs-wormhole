@@ -98,10 +98,18 @@ describe("messages for a bin's screen", () => {
     expect((await edgeFetch("burrow2", "/v1/edge/snapshot", { method: "POST", body: JSON.stringify(body) })).status).toBe(200);
     j = await (await get(`/api/messages?uid=${UID}`, { cookie })).json();
     expect(j.board.rev).toBe(4);
-    // a save that says it saw rev 3 is refused; one that saw rev 4 goes through; one that says nothing goes through
-    let r = await postJson("/api/messages", { uid: UID, slot: 2, title: "Stale", pin: "1612", rev: 3 }, { cookie });
-    expect(r.status).toBe(409);
-    expect((await r.json()).board.rev).toBe(4);
+    // an older rev alone is not a conflict: only if THIS slot differs on the board from what the page showed
+    let r = await postJson("/api/messages", { uid: UID, slot: 2, title: "Stale", pin: "1612", rev: 3, seen: null }, { cookie });
+    expect(r.status).toBe(200);                                        // slot 2 is empty on the board, as the page saw
+    r = await postJson("/api/messages", { uid: UID, slot: 1, title: "Over it", pin: "1612", rev: 3, seen: null }, { cookie });
+    expect(r.status).toBe(409);                                        // slot 1 has "From the bin" on the board, the page saw nothing
+    let c = await r.json();
+    expect(c.slot).toBe(1);
+    expect(c.theirs).toMatchObject({ title: "From the bin", by: "Jamal K" });
+    r = await postJson("/api/messages", { uid: UID, slot: 1, title: "Over it", pin: "1612", rev: 3, seen: { title: "From the bin", lines: ["set over bluetooth"] } }, { cookie });
+    expect(r.status).toBe(200);                                        // the page had seen it: fine
+    r = await postJson("/api/messages", { uid: UID, slot: 1, title: "Blind", pin: "1612", rev: 3 }, { cookie });
+    expect(r.status).toBe(409);                                        // no `seen` at all with an old rev: refused
     r = await postJson("/api/messages", { uid: UID, slot: 2, title: "Fresh", pin: "1612", rev: 4 }, { cookie });
     expect(r.status).toBe(200);
     expect((await r.json()).board.rev).toBe(4);
@@ -111,8 +119,8 @@ describe("messages for a bin's screen", () => {
     const r = await postJson("/api/messages", { uid: UID, slot: 1, clear: true, pin: "1612" }, { cookie });
     const j = await r.json();
     expect(j.slots[0]).toBeNull();
-    expect(j.status[1]).toMatchObject({ seq: 3, pending: true });
+    expect(j.status[1]).toMatchObject({ seq: 4, pending: true });                 // seq 3 was "Over it" above
     const s = await snapshot();
-    expect(s.messages.filter((m) => m.slot === 1)).toEqual([{ uid: UID, slot: 1, seq: 3, pin: "1612", by: "Ada (Dirt Vader)", clear: true }]);
+    expect(s.messages.filter((m) => m.slot === 1)).toEqual([{ uid: UID, slot: 1, seq: 4, pin: "1612", by: "Ada (Dirt Vader)", clear: true }]);
   });
 });

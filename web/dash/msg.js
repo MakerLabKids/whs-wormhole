@@ -96,8 +96,9 @@ window.Msg = (function () {
     var send0 = cfg.send || boardSend;
     var identity = cfg.identity !== false;           // the board and Bluetooth doors: a name per device
     var me = identity ? deviceId() : null;
-    function send(q, cb) { send0(identity ? (q ? q + '&' : '') + 'me=' + encodeURIComponent(me) : q, cb); }
+    function send(q, cb, ctx) { send0(identity ? (q ? q + '&' : '') + 'me=' + encodeURIComponent(me) : q, cb, ctx); }
     var canEdit = cfg.canEdit || function () { return true; };
+    var shown = [];                                  // what the page last displayed per slot (for the conflict check)
     injectStyle();
     el.innerHTML = '';
     var head = document.createElement('div'); head.className = 'msg-head'; head.textContent = cfg.title || 'MESSAGES ON THE SCREEN';
@@ -139,6 +140,7 @@ window.Msg = (function () {
       }
       for (var i = 0; i < SLOTS; i++) {
         var s = (j.slots || [])[i] || {}, lines = s.lines || [];
+        shown[i] = (j.slots || [])[i] || null;
         $('title' + i).value = s.title || '';
         for (var n = 1; n <= LINES; n++) $('l' + i + '_' + n).value = lines[n - 1] || '';
         $('start' + i).value = toLocal(s.start);
@@ -238,8 +240,14 @@ window.Msg = (function () {
       $('note' + i).textContent = 'saving...';
       send(q, function (ok, j) {
         if (ok && j && !j.error) render(j);
+        else if (j && j.conflict) {
+          // the board has something else in this slot: keep the typing, show theirs, let Save go through next time
+          var t = j.theirs, what = t ? ('"' + (t.title || '') + (t.lines && t.lines.length ? ' | ' + t.lines.join(' | ') : '') + '"' + (t.by ? ', set by ' + t.by + (t.via ? ' over ' + t.via : '') : '')) : 'nothing (it was cleared)';
+          shown[i] = t || null;
+          $('note' + i).textContent = 'Not saved: this slot changed on the board since the page loaded. It now holds ' + what + '. Your text is kept; press Save again to replace it.';
+        }
         else $('note' + i).textContent = 'Not saved' + (j && j.error ? ': ' + j.error : '.');
-      });
+      }, { slot: i + 1, seen: shown[i] || null });
     }
     function load() {
       msg.textContent = 'asking the board...';
