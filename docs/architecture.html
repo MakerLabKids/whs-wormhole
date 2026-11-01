@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Wormhole Works</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+  .fig { background: var(--light); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin: 14px 0; }
+  .fig svg { width: 100%; height: auto; display: block; }
+  .fig svg text { font-family: Arial, Helvetica, sans-serif; fill: #222A35; }
+  .fig svg .m { fill: #5B6B7B; }
+  .cap { font-size: 14px; color: var(--gray); margin: 6px 4px 0; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .tile { background: var(--light); border-radius: 10px; padding: 12px 14px; }
+  .tile h3 { margin: 0 0 6px; }
+  .tile p { margin: 0; font-size: 15px; }
+  @page { size: letter landscape; margin: 12mm; }
+  @media print {
+    .topnav, footer, .printhint { display: none !important; }
+    body { background: #fff; }
+    .wrap { max-width: none; padding: 0; }
+    h2 { break-before: page; }
+    h2.first { break-before: auto; }
+    .fig, .tile, tr { break-inside: avoid; }
+    .fig svg { max-height: 150mm; width: auto; max-width: 100%; margin: 0 auto; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="index.html">&#129714; Wormhole</a>
+  <div class="links">
+    <a class="nl" href="index.html">Home</a><a class="nl" href="start.html">Start Here</a>
+    <a class="nl" href="sessions.html">Sessions</a><a class="nl" href="stations.html">Sensors</a>
+    <a class="nl" href="research.html">Ideas</a><a class="nl" href="demos/mission-control.html">Demos</a>
+    <a class="nl" href="glossary.html">Glossary</a><a class="nl" href="cheatsheet.html">Code</a>
+    <a class="nl" href="reset.html">Fix a Board</a><a class="nl" href="tools.html">Board Tools</a>
+  </div>
+</div></nav>
+<div class="wrap">
+  <h1>How Wormhole works</h1>
+  <p class="lead">For teachers: what the boxes in the room are, how the readings get from a worm bin to the website,
+     and what happens when something breaks. No networking knowledge needed.</p>
+  <p class="printhint" style="font-size:13px;color:var(--gray)">Prints on letter landscape, one picture per page.</p>
+
+  <h2 class="first">1. The pieces in the building</h2>
+  <div class="fig">
+  <svg viewBox="0 0 1100 560" role="img" aria-label="The network: school Wi-Fi, the Portal, the Tunnels, the Burrows and the Bins">
+    <rect x="390" y="16" width="320" height="64" rx="12" fill="#fff" stroke="#6B7280" stroke-dasharray="6 4" stroke-width="2"/>
+    <text x="550" y="44" text-anchor="middle" font-weight="700" font-size="17">School Wi-Fi (the internet)</text>
+    <text x="550" y="66" text-anchor="middle" class="m" font-size="13">BYLD, or another known network</text>
+    <path d="M550 80 V118" stroke="#2E7DBC" stroke-width="3" stroke-dasharray="7 5"/>
+    <rect x="370" y="118" width="360" height="92" rx="12" fill="#fff" stroke="#2E7DBC" stroke-width="2.5"/>
+    <text x="550" y="146" text-anchor="middle" font-weight="700" font-size="17" fill="#1B3A5C">The Portal (a small router)</text>
+    <text x="550" y="168" text-anchor="middle" font-size="13.5">connects to the school Wi-Fi and shares it with</text>
+    <text x="550" y="186" text-anchor="middle" font-size="13.5">the other rooms over its own private link</text>
+    <rect x="790" y="128" width="250" height="72" rx="12" fill="#fff" stroke="#7CB342" stroke-width="2.5"/>
+    <text x="915" y="156" text-anchor="middle" font-weight="700" font-size="15" fill="#2E5D1A">Burrow 0 (a Raspberry Pi)</text>
+    <text x="915" y="178" text-anchor="middle" font-size="13">plugged into the Portal</text>
+    <path d="M730 164 H790" stroke="#222A35" stroke-width="3"/>
+    <path d="M550 210 V250 H175 V290 M550 250 V290 M550 250 H925 V290" stroke="#2E7DBC" stroke-width="3" stroke-dasharray="7 5" fill="none"/>
+    <text x="560" y="243" font-size="13" class="m">private link (hidden 5 GHz Wi-Fi)</text>
+    <g font-size="13.5">
+      <rect x="40" y="290" width="270" height="78" rx="12" fill="#fff" stroke="#2E7DBC" stroke-width="2.5"/>
+      <text x="175" y="318" text-anchor="middle" font-weight="700" font-size="16" fill="#1B3A5C">Tunnel 1 (router)</text>
+      <text x="175" y="340" text-anchor="middle">makes the room's "WormHole"</text>
+      <text x="175" y="358" text-anchor="middle">Wi-Fi for the bins</text>
+      <rect x="415" y="290" width="270" height="78" rx="12" fill="#fff" stroke="#2E7DBC" stroke-width="2.5"/>
+      <text x="550" y="318" text-anchor="middle" font-weight="700" font-size="16" fill="#1B3A5C">Tunnel 2 (router)</text>
+      <text x="550" y="340" text-anchor="middle">same, for its room</text>
+      <rect x="790" y="290" width="270" height="78" rx="12" fill="#fff" stroke="#2E7DBC" stroke-width="2.5"/>
+      <text x="925" y="318" text-anchor="middle" font-weight="700" font-size="16" fill="#1B3A5C">Tunnel 3 (router)</text>
+      <text x="925" y="340" text-anchor="middle">same, for its room</text>
+      <rect x="40" y="400" width="270" height="62" rx="12" fill="#fff" stroke="#7CB342" stroke-width="2.5"/>
+      <text x="175" y="426" text-anchor="middle" font-weight="700" font-size="15" fill="#2E5D1A">Burrow 1 (Raspberry Pi)</text>
+      <text x="175" y="447" text-anchor="middle">keeps the room's readings</text>
+      <rect x="415" y="400" width="270" height="62" rx="12" fill="#fff" stroke="#7CB342" stroke-width="2.5"/>
+      <text x="550" y="426" text-anchor="middle" font-weight="700" font-size="15" fill="#2E5D1A">Burrow 2</text>
+      <rect x="790" y="400" width="270" height="62" rx="12" fill="#fff" stroke="#7CB342" stroke-width="2.5"/>
+      <text x="925" y="426" text-anchor="middle" font-weight="700" font-size="15" fill="#2E5D1A">Burrow 3</text>
+      <path d="M175 368 V400 M550 368 V400 M925 368 V400" stroke="#222A35" stroke-width="3"/>
+    </g>
+    <g font-size="13.5">
+      <rect x="40" y="488" width="1020" height="56" rx="12" fill="#fff" stroke="#7E57C2" stroke-width="2.5"/>
+      <text x="550" y="512" text-anchor="middle" font-weight="700" font-size="16" fill="#4A2F8F">Worm bins (a Pico computer, sensors and a little screen in each lid)</text>
+      <text x="550" y="533" text-anchor="middle">each joins the nearest "WormHole" Wi-Fi and sends a reading every minute to its room's Burrow</text>
+    </g>
+    <text x="1060" y="478" text-anchor="end" class="m" font-size="12.5">solid line = cable · dashed = Wi-Fi</text>
+  </svg>
+  <p class="cap">One router (the Portal) brings in the internet; one router per room (a Tunnel) makes the Wi-Fi the bins use;
+     one small computer per room (a Burrow) collects that room's readings. Everything plugs into an ordinary outlet.</p>
+  </div>
+
+  <h2>2. The software, in three layers</h2>
+  <div class="fig">
+  <svg viewBox="0 0 1100 380" role="img" aria-label="Software layers: the bin, the Burrow, the website">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1B3A5C"/></marker></defs>
+    <rect x="20" y="30" width="320" height="320" rx="14" fill="#fff" stroke="#7E57C2" stroke-width="2.5"/>
+    <text x="180" y="62" text-anchor="middle" font-weight="700" font-size="18" fill="#4A2F8F">The bin</text>
+    <text x="180" y="84" text-anchor="middle" class="m" font-size="13">Pico 2 W, MicroPython</text>
+    <g font-size="14"><text x="40" y="120">• reads the sensors every few seconds</text><text x="40" y="146">• shows the team name, readings,</text>
+      <text x="40" y="166">   shows and messages on its screen</text><text x="40" y="192">• sends a reading every minute</text>
+      <text x="40" y="218">• keeps readings safe on its own</text><text x="40" y="238">   memory if nobody is listening</text>
+      <text x="40" y="264">• its own web page and Bluetooth</text><text x="40" y="284">   for a phone, right at the bin</text>
+      <text x="40" y="310">• kids' code lives here (Viper IDE)</text></g>
+    <rect x="390" y="30" width="320" height="320" rx="14" fill="#fff" stroke="#7CB342" stroke-width="2.5"/>
+    <text x="550" y="62" text-anchor="middle" font-weight="700" font-size="18" fill="#2E5D1A">The Burrow</text>
+    <text x="550" y="84" text-anchor="middle" class="m" font-size="13">Raspberry Pi, one per room</text>
+    <g font-size="14"><text x="410" y="120">• receives every bin's readings</text><text x="410" y="146">• keeps them on its card, even</text>
+      <text x="410" y="166">   with no internet at all</text><text x="410" y="192">• shows the room's dashboard</text>
+      <text x="410" y="218">• sends everything to the website</text><text x="410" y="238">   when the internet is there</text>
+      <text x="410" y="264">• looks after its room's router</text><text x="410" y="290">• passes messages, shows and</text>
+      <text x="410" y="310">   updates down to the bins</text></g>
+    <rect x="760" y="30" width="320" height="320" rx="14" fill="#fff" stroke="#E8762C" stroke-width="2.5"/>
+    <text x="920" y="62" text-anchor="middle" font-weight="700" font-size="18" fill="#B4531A">The website</text>
+    <text x="920" y="84" text-anchor="middle" class="m" font-size="13">whs.makerlabkids.com (Cloudflare)</text>
+    <g font-size="14"><text x="780" y="120">• every bin's history and charts</text><text x="780" y="146">• team logins: each team sees</text>
+      <text x="780" y="166">   and changes only its own bin</text><text x="780" y="192">• messages and pictures/videos</text>
+      <text x="780" y="212">   for a bin's screen</text><text x="780" y="238">• alerts to the teacher's phone</text>
+      <text x="780" y="264">• the admin page: devices,</text><text x="780" y="284">   updates, teams</text>
+      <text x="780" y="310">• this lab guide is separate (GitHub)</text></g>
+    <path d="M340 150 H390" stroke="#1B3A5C" stroke-width="3" marker-end="url(#a)"/><path d="M710 150 H760" stroke="#1B3A5C" stroke-width="3" marker-end="url(#a)"/>
+    <path d="M760 250 H710" stroke="#1B3A5C" stroke-width="3" marker-end="url(#a)"/><path d="M390 250 H340" stroke="#1B3A5C" stroke-width="3" marker-end="url(#a)"/>
+    <text x="365" y="140" text-anchor="middle" font-size="12" class="m">readings</text><text x="735" y="140" text-anchor="middle" font-size="12" class="m">readings</text>
+    <text x="735" y="272" text-anchor="middle" font-size="12" class="m">messages,</text><text x="365" y="272" text-anchor="middle" font-size="12" class="m">messages,</text>
+    <text x="365" y="288" text-anchor="middle" font-size="12" class="m">shows, updates</text><text x="735" y="288" text-anchor="middle" font-size="12" class="m">shows, updates</text>
+  </svg>
+  <p class="cap">Readings flow left to right. Things set on the website (a message, a picture for the screen, a software update) flow
+     back right to left and reach the bin within a few minutes.</p>
+  </div>
+
+  <h2>3. When something breaks</h2>
+  <p>Every box is built to keep going on its own and catch up later. Nothing a student made is lost.</p>
+  <div class="two">
+    <div class="tile"><h3>The internet is down</h3><p>Bins and Burrows keep working. Each Burrow stores its room's readings and sends them all
+      to the website when the internet comes back. The dashboards in the room still work.</p></div>
+    <div class="tile"><h3>A Burrow (Pi) dies</h3><p>Bins send to another room's Burrow instead. Swap in a spare Pi: it works out which room it is in
+      by itself. A spare left plugged in next to a working Pi waits quietly and takes over if that Pi stops.</p></div>
+    <div class="tile"><h3>A room's router (Tunnel) dies</h3><p>That room's bins join another room's Wi-Fi if they can reach it, or keep their
+      readings on their own memory until the router is back. A Pi plugged into another room's router keeps working there.</p></div>
+    <div class="tile"><h3>A bin can't reach anyone</h3><p>It keeps up to many hours of readings on its own memory, says NOT CONNECTED on its screen
+      with how to reach it by phone, and sends everything once it reconnects.</p></div>
+    <div class="tile"><h3>Power cut</h3><p>Everything starts again on its own, in any order. Bins wait a moment so they don't all rush the Wi-Fi at once.</p></div>
+    <div class="tile"><h3>A software update goes wrong</h3><p>Updates go to one bin first. A bin that does not start cleanly with new code puts its old
+      code back within five minutes. Team names, messages, pictures and settings are never touched by an update.</p></div>
+  </div>
+
+  <h2>4. Who can change what</h2>
+  <div class="two">
+    <div class="tile"><h3>Students</h3><p>Their bin's code (Viper IDE, at the bin), their bin's messages and screen shows (on the bin's page,
+      on the website after signing in, or by phone over Bluetooth). Only their own bin.</p></div>
+    <div class="tile"><h3>Teachers</h3><p>Every bin's messages and shows, the teacher message slots, and the teacher PIN on each bin.</p></div>
+    <div class="tile"><h3>Maker Lab Kids</h3><p>Devices, software updates for the Burrows and the bins, teams and logins, the network.</p></div>
+  </div>
+  <p style="margin-top:16px">More: <a href="glossary.html">Glossary</a> · <a href="shows.html">Make your own show</a> · <a href="reset.html">Fix a Board</a></p>
+</div>
+<footer>&copy; 2026 Maker Lab Kids LLC · MakerLabKids.com · Learn. Make. Share.</footer>
+</body>
+</html>
