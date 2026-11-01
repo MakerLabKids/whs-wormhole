@@ -13,8 +13,7 @@ in batches, oldest first, to the first Burrow that answers again
 (`POST /ingest/batch`, see PROTOCOL.md). Backfilled rows keep their
 own timestamps and seal into the castings of their own windows.
 
-Design: https://makerlabkids.github.io/whs-wormhole/design/ · Build guide:
-https://makerlabkids.github.io/whs-wormhole/design/burrow.html · Wire protocol:
+Design and build guide: the private repo MakerLabKids/whs-wormhole-private (design/, design/burrow.html) · Wire protocol:
 [PROTOCOL.md](PROTOCOL.md)
 
 ```

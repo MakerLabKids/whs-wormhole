@@ -7,7 +7,7 @@
 #   edge/burrow/prep-card.sh --check    # only report, change nothing
 #   edge/burrow/prep-card.sh /path/to/bootfs [--check]
 #
-# Edits (see docs/design/burrow.html, step 2):
+# Edits (see design/burrow.html in the private repo, step 2):
 #   cmdline.txt : drop the `resize` token (or the old firstboot init=) so the
 #                 root partition is not grown on first boot
 #   user-data   : append growpart off + resize_rootfs false, once

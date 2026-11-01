@@ -66,7 +66,7 @@ the Opal does not hold DFS "auto"). Example, the hub's backhaul:
 
 Still to capture (schemas not yet reverse-engineered): LAN IP + DHCP, the repeater
 join (5 GHz backhaul), and port forwarding. Changing the LAN IP drops the path to
-the box, so do it last / on-site. See `docs/design/routers.html` for the per-role plan.
+the box, so do it last / on-site. See design/routers.html in the private repo (MakerLabKids/whs-wormhole-private) for the per-role plan.
 
 ## First-run init and the repeater backhaul (classroom routers joining the hub)
 

@@ -59,10 +59,10 @@ class RpcTest(unittest.TestCase):
             return {"result": {}}
         r = glinet.Router(opener=fake)
         self.assertFalse(r.is_initialized())
-        r.init("SuperDuperSecret!")
+        r.init("not-the-real-password")
         init = [p for p in seen if p["params"][2] == "init"][0]
         self.assertEqual(init["params"][1], "ui")
-        self.assertEqual(init["params"][3], {"lang": "en", "username": "root", "password": "SuperDuperSecret!"})
+        self.assertEqual(init["params"][3], {"lang": "en", "username": "root", "password": "not-the-real-password"})
         self.assertEqual(init["params"][0], "")   # unauth: empty sid
 
     def test_error_raises(self):

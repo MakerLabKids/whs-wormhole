@@ -4,7 +4,7 @@ A single Cloudflare Worker (`src/index.js`, plain ES modules, no runtime
 dependencies) with D1 (`DB`), R2 (`CASTINGS`) and the dashboard served as
 static assets from `../../web/dash`. The wire protocol is
 [`edge/burrow/PROTOCOL.md`](../../edge/burrow/PROTOCOL.md); the design is
-`docs/design/index.html`. Free tier only: no Durable Objects, KV or Queues.
+the design pages (private repo MakerLabKids/whs-wormhole-private, design/index.html). Free tier only: no Durable Objects, KV or Queues.
 
 ```
 src/index.js   router, page views (visits), /live/<room> proxy

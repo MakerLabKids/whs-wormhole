@@ -4,7 +4,7 @@
 > system (three rooms, a Pi 5 "Burrow" per room, cloud sync). The Burrow's
 > dashboard replaces this aggregator for the worm bins, and `picolab.WebApp`
 > now pushes to the Burrow and keeps rejoining Wi-Fi by itself. Design and
-> build guides: https://makerlabkids.github.io/whs-wormhole/design/ . Everything
+> build guides: in the private repo (MakerLabKids/whs-wormhole-private, design/). Everything
 > below still works for a one-room demo wall.
 
 **[Open this project in Viper IDE](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/projects/mission-control/package.json)**: one click puts a connected Pico on the classroom network.

@@ -12,7 +12,7 @@
 #                 takes 192.168.8N.10 at the next boot or cable change)
 #
 # Run ONCE, as root, on a Pi that has booted, has internet (for apt), and
-# whose root partition was NOT auto-expanded (see docs/design/burrow.html:
+# whose root partition was NOT auto-expanded (see design/burrow.html in the private repo:
 # remove the firstboot init= token from cmdline.txt before the first boot).
 # Idempotent where it can be. It does NOT enable the read-only overlay: that
 # is burrow-lock.sh, run last, after cloudflared has its token.
