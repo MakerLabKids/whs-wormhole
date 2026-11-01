@@ -24,8 +24,9 @@ case "$cmd" in
   image)
     n="${2:?burrow number}"; out="${3:?output .img.gz}"
     host="192.168.8$n.10"
-    echo "reading burrow$n's card over ssh (a 32 GB card takes 10-20 minutes)..."
-    ssh "$USER_@$host" "sudo sync; sudo dd if=/dev/mmcblk0 bs=4M status=none | gzip -1" > "$out"
+    # only boot + root (up to the data partition, ~6.5 GB): write never puts more on a card
+    echo "reading burrow$n's boot + root over ssh (5-15 minutes)..."
+    ssh "$USER_@$host" 'sudo sync; s=$(cat /sys/block/mmcblk0/mmcblk0p3/start); sudo dd if=/dev/mmcblk0 bs=4M count=$((s * 512)) iflag=count_bytes status=none | gzip -1' > "$out"
     ls -l "$out"
     ;;
   write)

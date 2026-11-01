@@ -59,11 +59,14 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
 
 Phase 1 done 2026-11-01: lib/pbmshow.py (shows/*.pbm + shows.txt), docs/shows.html (tutorial +
 converter), proven on the bench board. Classroom boards get it with the Pico reflash.
-- [ ] **Phase 2: send a show from the website over Wi-Fi** (no cable): upload on the Bin's
-      website page (converter built in) -> Surface stores it (R2 or D1, per bin, size cap) ->
-      the Burrow's snapshot reply names it -> the Bin GETs it from its Burrow, checks the hash,
-      saves shows/NAME.pbm; plus picking/reordering the playlist from the website and the Bin's
-      own dashboard (shows.txt written by the board).
+- [x] **Phase 2 built 2026-11-01** (946ccb6 Surface, 855a7cd Burrow, cfcdc18 Pico, b05c666 website):
+      the bin's page has "Shows on the screen" (add a .pbm, delete, pick/order what plays, "On the
+      bin"); the Burrow fetches files by sha256 and hands them over on a push; lib/showsync.py on the
+      Pico fetches, checks, removes only the website's own files, writes shows.txt, reloads.
+      tools/e2e/shows-e2e.sh: 15 checks, all pass. Burrows 0-2 run it; bench board runs it.
+- [ ] **To go live (yours):** in cloud/surface, `npx wrangler d1 execute wormhole --remote --file
+      schema.sql` (adds show_files/show_lists; safe to re-run), then `npx wrangler deploy`. Then try
+      it on the bench board (bin 38, The Wrigglers) from its page. Classroom boards get it with the reflash.
 - [ ] Try the tutorial with one team, especially the Viper IDE folder/upload steps (written
       from memory of Viper's file panel, not re-checked click by click).
 
