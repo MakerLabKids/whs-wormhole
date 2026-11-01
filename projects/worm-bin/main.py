@@ -111,7 +111,7 @@ TEACHER_PIN = ""
 # CONNECTED cards after the worm show, NOT_CONNECTED_S in all: the ways
 # in (the board's own Wi-Fi and address; this page over Bluetooth, 16
 # characters fit a line, longer splits at a slash).
-HELP_URL = "mrklabs.com/whsbt"
+HELP_URL = "mkrlbs.com/whsbt"     # -> whs.makerlabkids.com/bluetooth (case-insensitive; 16 chars, one line)
 NOT_CONNECTED_S = 20
 # ===== end of config ==================================================
 

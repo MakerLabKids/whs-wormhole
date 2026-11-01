@@ -42,9 +42,9 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       since picolab 0.2.1 (marquee, shows, boot sequence, buffer + backfill, fixed addresses +
       PINs, messages over Wi-Fi/website/Bluetooth, link icon, NOT CONNECTED cards, dead-network
       rejoin, join stagger). Bins renumbered 30-79: relabel lids first. Recalibrate distance after.
-- [ ] **mrklabs.com/whsbt -> whs.makerlabkids.com/bluetooth** (on the NOT CONNECTED card): set up
-      2026-11-01 but not working: every form lands on https://www.mrklabs.com/whsbt/ and IONOS says
-      404 (the apex forwards to www first). The rule must be on www.mrklabs.com (IONOS builder).
+- [x] **mkrlbs.com/whsbt -> whs.makerlabkids.com/bluetooth** works (2026-11-01; case-insensitive,
+      HTTP://MKRLBS.COM/WHSBT for a smaller QR). The NOT CONNECTED card said mrklabs.com (a typo,
+      fixed in worm-bin main.py; the classroom boards get it with the reflash).
 - [ ] **Alerts reach no phone**: ALERT_URL is set (ntfy.sh), but every notify gets 429 "daily
       message quota" (ntfy.sh meters free posts per IP; Cloudflare's egress is shared, see
       2026-10-29). Pick: ntfy Supporter + ALERT_TOKEN, or a Discord webhook / Telegram bot URL in
