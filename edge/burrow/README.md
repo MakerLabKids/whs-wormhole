@@ -168,6 +168,9 @@ run Tunnel 1, whose flag sat on Loki after a watchdog join, went to Loki and sta
 A join without `manual: true` sometimes leaves the flag behind; with it the flag
 always moves (and a fallback join takes it whatever it says), so every join now
 sends it and return-home (below) undoes a stay on a fallback.
+A network out of range can still be saved: the saved list is UCI on the Opal (`uci add
+repeater network`; ssid, network=wwan, auto_portal=0, disguise=0, key for a locked one;
+`selected=1` marks the one it returns to). BYLD went onto every Opal that way on 2026-11-01.
 `tools/routers/teach-fallback.py HOST SSID [key_env]` saves a second network
 (Loki at home, BYLD at school) for when the Portal itself is gone.
 

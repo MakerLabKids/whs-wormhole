@@ -26,9 +26,11 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       Loki (2.4 GHz AP dragged to ch 11). Harmless so far (11:20: burrow0's Wi-Fi joined that AP
       fine); if a Bin in room 0 can't join the
       Portal's WormHole, `wifi up radio0` on the Portal (or reboot it) is the first thing to try.
-- [ ] **Teach each Tunnel a fallback at school**: `tools/routers/teach-fallback.py
-      192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN, or on the Pi). At home all three
-      know Loki (2026-11-01), with the `manual` flag on WormHole-Core; teach-fallback now checks that.
+- [x] **BYLD saved on the Portal and Tunnels 1-3** (2026-11-01, from home): written straight into
+      the Opal's saved list (`uci add repeater network`, ssid=BYLD, network=wwan, auto_portal=0,
+      disguise=0; no key, it is open), so no school visit is needed. Every Tunnel: WormHole-Core
+      selected (the one it returns to), Loki and BYLD as fallbacks. GL's daemon may load the new
+      entry only at its next restart; the move to school power-cycles them anyway.
 - [x] **Golden image** /workspace/burrow-golden.img.gz is burrow3's card (2026-11-01 08:20, build
       0514253, room 3 so its tunnel.json has the backhaul entry). Write: `sudo
       edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX` (about 4 min).
