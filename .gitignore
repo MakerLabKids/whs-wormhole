@@ -21,3 +21,4 @@ tools/picotest/board/picolab.py
 docs/img/oled/raw/
 projects/bme280/seller-packet.zip
 edge/burrow/BUILD
+*.img.gz
