@@ -85,8 +85,10 @@ PAGE_SEC_SENSOR = 5   # any other page
 # The screen. Power-on: WOODSTOCK HIGH SCHOOL (2 s), the wolverine zooms
 # in with the name (5 s), "AND..." (1 s), MAKER LAB KIDS (2 s), the gear
 # (1 s), then any message flagged for power-on. Then forever: the team
-# name 5 s, this line scrolls through, the name 5 s, one of the ten worm
-# shows (lib/wormshow.py, in order, the next one each time round), a
+# name 5 s, this line scrolls through, the name 5 s, one of the shows (the
+# ten worm shows in lib/wormshow.py and the team's own pictures and videos
+# in shows/*.pbm; shows.txt picks which and in what order, see lib/pbmshow.py
+# and the "Make your own show" page in the lab guide), the next one each time round, a
 # message if the team left one, and again from the name. "" turns the
 # marquee off, False the shows; a name too long for the screen scrolls
 # instead of holding, and still gets its 5 s.
@@ -528,7 +530,11 @@ display.marquee = MARQUEE
 if WORM_SHOWS:
   try:
     import wormshow
-    display.shows = wormshow.SHOWS
+    try:
+      import pbmshow                    # the kids' own pictures and videos (shows/*.pbm, shows.txt picks)
+      display.shows = pbmshow.playlist(wormshow.SHOWS)
+    except ImportError:
+      display.shows = wormshow.SHOWS
   except Exception as e:
     picolab.log("worm shows skipped:", e)
 # The power-on sequence, step 1: the school card goes up now and stays

@@ -584,9 +584,9 @@ class Display:
     show down, and every show takes its frames / SHOW_FPS seconds plus
     SHOW_HOLD_MS on the last frame. Then the name again, for a fresh hold."""
     s = self._show
-    period = 1000 // self.SHOW_FPS
+    period = 1000 // getattr(s, "fps", self.SHOW_FPS)               # a kid's video sets its own speed
     elapsed = time.ticks_diff(now, self._show_at)
-    if elapsed >= (s.frames - 1) * period + self.SHOW_HOLD_MS:
+    if elapsed >= (s.frames - 1) * period + getattr(s, "hold_ms", self.SHOW_HOLD_MS):   # and a picture its time
       log("%s: %d of %d frames in %d ms" % (getattr(s, "name", "show"), self._show_drawn, s.frames, elapsed))
       self._show, self._hold_at, self._x = None, now, None
       if self._boot is not None:

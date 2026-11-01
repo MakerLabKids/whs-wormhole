@@ -48,6 +48,10 @@
       "github:MakerLabKids/whs-wormhole/lib/wormshow.py"
     ],
     [
+      "fs:lib/pbmshow.py",
+      "github:MakerLabKids/whs-wormhole/lib/pbmshow.py"
+    ],
+    [
       "fs:lib/logos.py",
       "github:MakerLabKids/whs-wormhole/lib/logos.py"
     ],

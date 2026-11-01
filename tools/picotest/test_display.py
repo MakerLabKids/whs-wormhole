@@ -186,6 +186,22 @@ assert show.drawn == [0, 1, 2, 8], show.drawn
 while d._show: run(d, 10)
 assert show.drawn == [0, 1, 2, 8, 9] and d._show_drawn == 5, show.drawn
 assert faketime.ticks_diff(faketime.ticks_ms(), d._hold_at) < 20 and d.oled.title()[0] == "Dirt Nerds"
+# a kid's show file sets its own speed and how long its last frame stays (lib/pbmshow.py)
+class Video(Show): name = "V"; frames = 4; fps = 5; hold_ms = 1500
+class Picture(Show): name = "P"; frames = 1; hold_ms = 4000
+for cls, want_gap, want_hold in ((Video, 200, 1500), (Picture, None, 4000)):
+    d = fresh(["Dirt Nerds", "x"]); d.shows = [cls]
+    run(d, 5010); show, t0, frames = d._show, faketime.ticks_ms(), []
+    assert show and show.drawn == [0], show
+    while d._show:
+        faketime.advance(0.01); d.oled.calls = []; d.tick()
+        if d.oled.calls and d.oled.title()[0] == "frame": frames.append(faketime.ticks_diff(faketime.ticks_ms(), t0))
+    assert show.drawn == list(range(cls.frames)), show.drawn
+    if want_gap:
+        assert all(b - a == want_gap for a, b in zip(frames, frames[1:])), frames
+    total = faketime.ticks_diff(faketime.ticks_ms(), t0)
+    want = (cls.frames - 1) * (1000 // getattr(cls, "fps", D.SHOW_FPS)) + want_hold
+    assert abs(total - want) <= 10, (cls.name, total, want)
 # shows without a marquee: name, show, name, show
 d = fresh(["Dirt Nerds", "x"]); d.shows = [ShowA]
 assert phases(d, 20000)[:4] == ["show", "name", "show", "name"]
