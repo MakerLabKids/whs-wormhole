@@ -4,7 +4,8 @@
 # identity file dropped on its boot partition. No flasher, no setup script.
 #
 #   edge/burrow/tools/clone-card.sh image 0 burrow-golden.img.gz   # read burrow0's card (locked root preferred)
-#   edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX 2 [room]   # a new card for burrow2
+#   edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX        # a new card: it enrols itself
+#   edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX 2      # ...or is told: burrow2
 #
 # The image is the whole card, gzip'd; the Pi keeps serving while it is read
 # (the root is read-only under the overlay, /data is the only live writer,
@@ -27,19 +28,30 @@ case "$cmd" in
     ls -l "$out"
     ;;
   write)
-    img="${2:?image}"; dev="${3:?/dev/sdX}"; n="${4:?burrow number}"; room="${5:-$4}"
+    img="${2:?image}"; dev="${3:?/dev/sdX}"; n="${4:-}"; room="${5:-$n}"
     [ "$(id -u)" = 0 ] || { echo "run with sudo (writes $dev)"; exit 2; }
     [ -b "$dev" ] || { echo "$dev is not a block device"; exit 2; }
-    read -r -p "This ERASES $dev and writes burrow$n (room $room). Type the device name again to go: " again
+    read -r -p "This ERASES $dev and writes a Burrow card${n:+ for burrow$n}. Type the device name again to go: " again
     [ "$again" = "$dev" ] || { echo "not that; nothing written"; exit 1; }
     gzip -dc "$img" | dd of="$dev" bs=4M status=progress conv=fsync
     partprobe "$dev" 2>/dev/null || true; sleep 2
     boot=$(lsblk -nrpo NAME,LABEL "$dev" | awk '$2=="bootfs"{print $1}' | head -1)
     [ -n "$boot" ] || boot="${dev}1"
-    mnt=$(mktemp -d); mount "$boot" "$mnt"
-    printf '{"edge": "burrow%s", "room": %s}\n' "$n" "$room" > "$mnt/burrow-identity.json"
-    umount "$mnt"; rmdir "$mnt"
-    echo "done: burrow$n on $dev; boot it on its Opal and it names itself"
+    # the donor's per-Pi secrets do not travel: strip them and mark the card "needs identity"
+    root=$(lsblk -nrpo NAME,LABEL "$dev" | awk '$2=="rootfs"{print $1}' | head -1)
+    [ -n "$root" ] || root="${dev}2"
+    mnt=$(mktemp -d); mount "$root" "$mnt"
+    rm -f "$mnt/etc/burrow/cloud.token" "$mnt/etc/cloudflared/token"
+    touch "$mnt/etc/burrow/needs-identity"
+    [ -s "$mnt/etc/burrow/enrol.secret" ] || echo "WARNING: no /etc/burrow/enrol.secret on this image: the Pi cannot enrol by itself"
+    umount "$mnt"
+    if [ -n "$n" ]; then                    # an explicit identity instead of enrolment (no internet at first boot)
+      mount "$boot" "$mnt"
+      printf '{"edge": "burrow%s", "room": %s}\n' "$n" "$room" > "$mnt/burrow-identity.json"
+      umount "$mnt"
+    fi
+    rmdir "$mnt"
+    echo "done. Boot it on any room's Opal: it takes the room from the Opal's subnet and enrols with the Surface${n:+ (or becomes burrow$n from the identity file)}"
     ;;
   *) sed -n 2,20p "$0"; exit 2 ;;
 esac

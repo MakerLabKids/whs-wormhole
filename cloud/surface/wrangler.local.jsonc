@@ -27,6 +27,8 @@
     "EDGE_TOKENS": "{\"burrow1\":\"tok1\",\"burrow2\":\"tok2\",\"burrow3\":\"tok3\"}",
     "LIVE_KEY": "local-live-key",
     "ADMIN_BOOTSTRAP": "bootstrap-me",
+    "ENROL_SECRET": "local-enrol-secret",
+    "TUNNEL_TOKENS": "{\"burrow2\":\"tunnel-token-2\"}",
     "ALERT_BINS": "0"
   }
 }

@@ -4,6 +4,7 @@
 import { postEvents } from "./alerts.js";
 import { chunks, err, hex, isInt, json, now, readJson, safeParse, timingSafeEqual } from "./util.js";
 import { rolloutFor } from "./admin.js";
+import { authEnrolled, enrol } from "./enrol.js";
 import { ackStatements, boardStateStatements, pendingMessages } from "./messages.js";
 
 const CASTING_CAP = 8 * 1024 * 1024;   // gz bytes per PUT
@@ -29,7 +30,8 @@ export function authEdge(request, env) {
 }
 
 export async function handleEdge(request, env, ctx, path) {
-  const edge = authEdge(request, env);
+  if (path === "/v1/edge/enrol") return enrol(request, env);       // before auth: the fleet secret is the key
+  const edge = authEdge(request, env) || (await authEnrolled(request, env));
   if (!edge) return err(401, "unauthorized");
   const m = request.method;
 

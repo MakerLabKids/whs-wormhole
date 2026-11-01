@@ -176,3 +176,20 @@ CREATE TABLE IF NOT EXISTS rollouts (
   done_at      INTEGER,
   error        TEXT
 );
+
+-- Enrolled Burrows: a fresh Pi (a cloned card, "needs identity") calls POST /v1/enrol with the
+-- fleet secret (ENROL_SECRET), its hardware serial and the room its Opal's subnet says it is in;
+-- it gets the name burrow<room>, a fresh upload token (only its sha256 is kept here) and the
+-- room's tunnel token (TUNNEL_TOKENS secret). A new Pi in a room replaces the old one: the old
+-- token stops working. EDGE_TOKENS (the original static tokens) still work alongside.
+CREATE TABLE IF NOT EXISTS enrolled (
+  edge        TEXT PRIMARY KEY,
+  token_hash  TEXT NOT NULL,
+  serial      TEXT NOT NULL,
+  room        INTEGER,
+  eth_mac     TEXT,
+  wlan_mac    TEXT,
+  ip          TEXT,
+  enrolled_at INTEGER,
+  replaced    TEXT              -- the serial this Pi replaced, if any
+);

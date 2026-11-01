@@ -151,7 +151,11 @@ url}` in its next snapshot reply; the service writes
 the sha256 or refuse, unpack over `~/wormhole`, `install.sh`, restart, report
 the build. The other buttons stay off until it reports or 30 minutes pass.
 
-**Cattle, not pets.** `tools/clone-card.sh image 0 golden.img.gz` reads a
+**Cattle, not pets.** A card written by `clone-card.sh write golden.img.gz /dev/sdX` (no number)
+carries no donor secrets and is marked `/etc/burrow/needs-identity`: on first boot the Pi takes a
+DHCP address from whatever Opal it is cabled to, reads its room from the subnet, enrols with the
+Surface (`/etc/burrow/enrol.secret`, the fleet secret), and becomes burrow<room> with its own
+tokens. `clone-card.sh image 0 golden.img.gz` reads a
 good card over ssh; `clone-card.sh write golden.img.gz /dev/sdX 2` writes a
 card for burrow2 with one JSON line on its boot partition
 (`burrow-identity.json`); `first-boot-identity.sh` (a oneshot before the

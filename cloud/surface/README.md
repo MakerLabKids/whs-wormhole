@@ -147,6 +147,19 @@ default, since unplugged bins are normal. After changing schema.sql run
 `npx wrangler d1 execute wormhole --remote --file schema.sql` once (idempotent) to add the
 `events` and `alerts` tables.
 
+## Enrolment: a fresh Pi is told who it is
+
+`POST /v1/edge/enrol {secret, serial, room, eth_mac, wlan_mac}` (no bearer token: the fleet
+secret `ENROL_SECRET` is the key). The Pi takes `room` from the subnet its Opal handed it
+(192.168.8<room>.x), so it is named by where it stands: `burrow<room>`. The reply carries a fresh
+upload token (only its sha256 is kept, table `enrolled`) and the room's cloudflared token from the
+`TUNNEL_TOKENS` secret (`{"burrow0": "...", ...}`, the tokens from the Zero Trust dashboard). A new
+Pi in a room replaces the previous one: the old token stops working and a `burrow.enrolled` warn
+event names both serials. The static `EDGE_TOKENS` keep working alongside.
+
+Setup once: `npx wrangler secret put ENROL_SECRET` (the value is `enrol_secret` in the repo's
+.env, also on the Pis at /etc/burrow/enrol.secret) and `npx wrangler secret put TUNNEL_TOKENS`.
+
 ## Rollouts: update one Burrow at a time
 
 `POST /api/admin/rollout {edge, build}` (admin): the Worker fetches that commit's tarball from
