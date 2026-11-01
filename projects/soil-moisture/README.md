@@ -23,7 +23,7 @@ electronics at the top are not waterproof.
 
 ![soil-moisture wiring](../../docs/wiring/soil-moisture.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-soil-moisture). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-soil-moisture). Red = 3V3, black = GND (shared rails), blue = SDA, yellow = SCL (the STEMMA QT / Qwiic cable colors), green = a lone signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Two versions
 

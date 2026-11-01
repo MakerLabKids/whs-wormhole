@@ -21,17 +21,17 @@ const C = {
   board: "#1B5E20", boardEdge: "#0E3D12", pad: "#C9A227", padHole: "#5C4A00",
   padOff: "#AEB6BF",
 };
-// Class wiring convention (one source of truth):
-//   red    = 3V3 power        orange = 5V / VBUS        dark = GND
-//   green  = DATA  -> I2C SDA, the 1-Wire probe bus, and SPI MISO (POCI)
-//   white  = CLOCK -> I2C SCL and SPI SCK  (grey casing so it shows)
-//   yellow = a lone signal, and SPI chip-select (CS)
-//   blue   = SPI MOSI (PICO, data out from the Pico)
+// Class wiring convention (one source of truth). I2C follows the STEMMA QT / Qwiic cables
+// (Adafruit, SparkFun): black GND, red 3V3, blue SDA, yellow SCL (2026-11-01; was green/white).
+//   red    = 3V3 power        orange = 5V / VBUS        black = GND
+//   blue   = I2C SDA (data)   yellow = I2C SCL (clock)
+//   yellow = also the DS18B20 probe's DATA: the probe's own cable is red / black / yellow
+//   green  = a lone signal (an analog output, a digital pin)
 const W = {
-  pwr: "#C62828", gnd: "#37474F", sda: "#7CB342", scl: "#FFFFFF",
-  sig: "#E8B62C", vbus: "#E8762C", mosi: "#2E7DBC",
+  pwr: "#C62828", gnd: "#1B1B1B", sda: "#1E64B4", scl: "#F2C400",
+  sig: "#43A047", vbus: "#E8762C", ow: "#F2C400",
 };
-const CASING = "#8B949C";  // outline under white wires
+const CASING = "#8B949C";  // outline under light (yellow) wires
 
 const FUNC = {
   1: "GP0", 2: "GP1", 3: "GND", 4: "GP2", 5: "GP3", 6: "GP4", 7: "GP5",
@@ -78,7 +78,7 @@ function text(x, y, s, o = {}) {
     + ` fill="${color}" text-anchor="${anchor}"${bold ? ' font-weight="bold"' : ""}`
     + `${italic ? ' font-style="italic"' : ""}${h}>${esc(s)}</text>`;
 }
-const CASED = () => [W.scl, W.sig];  // light colors that need an outline on white
+const CASED = () => [W.scl, W.ow];  // light colors that need an outline on white
 function wire(pts, color, width = 3.5) {
   const d = pts.map((p, i) => (i ? "L" : "M") + p[0] + " " + p[1]).join(" ");
   let s = "";
@@ -441,14 +441,14 @@ function pullup47(ry) {
   let s = resistorGlyph(rx, ry - 26, 13, 32, 4700, true);
   s += text(rx + 6, ry - 30, "4.7k", { size: 9, color: C.ink, anchor: "middle", bold: true });
   s += wire([[RAIL_PWR, ry - 18], [rx + 6, ry - 18], [rx + 6, ry - 26]], W.pwr, 2.5);
-  s += wire([[rx + 6, ry + 6], [rx + 6, ry], [DEV_X - 8, ry]], W.sda, 2.5);
+  s += wire([[rx + 6, ry + 6], [rx + 6, ry], [DEV_X - 8, ry]], W.ow, 2.5);
   return s;
 }
 function ds18b20Box(y, title) {
   const x = DEV_X, w = DEV_W, h = 66;
   let s = deviceBox(x, y, w, h, title, "", C.orange);
   const p = { VCC: { x, y: y + 34 }, GND: { x, y: y + 48 }, DATA: { x, y: y + 62 } };
-  s += devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.GND.y, "blk GND") + devPin(x, p.DATA.y, "grn DATA");
+  s += devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.GND.y, "blk GND") + devPin(x, p.DATA.y, "yel DATA");
   return { s, p };
 }
 
@@ -458,15 +458,15 @@ projects["soil-temperature"] = () => diagram(
     const x = DEV_X, y = 262, w = DEV_W, h = 92;
     let s = deviceBox(x, y, w, h, "DS18B20", "one or many on one wire", C.orange);
     const p = { VCC: { x, y: y + 42 }, GND: { x, y: y + 60 }, DATA: { x, y: y + 78 } };
-    s += devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.GND.y, "black GND") + devPin(x, p.DATA.y, "green DATA");
+    s += devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.GND.y, "black GND") + devPin(x, p.DATA.y, "yellow DATA");
     s += oledI2C();
     s += tap(RAIL_PWR, p.VCC, W.pwr) + tap(RAIL_GND, p.GND, W.gnd);
-    s += sig(29, p.DATA, W.sda);
+    s += sig(29, p.DATA, W.ow);
     s += pullup47(y + 78);
     return s;
   },
   [
-    { color: W.sda, text: "green DATA -> GP22 (pin 29)" },
+    { color: W.ow, text: "yellow DATA -> GP22 (pin 29)" },
     { color: W.pwr, text: "red -> 3V3 (pin 36);  4.7k: DATA -> 3V3" },
     { color: W.gnd, text: "black -> GND (pin 38)" },
     { color: W.sda, text: "OLED SDA/SCL on GP0 / GP1 (pins 1, 2)" },
@@ -485,7 +485,7 @@ projects["soil-temperature-multi"] = () => diagram(
     // power + ground: every probe taps the same rails
     boxes.forEach(b => { s += tap(RAIL_PWR, b.p.VCC, W.pwr) + tap(RAIL_GND, b.p.GND, W.gnd); });
     // ONE data lane from GP22 feeds every probe's DATA pin
-    s += bus(29, boxes.map(b => b.p.DATA), W.sda);
+    s += bus(29, boxes.map(b => b.p.DATA), W.ow);
     // and ONE pullup for the whole bus
     s += pullup47(boxes[0].p.DATA.y);
     s += text(DEV_X + DEV_W / 2, 520, "probe 4, 5, 6... same three wires. No new resistor.",
@@ -493,7 +493,7 @@ projects["soil-temperature-multi"] = () => diagram(
     return s;
   },
   [
-    { color: W.sda, text: "ONE green DATA bus -> GP22 (pin 29), all probes" },
+    { color: W.ow, text: "ONE yellow DATA bus -> GP22 (pin 29), all probes" },
     { color: W.pwr, text: "ONE 4.7k pullup TOTAL: DATA -> 3V3" },
     { color: W.gnd, text: "all reds to 3V3 rail, all blacks to GND rail" },
     { text: "each probe has a factory serial number, so the" },

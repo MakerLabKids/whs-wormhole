@@ -22,7 +22,7 @@ I2C address `0x76` or `0x77` (the demo finds either automatically).
 
 ![bme280 wiring](../../docs/wiring/bme280.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-bme280). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-bme280). Red = 3V3, black = GND (shared rails), blue = SDA, yellow = SCL (the STEMMA QT / Qwiic cable colors), green = a lone signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Four tiers, from bare to mack daddy
 

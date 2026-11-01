@@ -140,12 +140,13 @@ project's README lists exactly which). Two ways:
 ## Wiring used throughout
 
 All I2C devices share one bus on I2C0, and the wire colors are the
-class convention: match them and anyone can debug your breadboard.
+class convention, the same as the STEMMA QT / Qwiic cables (Adafruit,
+SparkFun): match them and anyone can debug your breadboard.
 
 | Signal | Wire color | Pico pin |
 | ------ | ---------- | -------- |
-| SDA | green | GP0 (pin 1) |
-| SCL | white | GP1 (pin 2) |
+| SDA | blue | GP0 (pin 1) |
+| SCL | yellow | GP1 (pin 2) |
 | Power | red | 3V3 (pin 36) |
 | Ground | black | GND (any GND pin, e.g. 38) |
 

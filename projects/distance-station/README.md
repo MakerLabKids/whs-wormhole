@@ -27,7 +27,7 @@ Both devices share the same two I2C wires. That is the point of I2C.
 
 ![distance-station wiring](../../docs/wiring/distance-station.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-distance-station). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-distance-station). Red = 3V3, black = GND (shared rails), blue = SDA, yellow = SCL (the STEMMA QT / Qwiic cable colors), green = a lone signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Files to put on the board
 

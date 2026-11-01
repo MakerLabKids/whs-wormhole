@@ -13,7 +13,7 @@ each with its own factory-burned serial number.
 | ---------- | ---- |
 | Red | 3V3 (pin 36) |
 | Black | GND (any GND pin, e.g. 38) |
-| Green (data) | GP22 (pin 29) |
+| Yellow (data) | GP22 (pin 29) |
 
 **Required:** a 4.7k ohm resistor between GP22 and 3V3 (the bus pullup).
 Without it you get no probes found or garbage CRC errors. One resistor
@@ -24,7 +24,7 @@ serves the whole bus no matter how many probes you add.
 
 ![soil-temperature wiring](../../docs/wiring/soil-temperature.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-soil-temperature). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-soil-temperature). Red = 3V3, black = GND (shared rails), blue = SDA, yellow = SCL (the STEMMA QT / Qwiic cable colors), green = a lone signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Two versions
 

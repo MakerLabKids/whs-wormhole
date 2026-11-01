@@ -24,7 +24,7 @@ It shares the I2C bus with the OLED (and any other I2C sensors).
 
 ![light-lux wiring](../../docs/wiring/light-lux.svg)
 
-Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-light-lux). Red = 3V3, dark grey = GND (shared rails), green = SDA, white = SCL, yellow = signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
+Also in the [lab guide](https://makerlabkids.github.io/whs-wormhole/#wire-light-lux). Red = 3V3, black = GND (shared rails), blue = SDA, yellow = SCL (the STEMMA QT / Qwiic cable colors), green = a lone signal, orange = VBUS 5V (alternate voltage). Numbers outside the board are physical header pins.
 
 ## Two versions
 
