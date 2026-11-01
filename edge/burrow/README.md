@@ -94,3 +94,21 @@ and the fake Surface "verifies" them.
 
 A casting is deleted only when it is at least `retain_days` (7) old **and**
 the cloud has confirmed it by hashing the stored object. Nothing else deletes.
+
+## Reaching a Pi from anywhere: SSH through its Cloudflare tunnel
+
+Each Burrow's cloudflared tunnel is outbound-only and dashboard-managed, so SSH
+goes over it with no port opened on the Pi and no change on the Pi at all:
+
+1. In Cloudflare Zero Trust, on each Burrow's tunnel, add a public hostname
+   `ssh-burrowN.whs.makerlabkids.com` with service `ssh://localhost:22`
+   (and, if you want a login wall, an Access application on that hostname).
+2. On the laptop, install `cloudflared` once, then
+   `tools/ssh-burrow.sh N` (or by hand:
+   `ssh -o ProxyCommand="cloudflared access ssh --hostname %h" worm@ssh-burrowN.whs.makerlabkids.com`).
+
+It works through whatever path the Pi has at that moment: its Opal, its own
+Wi-Fi, a phone hotspot. From the Pi you have its Opal too (the admin API on the
+cable), so a Tunnel can be joined, rebooted or reconfigured without a cable from
+anywhere with internet. `update-burrow.sh` takes `BURROW_SSH="ssh -o ProxyCommand=..."`
+to deploy the same way.

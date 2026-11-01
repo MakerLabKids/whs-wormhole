@@ -5,7 +5,7 @@ import os
 import threading
 import time
 
-from . import VERSION, clock, config, server, util
+from . import BUILD, VERSION, clock, config, server, util
 from .cloud import Cloud
 from .events import Events, QuietWatch
 from .peers import Peers
@@ -111,8 +111,12 @@ class Service:
         of their own windows, never into the now-table). A row stamped by
         an estimated clock ("est"/"none") is re-based by the difference
         between our clock and the Bin's `now`, if it comes from the same
-        boot as `now`; an estimate from an earlier boot stays as it is.
-        Rows that still land before 2017 or in the future are dropped."""
+        boot as `now`. A row that cannot be dated (an earlier boot with no
+        clock, or a time that lands before 2017 or in the future) is NEVER
+        dropped: it is stored as undated, stamped with the moment it
+        arrived, clk "bin-undated", and the Bin's boot number and seconds
+        since that boot (`boot`, `up`), so it keeps its order and can be
+        read in buffer order later (/api/undated). Readings are data."""
         uid = body.get("id")
         rows = body.get("rows")
         if not uid or not isinstance(uid, str) or len(uid) > 64 or not isinstance(rows, list):
@@ -124,42 +128,77 @@ class Service:
             shift = 0
         boot = body.get("boot")
         ident = {k: body[k] for k in ("name", "bin") if body.get(k) is not None}
-        n = dup = dropped = 0
+        n = dup = undated = dropped = 0
         for r in rows:
+            if not isinstance(r, dict):
+                dropped += 1                      # not even a row
+                continue
             try:
-                ts = int(r["ts"])
-                clk = r.get("clk", "none")
-                if clk != "ok":
-                    if r.get("boot") == boot:
-                        ts += shift
-                    clk = "est"
-                if ts < 1500000000 or ts > now + 600:
-                    dropped += 1
+                orig = int(r.get("ts") or 0)
+            except (TypeError, ValueError):
+                orig = 0
+            clk = r.get("clk") or "none"
+            rboot = r.get("boot")
+            ts = orig
+            if clk != "ok":
+                if rboot == boot:
+                    ts += shift
+                clk = "est"
+            if ts < 1500000000 or ts > now + 600:
+                # cannot be dated: keep it anyway, in order, under the arrival time
+                key = (uid, "u", rboot, orig)
+                if key in self._backfill_seen:
+                    dup += 1
                     continue
+                self._backfill_seen[key] = True
+                ts, clk, extra = now, "undated", {"boot": rboot, "up": orig if r.get("clk", "none") == "none" else None, "orig_ts": orig}
+                undated += 1
+            else:
                 key = (uid, ts)
                 if key in self._backfill_seen:
                     dup += 1
                     continue
                 self._backfill_seen[key] = True
-                if len(self._backfill_seen) > 50000:
-                    for k in list(self._backfill_seen)[:10000]:
-                        del self._backfill_seen[k]
-                d = dict(r.get("d") or {})
-                d.update(ident)
-                d["id"] = uid
-                if ip and not d.get("ip"):
-                    d["ip"] = ip
-                row = {"ts": ts, "clk": "bin-" + clk, "uid": uid, "name": ident.get("name"),
-                       "room": self.cfg["room"], "edge": self.cfg["edge"], "src": "backfill", "d": d}
-                self.store.append(row)
-                n += 1
-            except (KeyError, TypeError, ValueError):
-                dropped += 1
+                extra = {}
+            if len(self._backfill_seen) > 50000:
+                for k in list(self._backfill_seen)[:10000]:
+                    del self._backfill_seen[k]
+            d = dict(r.get("d") or {}) if isinstance(r.get("d"), dict) else {}
+            d.update(ident)
+            d["id"] = uid
+            if ip and not d.get("ip"):
+                d["ip"] = ip
+            row = {"ts": ts, "clk": "bin-" + clk, "uid": uid, "name": ident.get("name"),
+                   "room": self.cfg["room"], "edge": self.cfg["edge"], "src": "backfill", "d": d}
+            row.update(extra)
+            self.store.append(row)
+            n += 1
         self.counts["backfill"] = self.counts.get("backfill", 0) + n
+        self.counts["undated"] = self.counts.get("undated", 0) + undated
         if n or dropped:
-            log("backfill: %s sent %d rows: %d kept, %d dup, %d unplaceable (shift %+ds)"
-                % (ident.get("name") or uid, len(rows), n, dup, dropped, shift))
-        return {"ok": True, "n": n, "dup": dup, "dropped": dropped, "ts": now}
+            log("backfill: %s sent %d rows: %d kept (%d of them undated), %d dup, %d not rows (shift %+ds)"
+                % (ident.get("name") or uid, len(rows), n, undated, dup, dropped, shift))
+        return {"ok": True, "n": n, "dup": dup, "undated": undated, "dropped": dropped, "ts": now}
+
+    def undated(self, uid, limit=5000):
+        """A Bin's undated rows, in buffer order (boot, then seconds since
+        boot), from the open log and the castings of the last 60 days."""
+        out = []
+        for r in self.store.read_open():
+            if r.get("uid") == uid and r.get("clk") == "bin-undated":
+                out.append(r)
+        cutoff = util.now() - 60 * 86400
+        for m in self.store.list_metas():
+            if (m.get("t1") or 0) < cutoff:
+                continue
+            try:
+                for r in self.store.rows_of(m["id"]):
+                    if r.get("uid") == uid and r.get("clk") == "bin-undated":
+                        out.append(r)
+            except Exception:
+                pass
+        out.sort(key=lambda r: (r.get("boot") if r.get("boot") is not None else -1, r.get("up") if r.get("up") is not None else r.get("orig_ts") or 0))
+        return out[-limit:]
 
     def _on_sealed(self, meta, rows):
         try:
@@ -228,7 +267,7 @@ class Service:
     def api_status_brief(self):
         st = self.store.stats()
         return {"edge": self.cfg["edge"], "room": self.cfg["room"], "ts": util.now(),
-                "clk": self.clk(), "up_s": util.now() - self.started, "version": VERSION,
+                "clk": self.clk(), "up_s": util.now() - self.started, "version": VERSION, "build": BUILD,
                 "castings": st["castings"], "unverified": st["unverified"],
                 "disk_pct": round(st["disk_pct"], 1),
                 "cloud_ok": self.cloud.state.get("reachable"), "cloud_last_ok": self.cloud.state.get("last_ok"),

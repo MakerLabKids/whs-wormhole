@@ -22,7 +22,7 @@ def bucketize(rows, step="5m"):
     for r in rows:
         uid = r.get("uid")
         ts = r.get("ts")
-        if not uid or ts is None:
+        if not uid or ts is None or r.get("clk") == "bin-undated":   # undated rows are not on the timeline
             continue
         b = int(ts) - int(ts) % s
         slot = acc.setdefault((uid, b), {})

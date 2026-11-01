@@ -53,15 +53,52 @@ class BackfillTest(unittest.TestCase):
         self.assertEqual(kept, sorted(same_boot + old_boot))
         self.assertTrue(all(x["clk"] == "bin-est" for x in self.svc.store.read_open() if x["src"] == "backfill"))
 
-    def test_duplicates_and_unplaceable_rows(self):
+    def test_duplicates_and_undated_rows(self):
         now = util.now()
         rows = self.rows(now - 300, 3) + self.rows(now - 300, 3)            # the same batch twice (a resend)
-        rows += [{"ts": 12345, "clk": "none", "boot": 1, "d": {"in_temp_c": 1}}]   # seconds since boot, old boot: unplaceable
-        rows += [{"ts": now + 7200, "clk": "ok", "boot": 7, "d": {"in_temp_c": 1}}]   # the future
-        rows += [{"d": {"in_temp_c": 1}}]                                    # no ts at all
+        rows += [{"ts": 12345, "clk": "none", "boot": 1, "d": {"in_temp_c": 1}}]   # seconds since boot, old boot: undated
+        rows += [{"ts": now + 7200, "clk": "ok", "boot": 7, "d": {"in_temp_c": 1}}]   # the future: undated
+        rows += [{"d": {"in_temp_c": 1}}]                                    # no ts at all: undated
+        rows += ["junk"]                                                     # not a row: the only thing ever dropped
         body = {"id": "abc", "name": "x", "boot": 7, "now": now, "clk": "ok", "rows": rows}
         st, r = http("POST", self.svc.url + "/ingest/batch", body)
-        self.assertEqual((st, r["n"], r["dup"], r["dropped"]), (200, 3, 3, 3))
+        self.assertEqual((st, r["n"], r["dup"], r["undated"], r["dropped"]), (200, 6, 3, 3, 1))
+        kept = [x for x in self.svc.store.read_open() if x["src"] == "backfill"]
+        self.assertEqual(len(kept), 6)
+        und = [x for x in kept if x["clk"] == "bin-undated"]
+        self.assertEqual(len(und), 3)
+        self.assertEqual(und[0]["boot"], 1)
+        self.assertEqual(und[0]["up"], 12345)                                # seconds since that boot, kept
+        self.assertTrue(all(abs(x["ts"] - now) < 5 for x in und), "filed under the arrival time")
+        # a resend of the undated rows is a duplicate, not a second copy
+        st, r = http("POST", self.svc.url + "/ingest/batch", body)
+        self.assertEqual((r["n"], r["dup"]), (0, 9))          # all nine real rows again: dups, the junk dropped again
+
+    def test_undated_rows_are_served_in_buffer_order_and_stay_off_the_timeline(self):
+        now = util.now()
+        rows = [{"ts": 900, "clk": "none", "boot": 3, "d": {"in_temp_c": 21.5, "moist1_pct": 40}},
+                {"ts": 30, "clk": "none", "boot": 3, "d": {"in_temp_c": 21.0}},
+                {"ts": 500, "clk": "none", "boot": 2, "d": {"in_temp_c": 20.0}}]
+        body = {"id": "abc", "name": "x", "boot": 9, "now": now, "clk": "ok", "rows": rows}
+        st, r = http("POST", self.svc.url + "/ingest/batch", body)
+        self.assertEqual((st, r["undated"]), (200, 3))
+        st, j = http("GET", self.svc.url + "/api/undated?uid=abc")
+        self.assertEqual(st, 200)
+        self.assertEqual([(x["boot"], x["up"]) for x in j["rows"]], [(2, 500), (3, 30), (3, 900)])
+        self.assertEqual(j["rows"][2]["d"]["in_temp_c"], 21.5)
+        # the rollups skip them: nothing lands on the timeline at the arrival time
+        from burrow import rollups
+        self.assertEqual(rollups.bucketize([x for x in self.svc.store.read_open() if x["src"] == "backfill"]), [])
+        # and the CSV
+        import urllib.request
+        req = urllib.request.Request(self.svc.url + "/api/undated?uid=abc&csv=1")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            self.assertEqual(resp.headers.get("Content-Type", "").split(";")[0], "text/csv")
+            text = resp.read().decode()
+        lines = text.strip().split("\n")
+        self.assertEqual(lines[0], "boot,seconds_since_boot,received_ts,in_temp_c,moist1_pct")
+        self.assertTrue(lines[1].startswith("2,500,"))
+        self.assertTrue(lines[3].endswith(",21.5,40"))
 
     def test_backfill_seals_into_the_windows_it_belongs_to(self):
         now = util.now()

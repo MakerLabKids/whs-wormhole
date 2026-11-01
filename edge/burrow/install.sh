@@ -18,6 +18,8 @@ mkdir -p /opt/burrow/www
 rm -rf /opt/burrow/burrow
 cp -r "$HERE/burrow" /opt/burrow/burrow
 cp "$HERE/PROTOCOL.md" /opt/burrow/
+# the build stamp (commit + date) the deploy tools put in edge/burrow/BUILD rides along
+[ -f "$HERE/BUILD" ] && cp "$HERE/BUILD" /opt/burrow/BUILD
 if [ -d "$REPO/web/dash" ]; then
   rm -rf /opt/burrow/www && cp -r "$REPO/web/dash" /opt/burrow/www
 fi

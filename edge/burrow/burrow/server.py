@@ -116,6 +116,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(svc.api_bins())
             if path == "/api/status":
                 return self._json(svc.api_status())
+            if path == "/api/undated":
+                return self._undated(q)
             if path == "/api/history":
                 return self._json(svc.api_history(q))
             if path == "/api/signal":
@@ -188,6 +190,23 @@ class Handler(BaseHTTPRequestHandler):
         if reply is None:
             return self._json({"ok": False, "error": "need id and rows"}, 400)
         self._json(reply)
+
+    def _undated(self, params):
+        """A Bin's undated readings in buffer order (JSON, or CSV with ?csv=1)."""
+        uid = (params.get("uid") or [""])[0] if isinstance(params, dict) else ""
+        if not uid:
+            return self._json({"ok": False, "error": "uid required"}, 400)
+        rows = self.svc.undated(uid)
+        if isinstance(params, dict) and params.get("csv"):
+            keys = sorted({k for r in rows for k in (r.get("d") or {}) if isinstance((r.get("d") or {}).get(k), (int, float))})
+            lines = ["boot,seconds_since_boot,received_ts," + ",".join(keys)]
+            for r in rows:
+                d = r.get("d") or {}
+                lines.append("%s,%s,%s," % (r.get("boot", ""), r.get("up") if r.get("up") is not None else "", r.get("ts", ""))
+                             + ",".join("" if d.get(k) is None else str(d.get(k)) for k in keys))
+            return self._bytes(("\n".join(lines) + "\n").encode("utf-8"), "text/csv", extra={"Content-Disposition": "attachment; filename=undated-%s.csv" % uid})
+        return self._json({"ok": True, "uid": uid, "n": len(rows),
+                           "rows": [{"boot": r.get("boot"), "up": r.get("up"), "orig_ts": r.get("orig_ts"), "received": r.get("ts"), "d": r.get("d")} for r in rows]})
 
     def _event(self):
         """The tunnel watchdog (a separate root process on this Pi) hands its events in here."""

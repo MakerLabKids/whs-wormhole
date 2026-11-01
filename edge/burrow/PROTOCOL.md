@@ -40,7 +40,7 @@ While no Burrow answers (or the Bin has no network at all) the Bin keeps
 every minute's row in a packed buffer on its own flash (`buf/`, about
 12 bytes a row, ~1.5 MB budget: months at one row a minute; past the
 budget the oldest file is thinned to 1-in-4, 1-in-16, 1-in-64, then
-dropped). The first accepted `/ingest` after that starts the drain:
+undated, never dropped). The first accepted `/ingest` after that starts the drain:
 up to 8 batches of 60 rows per push tick, oldest first, so a month of
 backlog arrives in about an hour and a half.
 

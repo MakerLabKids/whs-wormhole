@@ -35,6 +35,7 @@ for n in "$@"; do
     wait_for "$host"
   fi
   echo "  copying edge/ tools/ web/ and installing..."
+  (cd "$HERE" && git log -1 --format='%h %cI' > edge/burrow/BUILD 2>/dev/null || true)
   (cd "$HERE" && tar czf - --exclude=__pycache__ --exclude=node_modules --exclude=tools/e2e edge tools web) |
     $SSH "$USER_@$host" "mkdir -p ~/$DEST && cd ~/$DEST && tar xzf - && sudo edge/burrow/install.sh 2>&1 | tail -2"
   if [ "$locked" = yes ]; then

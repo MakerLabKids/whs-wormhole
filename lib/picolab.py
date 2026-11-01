@@ -2309,8 +2309,8 @@ class WebApp:
         log("buffer: Burrow refused a batch:", status, reply)
         return
       self.buffer.ack(name, start + n)
-      log("buffer: %d rows delivered (%d kept, %d dup, %d unplaceable), %d to go"
-          % (n, reply.get("n", 0), reply.get("dup", 0), reply.get("dropped", 0), self.buffer.pending()))
+      log("buffer: %d rows delivered (%d kept, %d of them undated, %d dup), %d to go"
+          % (n, reply.get("n", 0), reply.get("undated", 0), reply.get("dup", 0), self.buffer.pending()))
       feed()
 
   def now_ts(self):
