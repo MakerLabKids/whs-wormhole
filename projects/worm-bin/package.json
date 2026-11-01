@@ -56,6 +56,14 @@
       "github:MakerLabKids/whs-wormhole/lib/showsync.py"
     ],
     [
+      "fs:lib/ota.py",
+      "github:MakerLabKids/whs-wormhole/lib/ota.py"
+    ],
+    [
+      "fs:boot.py",
+      "github:MakerLabKids/whs-wormhole/projects/worm-bin/boot.py"
+    ],
+    [
       "fs:lib/logos.py",
       "github:MakerLabKids/whs-wormhole/lib/logos.py"
     ],

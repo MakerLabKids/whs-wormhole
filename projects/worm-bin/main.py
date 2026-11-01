@@ -554,25 +554,48 @@ light = picolab.StatusLight()
 app = picolab.WebApp()
 messages = picolab.Messages(app, teacher_pin=(app.bin or {}).get("teacher_pin") or TEACHER_PIN)   # the message slots (msg.json)
 display.CARD_MS = MESSAGE_S * 1000
-app.on_reply = messages.on_reply   # messages set on the website ride down on the Burrow's reply...
-app.push_extra = messages.push_fields   # ...and the acks ride back up with the next push
+# The Burrow's reply to each push carries what the website set for this bin (messages, shows, a
+# code update), and the next push carries the acks. Each part is a pair of hooks; one failing
+# never stops the others.
+_reply_hooks = [messages.on_reply]        # messages set on the website ride down on the reply...
+_extra_hooks = [messages.push_fields]     # ...and the acks ride back up with the next push
 if WORM_SHOWS:
   try:
-    import showsync                  # shows sent from the website ride the same way (lib/showsync.py)
+    import showsync                  # shows sent from the website (lib/showsync.py)
     shows_sync = showsync.ShowSync(display, wormshow.SHOWS, app)
-
-    def _on_reply(reply):
-      messages.on_reply(reply)
-      shows_sync.on_reply(reply)
-
-    def _push_extra():
-      d = messages.push_fields()
-      d.update(shows_sync.push_fields())
-      return d
-
-    app.on_reply, app.push_extra = _on_reply, _push_extra
+    _reply_hooks.append(shows_sync.on_reply)
+    _extra_hooks.append(shows_sync.push_fields)
   except Exception as e:
     picolab.log("website shows skipped:", e)
+code_ota = None
+try:
+  import ota                         # code updates over Wi-Fi, settings kept (lib/ota.py, boot.py)
+  code_ota = ota.Ota(app)
+  _reply_hooks.append(code_ota.on_reply)
+  _extra_hooks.append(code_ota.push_fields)
+except Exception as e:
+  picolab.log("code updates skipped:", e)
+
+
+def _on_reply(reply):
+  for h in _reply_hooks:
+    try:
+      h(reply)
+    except Exception as e:
+      picolab.log("reply hook:", e)
+
+
+def _push_extra():
+  d = {}
+  for h in _extra_hooks:
+    try:
+      d.update(h())
+    except Exception as e:
+      picolab.log("push hook:", e)
+  return d
+
+
+app.on_reply, app.push_extra = _on_reply, _push_extra
 link_was = None                    # the link state the screen last reflected
 
 
@@ -632,8 +655,12 @@ app.announce("Worm Bin Command Center Active!")
 # the web socket is closed on the way out and port 80 is free for the next
 # run. (A hard reset or brownout skips the finally, but that frees the port
 # by itself.) This is what stops the "address already in use" headache.
+_loop_t0 = time.ticks_ms()
 try:
   while True:
+    if code_ota and time.ticks_diff(time.ticks_ms(), _loop_t0) > 60000:
+      code_ota.confirm()                # a minute of running: a fresh code update is a keeper
+      code_ota = None
     light.poll()
     app.poll(data_fn, routes=ROUTES)
     if ble:
