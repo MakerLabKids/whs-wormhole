@@ -488,6 +488,7 @@
     var head = el('div', 'card binhead'); main.appendChild(head);
     var watchbar = el('div', 'card watchbar'); main.appendChild(watchbar);
     var msgcard = el('div', 'card msgcard'); main.appendChild(msgcard); drawMessages();
+    var showcard = el('div', 'card showcard'); main.appendChild(showcard); drawShows();
     var ranges = el('div', 'ranges'); main.appendChild(ranges);
     var lastLive = 0;
     var out = el('div', 'charts'); main.appendChild(out);
@@ -565,6 +566,19 @@
           'a start and/or end time, or a number of showings (blank: forever); "at power-on" slots show when the board starts.',
         failText: 'Could not read the messages for this bin.'
       });
+    }
+    /* shows for the bin's screen (Surface only, signed in, the same people as messages): shows.js */
+    function drawShows() {
+      var role = S.me && S.me.role;
+      if (S.local || !window.Shows || !role || role === 'local') { showcard.hidden = true; return; }
+      var mine = role === 'teacher' || role === 'admin';
+      if (!mine) {
+        var e0 = S.bins[uid], bn = e0 ? binNoOf(e0) : (roster && roster.bin);
+        mine = S.me.team && bn != null && bn === S.me.team.bin;
+      }
+      if (!mine) { showcard.hidden = true; return; }
+      showcard.hidden = false;
+      Shows.create(showcard, { uid: uid, api: api });
     }
     /* the 1 Hz live view: while the button is on, this page's stream carries ?watch=<uid> and the
        Burrow polls the bin every second; the readings above and the ticker update each second.
