@@ -1798,8 +1798,11 @@ def _http_post_json(host, port, path, body, timeout=PUSH_TIMEOUT_S):
 
 
 def _edge_candidates(ip, override=None):
-  """Where to push: the Burrow on our own subnet (.10), then the three
-  Tunnels' WAN addresses (each forwards 8080 to its Burrow)."""
+  """Where to push: the Burrow on our own subnet (.10), then the Portal's
+  own Burrow (burrow0 at 192.168.80.10, reachable from every Tunnel's
+  network and the one that never depends on a Tunnel), then the three
+  Tunnels' WAN addresses (each forwards 8080 to its Burrow). A dead Pi on
+  our own subnet must never strand a bin (2026-10-31)."""
   if override:
     return list(override)
   out = []
@@ -1807,8 +1810,10 @@ def _edge_candidates(ip, override=None):
     out.append(ip.rsplit(".", 1)[0] + ".10:8080")
   except Exception:
     pass
-  for n in (21, 22, 23):
-    out.append("192.168.80.%d:8080" % n)
+  for n in (10, 21, 22, 23):
+    cand = "192.168.80.%d:8080" % n
+    if cand not in out:
+      out.append(cand)
   return out
 
 class WebApp:
