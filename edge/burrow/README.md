@@ -155,12 +155,16 @@ followed anyway. It switches a disabled backhaul AP back on. A real handover
 needs followers that join WormHole-Core by name (not BSSID) and a test that
 a provider can drop its AP safely; `ELECTION_ACTS` turns the acting path on.
 
-**Power cycles.** Every Opal rejoins its saved networks by itself (the
-watchdog keeps "auto" on), BUT only networks it can see: the backhaul is
-hidden, so each Tunnel must also have a visible network saved, or it sits
-idle when its Pi is down (Tunnel 2, 2026-10-31 evening).
-`tools/routers/teach-fallback.py HOST SSID [key_env]` does that once per
-site. Picos stagger their first join by up to ten seconds.
+**Power cycles.** Every Opal rejoins its SAVED networks by itself (the
+watchdog keeps "auto" on). GL.iNet saves a network only when the join call
+says `remember: true`; until 2026-11-01 none of ours did, so every Opal's
+saved list was empty and auto-connect had nothing to go back to (Tunnel 2
+sat idle the evening of 2026-10-31; it was blamed on the hidden backhaul,
+wrongly: the firmware keeps a directed-scan flag per saved hidden network).
+Every join now remembers, and the watchdog reports `saved_networks`.
+`tools/routers/teach-fallback.py HOST SSID [key_env]` saves a second
+network (Loki at home, BYLD at school) so a Tunnel also has somewhere to go
+when the Portal itself is gone. Picos stagger their first join by up to ten seconds.
 
 **Proven live (2026-11-01).** Cutting a Pi's cable (`tools/fault-test.sh`):
 its own Wi-Fi took over and its uploads continued (burrow3, through Tunnel 2,

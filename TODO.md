@@ -5,11 +5,16 @@ record of what got done.
 
 ## Deploy (from 2026-10-31)
 
-- [ ] **Teach each Tunnel a visible fallback at school**: `tools/routers/teach-fallback.py
+- [ ] **Teach each Tunnel a fallback at school** (now that joins remember, it actually saves): `tools/routers/teach-fallback.py
       192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN). At home they know Loki.
-- [ ] **Decide: unhide the backhaul?** A visible WormHole-Core (still WPA3) would let every
-      Opal rejoin it by itself after any power cut, with no Pi involved. The cost is the SSID
-      showing in phone Wi-Fi lists. Changing it restarts the Portal's 5 GHz radio once.
+- [ ] **Save the backhaul on Tunnels 1 and 2** (`remember`, found 2026-11-01: every Opal's saved
+      list was empty, so auto-connect had nothing to rejoin). Tunnel 3 done 2026-11-01. One rejoin
+      each: `tools/routers/join-backhaul.py N` from the Tunnel's LAN, about 20 s offline. Then the
+      Portal: it is on Loki with nothing saved.
+- [ ] **Prove auto-connect with a saved hidden backhaul**: with the backhaul saved on a Tunnel,
+      switch the Portal's 5 GHz off for 60 s and on again; the Tunnel must be back on WormHole-Core
+      within 2 min with its Pi's watchdog paused. (Replaces the "unhide the backhaul" question:
+      hidden was not the cause.)
 - [ ] **Secrets for the Surface** (the deploy + schema are live as of 2026-11-01; the enrol
       endpoint answers "not configured" until these exist). From cloud/surface:
       `../../tools/surface-secret.sh ENROL_SECRET | npx wrangler secret put ENROL_SECRET` and

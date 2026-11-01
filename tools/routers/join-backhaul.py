@@ -64,7 +64,7 @@ def main():
   if isinstance(st, dict) and st.get("bssid", "").lower() == BACKHAUL["bssid"] and (st.get("wpa_status") or {}).get("wpa_state") == "COMPLETED":
     print("Tunnel %d is already on the backhaul" % n)
     return 0
-  print("Tunnel %d: joining WormHole-Core (hidden, so no scan can show it)..." % n)
+  print("Tunnel %d: joining WormHole-Core (hidden: dialed by name and BSSID, and saved)..." % n)
   call(host, "repeater", "connect", dict(BACKHAUL, key=key))
   for _ in range(8):
     time.sleep(5)

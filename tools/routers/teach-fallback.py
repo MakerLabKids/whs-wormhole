@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""teach-fallback.py HOST SSID [KEY_ENV]: give an Opal a VISIBLE network to fall back to by
-itself, then put it back on the Portal's backhaul.
+"""teach-fallback.py HOST SSID [KEY_ENV]: save a second network on an Opal for its own
+auto-connect to fall back to, then put it back on the Portal's backhaul (saved too).
 
-Why: an Opal's "auto-connect to saved networks" only rejoins networks it can see, and the
-backhaul (WormHole-Core) is hidden. A Tunnel whose backhaul drops while its Pi is down sits idle
-forever unless it has a visible network saved (2026-11-01: Tunnel 2, idle all evening). GL.iNet
-saves a network when it joins it, so this joins SSID (the home net, or BYLD at school), waits,
-then rejoins the backhaul by its BSSID. Run it from a machine that reaches HOST (the Tunnel's LAN,
+Why: an Opal's auto-connect only walks its SAVED list, and GL.iNet saves a network only when the
+join says remember: true (2026-11-01: the Portal's and Tunnel 3's lists were empty; Tunnel 2 sat
+idle all evening). There is no "save without joining" call, so this joins SSID (the home net, or
+BYLD at school) with remember, waits, then rejoins the backhaul by its BSSID with remember. The
+Tunnel is off the backhaul for about 45 s. Run it from a machine that reaches HOST (the Tunnel's LAN,
 or the Portal's LAN at 192.168.80.2N). Keys come from /workspace/.env (backhaul_key, and
 KEY_ENV for the SSID, e.g. loki_psk; omit for an open network like BYLD); nothing is printed.
 
