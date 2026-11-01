@@ -10,6 +10,8 @@
 
 import { chunks, err, isInt, json, now, readJson, safeParse } from "./util.js";
 
+export const BUFFER_ALERT_ROWS = 60;   // a Bin adds a flash row per push no Burrow took (every 15-60 s): ~15-60 min cut off
+export const BUFFER_FRESH_S = 15 * 60;  // only judge a Bin by a reading this recent
 export const SILENT_S = 120;           // a Burrow snapshots every 60 s; two misses is trouble (the
                                        // neighbours' peer.down alert normally arrives well before this)
 const EVENT_CAP = 100;                 // per POST
@@ -235,8 +237,9 @@ export async function probeTunnel(env, edgeId) {
 
 // The cron: a Burrow that stopped reporting, and one that came back; a tunnel that died.
 export async function watchEdges(env, t = now(), probe = probeTunnel) {
-  const { results } = await env.DB.prepare("SELECT edge_id, room, updated_at, status FROM edges").all();
-  const out = { opened: [], closed: [], silent: [], tunnel_down: [], on_wifi: [], disagree: [] };
+  const { results } = await env.DB.prepare("SELECT edge_id, room, updated_at, status, snapshot FROM edges").all();
+  const out = { opened: [], closed: [], silent: [], tunnel_down: [], on_wifi: [], disagree: [], buffered: [] };
+  await watchBuffers(env, results, t, out);
   // peer verification of the election: a Burrow offering the backhaul claims clean internet; a
   // follower joined to that offer measures the internet through it. If they disagree, say so.
   const sts = results.map((r) => ({ edge: r.edge_id, room: r.room, st: safeParse(r.status, {}) || {} }));
@@ -297,6 +300,43 @@ export async function watchEdges(env, t = now(), probe = probeTunnel) {
     }
   }
   return out;
+}
+
+// A Bin that kept many readings on its flash: no Burrow answered it for a while, though the
+// Burrows themselves may have reported fine all along (the Bin's Wi-Fi, or a Tunnel's 2.4 GHz
+// WormHole refusing clients, as Tunnel 2's did on 2026-11-01). Judged by the freshest reading of
+// each Bin across all Burrows' snapshots; closes when that Bin reports an empty buffer again.
+export async function watchBuffers(env, edgeRows, t, out) {
+  const latest = {};
+  for (const r of edgeRows) {
+    const snap = safeParse(r.snapshot, {}) || {};
+    for (const [uid, e] of Object.entries(snap)) {
+      if (!e || typeof e !== "object") continue;
+      const ts = e.ts || 0;
+      if (!latest[uid] || ts > latest[uid].ts) latest[uid] = { ts, e, edge: e.edge || r.edge_id, room: r.room };
+    }
+  }
+  for (const [uid, x] of Object.entries(latest)) {
+    if (t - x.ts > BUFFER_FRESH_S) continue;
+    const d = x.e.d || {}, b = d.bin || {};
+    const n = d.buffered;
+    if (typeof n !== "number") continue;            // older firmware does not say
+    const name = x.e.name || d.name || uid;
+    const bin = x.e.bin ?? b.bin;
+    const who = bin != null ? `${name} (bin ${bin})` : name;
+    const key = `buffer:${uid}`;
+    if (n >= BUFFER_ALERT_ROWS) {
+      out.buffered.push(uid);
+      const res = await openAlert(env, key, x.edge, `${who}: ${n} readings were stuck on the Bin`,
+        `${who} kept ${n} readings on its flash because no Burrow answered it (roughly ${Math.round(n / 4)}-${n} min). ` +
+        `It reaches ${x.edge} now and is sending them. If its Burrow reported fine meanwhile, suspect the Bin's Wi-Fi ` +
+        `or that room's Tunnel 2.4 GHz WormHole (a reboot of the Opal fixed one on 2026-11-01).`, "default", "floppy_disk", t);
+      if (res.opened) out.opened.push(key);
+    } else if (n === 0) {
+      const res = await closeAlert(env, key, `${who}: buffer drained`, `${who} has sent every stuck reading.`, t);
+      if (res) out.closed.push({ edge: key, minutes: res.minutes });
+    }
+  }
 }
 
 // GET /api/admin/alerts  -> open alerts first, then the last 50 closed

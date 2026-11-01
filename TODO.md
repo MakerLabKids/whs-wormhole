@@ -22,8 +22,10 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
 - [x] **Watchdog hold-before-switch + return-home** on all four Pis (2026-11-01 11:05: burrow1
       7223efa, the rest 9c5ba9c, same code). Repeat rejoin trials 10:16-10:57: 60 s outage ->
       back in 18-19 s, 5 min -> 42 s; an Opal returns to the network it was last told to join.
+- [ ] **`wrangler deploy` the Surface** (cloud/surface): the buffered-Bin alert (2026-11-01).
 - [ ] **Portal hostapd "Failed to set beacon parameters"** every 6 s since its 08:59 switch to
-      Loki (2.4 GHz AP dragged to ch 11). Harmless so far; if a Bin in room 0 can't join the
+      Loki (2.4 GHz AP dragged to ch 11). Harmless so far (11:20: burrow0's Wi-Fi joined that AP
+      fine); if a Bin in room 0 can't join the
       Portal's WormHole, `wifi up radio0` on the Portal (or reboot it) is the first thing to try.
 - [ ] **Teach each Tunnel a fallback at school**: `tools/routers/teach-fallback.py
       192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN, or on the Pi). At home all three
@@ -72,8 +74,9 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
 
 - [x] Bluetooth config: done 2026-10-31 (lib/blelink.py, the Nordic UART service; the
       website's /bluetooth.html page and any BLE terminal app).
-- [ ] Surface alert when a Bin reports a large `buffered` count (it means every
-      Burrow it can see has been dark for that many minutes).
+- [x] Surface alert when a Bin reports a large `buffered` count: done 2026-11-01 (alerts.js
+      watchBuffers, >= 60 rows, closes at 0). Also catches a Tunnel's wedged 2.4 GHz WormHole
+      (the Bins buffer while their Burrow reports fine). Needs the `wrangler deploy` below.
 - [ ] A battery RTC module on the Pico would turn "estimated" backfill timestamps
       (rows from a boot that never reached a Burrow) into exact ones. Only matters
       if a bin loses power *and* network for the same stretch.

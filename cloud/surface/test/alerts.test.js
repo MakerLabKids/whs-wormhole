@@ -1,7 +1,7 @@
 import { env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { applySchema, bootstrapAdmin, edgeFetch, get, postJson } from "./helpers.js";
-import { SILENT_S, sameOpal, watchEdges } from "../src/alerts.js";
+import { BUFFER_ALERT_ROWS, SILENT_S, sameOpal, watchEdges } from "../src/alerts.js";
 
 const T = Math.floor(Date.now() / 1000);
 
@@ -110,6 +110,41 @@ describe("silent Burrow watch (the cron)", () => {
     expect(open.text).toContain("530");
     out = await watchEdges(env, T + 700, async () => ({ ok: true, status: 200 }));
     expect(out.closed.map((c) => c.edge)).toContain("burrow3:tunnel");
+  });
+});
+
+describe("a Bin that buffered a lot (the cron)", () => {
+  beforeAll(async () => { await applySchema(); await env.DB.prepare("UPDATE alerts SET closed_at = 1 WHERE closed_at IS NULL").run(); });
+  const fine = async () => ({ ok: true, status: 200 });
+  const snap = (entries) => JSON.stringify(Object.fromEntries(entries.map(([uid, ts, buffered, edge]) =>
+    [uid, { name: "Dirt Vader", bin: 37, ts, edge, d: { buffered, bin: { bin: 37 } } }])));
+  const put = (edge, room, s) => env.DB.prepare("INSERT OR REPLACE INTO edges (edge_id, room, ts, clk, snapshot, status, updated_at) VALUES (?1, ?2, ?3, 'ntp', ?4, '{}', ?3)")
+    .bind(edge, room, T, s).run();
+
+  it("opens one alert from the freshest reading across Burrows, and closes it when the buffer is empty", async () => {
+    await put("burrow1", 1, snap([["u37", T - 30, BUFFER_ALERT_ROWS + 20, "burrow1"]]));
+    await put("burrow2", 2, snap([["u37", T - 600, 0, "burrow2"]]));          // older news from a peer: ignored
+    let out = await watchEdges(env, T, fine);
+    expect(out.buffered).toEqual(["u37"]);
+    expect(out.opened).toContain("buffer:u37");
+    const row = await env.DB.prepare("SELECT edge, text FROM alerts WHERE key = 'buffer:u37' AND closed_at IS NULL").first();
+    expect(row.edge).toBe("burrow1");
+    expect(row.text).toContain("Dirt Vader (bin 37) kept 80 readings");
+    out = await watchEdges(env, T + 60, fine);                                   // still draining: no second row
+    expect(out.opened).not.toContain("buffer:u37");
+    await put("burrow1", 1, snap([["u37", T + 100, 12, "burrow1"]]));          // part-drained: stays open
+    out = await watchEdges(env, T + 110, fine);
+    expect(out.closed.map((c) => c.edge)).not.toContain("buffer:u37");
+    await put("burrow1", 1, snap([["u37", T + 160, 0, "burrow1"]]));
+    out = await watchEdges(env, T + 170, fine);
+    expect(out.closed.map((c) => c.edge)).toContain("buffer:u37");
+  });
+
+  it("ignores small buffers, stale readings and firmware that does not report a buffer", async () => {
+    await put("burrow1", 1, snap([["a", T - 30, 5, "burrow1"], ["b", T - 3600, 500, "burrow1"], ["c", T - 30, null, "burrow1"]]));
+    await put("burrow2", 2, "{}");
+    const out = await watchEdges(env, T + 200, fine);
+    expect(out.buffered).toEqual([]);
   });
 });
 
