@@ -15,8 +15,12 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       saved) were back on WormHole-Core 35 s after the radio returned, by their own auto-connect.
       The fix was `remember`. (Tunnel 2's 6-min miss earlier that morning followed repeated failed
       joins against the wedged AP: GL.iNet backs off to 5-min retries.)
-- [ ] **Save the Portal's own upstreams** (it is on Guess with only Guess saved): its Pi's
-      watchdog now joins with remember, so this fills in as it switches; or rejoin Loki once.
+- [x] **Save the Portal's own upstreams**: done by itself 2026-11-01 08:59 (Guess failed, the
+      Portal moved to Loki with remember; saved: Guess, Loki). The backhaul AP did NOT wedge
+      this time (Tunnel 1 rejoined it in 6 s at 10:14), but hostapd logs "Failed to set beacon
+      parameters" every 6 s since that switch: watch for it after the next upstream switch.
+- [ ] **Deploy watchdog 7223efa to burrow0, 2, 3** (one at a time): hold-before-switch +
+      return-home. On burrow1 since 10:28 2026-11-01, return-home proven there.
 - [ ] **Teach each Tunnel a fallback at school**: `tools/routers/teach-fallback.py
       192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN, or on the Pi). At home they know Loki
       (Tunnel 3 saved it 2026-11-01; Tunnels 1 and 2 have only the backhaul saved).

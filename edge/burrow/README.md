@@ -165,6 +165,18 @@ auto-connect. After repeated failed joins GL.iNet backs off to 5-min retries.
 `tools/routers/teach-fallback.py HOST SSID [key_env]` saves a second network
 (Loki at home, BYLD at school) for when the Portal itself is gone.
 
+**One failed check no longer moves a Tunnel; a Tunnel on a fallback comes home.**
+2026-11-01 10:00: one failed 8 s cloud check on burrow1 (rooms 2 and 3 were fine)
+made its watchdog move Tunnel 1 from a healthy backhaul to Loki, and nothing ever
+moved it back while Loki worked. Now "connected but no cloud" first holds (the
+outage clock starts) and switches only if the next run, at least 100 s later, still
+fails. And rooms 1-3 that have spent 15 min on a fallback with good internet rejoin
+WormHole-Core, at most every 30 min, then 1 h, 2 h, 4 h (reset once home). The
+Opal's scan leaves hidden networks out, so the watchdog checks for the Portal by
+its BSSID prefix (its visible 2.4 GHz WormHole) before trying. Proven on burrow1
+2026-11-01: Tunnel 1 left on Loki at 10:29, back on WormHole-Core at 10:45. A failed
+try falls back by the usual path (the hidden-miss rule moves on to Loki next run).
+
 **The Portal's backhaul AP stops taking new Tunnels.** 2026-11-01: after burrow0
 moved the Portal's upstream (Loki -> Guess), WormHole-Core kept the Tunnel already
 on it but refused every new association for an hour (Tunnels 1 and 3 fell back
