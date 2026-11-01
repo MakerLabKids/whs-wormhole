@@ -671,6 +671,13 @@ class PortalBackhaulWatchTest(unittest.TestCase):
         wd.portal_backhaul_watch(r, st, 1601 + 3601, self.BCFG, reachable=lambda u: False)
         self.assertEqual(self.toggles(r), [False, True])
 
+    def test_plain_string_peers_count_too(self):
+        # burrow0's hand-made burrow.json: "burrow1": "http://192.168.80.21:8080"
+        r, st = self.R(), {}
+        bcfg = {"room": 0, "peers": {"burrow1": "http://192.168.80.21:8080"}}
+        wd.portal_backhaul_watch(r, st, 7000, bcfg, reachable=lambda u: u == "http://192.168.80.21:8080")
+        self.assertEqual(st["backhaul_peers_seen_at"], 7000)
+
     def test_only_the_portals_pi_does_this(self):
         r, st = self.R(), {"backhaul_peers_seen_at": 0}
         wd.portal_backhaul_watch(r, st, 99999, dict(self.BCFG, room=2), reachable=lambda u: False)

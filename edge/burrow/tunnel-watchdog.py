@@ -233,7 +233,9 @@ def portal_backhaul_watch(r, st, now, bcfg, reachable=tcp_reachable):
     nobody is on the AP and the kick costs nothing."""
     if bcfg.get("room") != 0:
         return
-    peers = [p.get("url") for p in (bcfg.get("peers") or {}).values() if isinstance(p, dict) and p.get("url")]
+    # burrow.json peers are "name": "http://..." (hand-made) or "name": {"url": ...} (first-boot-identity)
+    peers = [p if isinstance(p, str) else (p or {}).get("url") for p in (bcfg.get("peers") or {}).values()]
+    peers = [u for u in peers if u]
     if not peers:
         return
     if any(reachable(u) for u in peers):
