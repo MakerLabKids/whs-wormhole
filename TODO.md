@@ -45,13 +45,13 @@ record of what got done.
 - [ ] **Make mrklabs.com/whsbt redirect to whs.makerlabkids.com/bluetooth**: it is what the
       NOT CONNECTED card on every screen shows (`HELP_URL` in the worm-bin config).
 
-- [ ] **Tunnels 1 and 3: switch on the Opal's auto-connect** (the cause of the 2026-10-31
-      evening: the Tunnels' Opals had "auto-connect to saved networks" OFF, so after a power
-      cycle they waited for their Pi's watchdog, minutes after the Pi boots, or forever with
-      the Pi down; the Portal had it on). Tunnel 2 and the Portal are set; the watchdog now
-      switches it on wherever it finds it off, so Tunnels 1 and 3 fix themselves on their
-      Pis' next watchdog run once their code is updated (burrow1 and burrow3 have it), or
-      run `tools/routers/join-backhaul.py N` from a laptop on the Tunnel.
+- [ ] **Tunnel 3: switch on the Opal's auto-connect** (the cause of the 2026-10-31 evening:
+      the Tunnels' Opals had "auto-connect to saved networks" OFF, so after a power cycle they
+      waited for their Pi's watchdog, minutes after the Pi boots, or forever with the Pi down;
+      the Portal had it on). The Portal, Tunnel 1 and Tunnel 2 are set (Tunnel 1 through its
+      Portal-side address 192.168.80.21, which also forwards burrow1's ssh). burrow3 runs the
+      watchdog that switches it on at its next run after an update, or run
+      `tools/routers/join-backhaul.py 3` from a laptop on Tunnel 3.
 - [ ] **burrow2's Pi is offline on Opal 2's cable port** (as of the evening of 2026-10-31):
       check power and link lights, then `edge/burrow/tools/update-burrow.sh 2`.
 
