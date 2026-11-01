@@ -112,3 +112,51 @@ Wi-Fi, a phone hotspot. From the Pi you have its Opal too (the admin API on the
 cable), so a Tunnel can be joined, rebooted or reconfigured without a cable from
 anywhere with internet. `update-burrow.sh` takes `BURROW_SSH="ssh -o ProxyCommand=..."`
 to deploy the same way.
+
+## Every box stands alone (2026-10-31)
+
+The rule: one failure never takes anything else down, and every box has two
+ways out.
+
+**A Pi dies.** Its Picos notice within five minutes (no accepted push), leave
+that WormHole, avoid that access point for half an hour, and join another.
+The other Pis, the Opals and the Surface are untouched. The Surface alerts.
+
+**A Tunnel Opal dies.** Its Pi brings up its own Wi-Fi after five minutes
+with no cable path: another WormHole access point first, else the same
+ladder the Opal uses (phone hotspot, school net, home nets), keeps
+uploading, stays reachable by SSH through its tunnel, and the Surface alerts
+"on its own Wi-Fi". It also nurses the Opal: reboots it over the admin API,
+keeps its auto-connect on. The Picos on that Tunnel rejoin elsewhere.
+
+**The provider dies.** There is no fixed Portal. Every Opal is a client on
+the same ladder; one that has had ten minutes of clean internet on a real
+upstream offers the hidden backhaul (`WormHole-Core`), withdraws it after two
+minutes without internet, and may not offer again for thirty (the
+watchdog's `backhaul_election`). Followers join the strongest offer they
+hear and report which; the Surface alerts when followers see no internet
+through a provider that claims clean. A flaky Opal keeps failing probation.
+
+**Power cycles.** Every Opal rejoins its saved networks by itself (the
+watchdog keeps that setting on; it was off on the Tunnels until tonight).
+Picos stagger their first join by up to ten seconds.
+
+**Updates, one at a time.** `/opt/burrow/BUILD` says which commit runs
+(`build` in /api/status, on the admin page). The admin pastes a commit and
+clicks Update on one Burrow: the Surface fetches that commit's tarball from
+GitHub once, keeps it in its bucket, and hands the Burrow `{build, sha256,
+url}` in its next snapshot reply; the service writes
+`/data/burrow/update-request.json`; `burrow-update.path` (root) runs
+`self-update.sh`: download from the Surface with the Burrow's token, verify
+the sha256 or refuse, unpack over `~/wormhole`, `install.sh`, restart, report
+the build. The other buttons stay off until it reports or 30 minutes pass.
+
+**Cattle, not pets.** `tools/clone-card.sh image 0 golden.img.gz` reads a
+good card over ssh; `clone-card.sh write golden.img.gz /dev/sdX 2` writes a
+card for burrow2 with one JSON line on its boot partition
+(`burrow-identity.json`); `first-boot-identity.sh` (a oneshot before the
+service) becomes that Burrow: name, room, peers, cable address, hostname,
+tokens if given, wipes the cloned data, reboots. No flasher, no setup script.
+
+**Readings are never thrown away.** See `/api/undated` above: rows the Burrow
+cannot date are stored in buffer order, not dropped.

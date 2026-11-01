@@ -1,7 +1,7 @@
 import { env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import { applySchema, bootstrapAdmin, edgeFetch, get, postJson } from "./helpers.js";
-import { SILENT_S, watchEdges } from "../src/alerts.js";
+import { SILENT_S, sameOpal, watchEdges } from "../src/alerts.js";
 
 const T = Math.floor(Date.now() / 1000);
 
@@ -199,5 +199,14 @@ describe("an open alert nags once a day", () => {
     } finally {
       globalThis.fetch = real;
     }
+  });
+});
+
+describe("sameOpal: a follower's provider BSSID against an Opal's station MAC", () => {
+  it("matches the Portal's 2.4 and 5 GHz access points, not another Opal", () => {
+    expect(sameOpal("94:83:c4:84:d2:0b", "92:83:c4:84:d2:0b")).toBe(true);
+    expect(sameOpal("94:83:C4:84:D2:0C", "92:83:c4:84:d2:0b")).toBe(true);
+    expect(sameOpal("94:83:c4:85:33:a4", "92:83:c4:84:d2:0b")).toBe(false);
+    expect(sameOpal(null, "92:83:c4:84:d2:0b")).toBe(false);
   });
 });

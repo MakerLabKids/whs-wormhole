@@ -17,7 +17,11 @@ read -r BUILD SHA URL < <(python3 -c "import json; r=json.load(open('$REQ')); pr
 say "update to $BUILD from $URL"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-if ! curl -fsSL --max-time 300 -o "$work/src.tgz" "$URL"; then
+auth=()
+if [ -s /etc/burrow/cloud.token ] && [[ "$URL" == *"/v1/edge/rollout/"* ]]; then
+  auth=(-H "Authorization: Bearer $(cat /etc/burrow/cloud.token)")
+fi
+if ! curl -fsSL --max-time 600 --retry 3 --retry-delay 10 "${auth[@]}" -o "$work/src.tgz" "$URL"; then
   say "download failed"; mv "$REQ" "$REQ.failed"; exit 1
 fi
 got=$(sha256sum "$work/src.tgz" | cut -d' ' -f1)

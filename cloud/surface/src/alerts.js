@@ -67,6 +67,17 @@ export function buildRequest(url, headers, title, text) {
   }
   return { url, headers, body: text };
 }
+// Is this BSSID one of the Opal whose station MAC is `mac`? GL.iNet Opals derive their access
+// points' BSSIDs from one vendor block: the middle four octets match and the last octet is within
+// a couple (92:83:c4:84:d2:0b station -> 94:83:c4:84:d2:0b 2.4 GHz, 94:83:c4:84:d2:0c 5 GHz).
+export function sameOpal(bssid, mac) {
+  if (!bssid || !mac) return false;
+  const a = String(bssid).toLowerCase().split(":"), b = String(mac).toLowerCase().split(":");
+  if (a.length !== 6 || b.length !== 6) return false;
+  if (a.slice(1, 5).join(":") !== b.slice(1, 5).join(":")) return false;
+  return Math.abs(parseInt(a[5], 16) - parseInt(b[5], 16)) <= 2;
+}
+
 export async function notify(env, title, text, priority = "high", tags = "warning", sleep = (ms) => new Promise((r) => setTimeout(r, ms))) {
   const raw = alertUrl(env);
   if (!raw) return { ok: false, error: "no ALERT_URL" };
@@ -233,7 +244,8 @@ export async function watchEdges(env, t = now(), probe = probeTunnel) {
     const t = p.st.tunnel || {};
     if (t.backhaul !== "on") continue;
     const mine = new Set((t.own_bssids || []).map((b) => String(b).toLowerCase()));
-    const unhappy = sts.filter((f) => f.edge !== p.edge && f.st.tunnel && mine.has(String(f.st.tunnel.provider_bssid || "").toLowerCase()) && f.st.cloud_ok === false);
+    const unhappy = sts.filter((f) => f.edge !== p.edge && f.st.tunnel && f.st.cloud_ok === false
+      && (mine.has(String(f.st.tunnel.provider_bssid || "").toLowerCase()) || sameOpal(f.st.tunnel.provider_bssid, t.own_mac)));
     if (!unhappy.length) continue;
     out.disagree.push({ provider: p.edge, followers: unhappy.map((f) => f.edge) });
     const key = `elect:${p.edge}`;

@@ -435,6 +435,15 @@ def opal_facts(r):
         facts["own_bssids"] = bssids
     except Exception:
         pass
+    try:
+        # the Opal's station MAC (repeater get_config); its access points use the same
+        # vendor block with the first octet and the last nibble shifted, which is how the
+        # Surface tells "this follower is on that Opal's backhaul" (sameOpal in alerts.js)
+        rc = r.call("repeater", "get_config") or {}
+        if isinstance(rc, dict) and rc.get("macaddr"):
+            facts["own_mac"] = str(rc["macaddr"]).lower()
+    except Exception:
+        pass
     return facts
 
 

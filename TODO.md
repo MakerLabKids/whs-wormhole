@@ -5,63 +5,26 @@ record of what got done.
 
 ## Deploy (from 2026-10-31)
 
-- [ ] **A bin must leave a network whose Burrows all fail** (2026-10-31 night: the bench
-      board joined Tunnel 2's WormHole, burrow2's Pi was dead, and it sat offline for two
-      hours; a reset put it on Tunnel 3 and it was pushing in 14 s). All Tunnels broadcast
-      the same WormHole; the board takes the strongest and never reconsiders. Fix: after N
-      minutes with no Burrow accepting (own .10, burrow0 at the Portal, the Tunnels' forwards
-      all failing), drop the network and rejoin, preferring a different BSSID; keep going
-      round. burrow0 at 192.168.80.10 is in every bin's fallback list since 4df0cf4.
-
-- [ ] **Burrow code to the four classroom Pis** (burrow0-3): `edge/burrow` now has
-      `POST /ingest/batch` (backfill after an outage) and the dash shows a Bin's
-      `buffered` count. Until the Pis have it, a Bin that comes back from an outage
-      gets a 404 for its batches and just keeps them (nothing is lost, it retries
-      every push tick).
-- [ ] **Reflash the classroom Picos** with the fleet flasher (`tools/fleet/flash.py`):
-      picolab 0.2.1 (flash buffer, title marquee, smoothed distance), the new
-      `lib/vl53l0x.py` (full init: the old one read ~80 mm long and died at close
-      range), and the worm-bin `main.py` (continuous-mode ranging, LABEL: value rows).
-- [ ] **Bins are renumbered fleet-wide, 30 to 79** (`roster.csv`, 2026-10-31): the bin number
-      is now the board's address on both networks and part of its PIN. Re-label the lids to
-      match before the reflash (the reflash writes the new number into each board), and
-      re-run `tools/fleet/flash.py --renumber` first if you want a different start than 30
-      (`bin_first` in fleet.json).
-- [ ] **Recalibrate every bin's distance sensor after the reflash** (the old
-      calibration belongs to the old driver): on the dashboard's Surface card,
-      capture the empty bin depth (lid to the paper towel, ~175 mm on the viewer
-      bins) and a box/book at a measured ~64 mm, then Apply. Each module has its own
-      offset and slope (the bench one: raw 120 at 64, raw 232 at 175).
-- [ ] **Messages (2026-10-31 evening) need three deploys**: Surface `wrangler deploy` (done
-      2026-10-31) plus `npx wrangler d1 execute wormhole --remote --file schema.sql` (the new
-      `messages` and `bin_messages` tables, done 2026-10-31); the Burrow code to the Pis
-      (burrow0, burrow1 and burrow3 done 2026-10-31 over Ethernet, `tools/update-burrow.sh`;
-      burrow2 still to do: its Pi was offline on Opal 2's cable port when the host was
-      plugged in there) (the /ingest reply carries website messages, the
-      snapshot reply lists them); and the Pico reflash (picolab 0.2.2, lib/blelink.py,
-      lib/logos.py, msg.js, and bin.json gets the fleet `teacher_pin`, 2718 in fleet.json:
-      change it there first if you want another). Until all three are out, website messages
-      queue harmlessly (status "waiting for the bin").
-- [x] Bluetooth from a phone: works (2026-10-31 evening, Android Chrome on the live page
-      whs.makerlabkids.com/bluetooth against the bench board). On a laptop, wait for the
-      chooser's scan to settle before picking the board: a Bluetooth mouse stalling is the
-      adapter resetting, and that closes the chooser ("User cancelled"). Vivaldi/Brave/Opera
-      have no chooser at all.
-- [ ] **Surface (Cloudflare) deploy + `ALERT_URL`** (carried over): `wrangler deploy`
-      from your laptop, and the alert URL as `https://`.
-
-- [ ] **Make mrklabs.com/whsbt redirect to whs.makerlabkids.com/bluetooth**: it is what the
-      NOT CONNECTED card on every screen shows (`HELP_URL` in the worm-bin config).
-
-- [ ] **Tunnel 3: switch on the Opal's auto-connect** (the cause of the 2026-10-31 evening:
-      the Tunnels' Opals had "auto-connect to saved networks" OFF, so after a power cycle they
-      waited for their Pi's watchdog, minutes after the Pi boots, or forever with the Pi down;
-      the Portal had it on). The Portal, Tunnel 1 and Tunnel 2 are set (Tunnel 1 through its
-      Portal-side address 192.168.80.21, which also forwards burrow1's ssh). burrow3 runs the
-      watchdog that switches it on at its next run after an update, or run
-      `tools/routers/join-backhaul.py 3` from a laptop on Tunnel 3.
-- [ ] **burrow2's Pi is offline on Opal 2's cable port** (as of the evening of 2026-10-31):
-      check power and link lights, then `edge/burrow/tools/update-burrow.sh 2`.
+- [ ] **Surface `wrangler deploy` + schema** (the night of 2026-10-31): rollouts, R2-backed
+      tarballs, the undated/board-state tables, the Wi-Fi and election alerts, the admin
+      Update panel. `npx wrangler deploy && npx wrangler d1 execute wormhole --remote --file schema.sql`.
+- [ ] **Cloudflare: SSH hostnames** `ssh-burrowN.whs.makerlabkids.com -> ssh://localhost:22` on each
+      tunnel (N = 0..3); then `tools/ssh-burrow.sh N` from anywhere.
+- [ ] **First real rollout**: after the Surface deploy, admin page -> Devices -> paste a commit,
+      Update burrow0, watch it report the build; then the others one by one. (The Pi side was
+      exercised tonight against GitHub directly: codeload stalled a 24 MB download, hence the
+      bucket.)
+- [ ] **burrow2**: `clone-card.sh image 0 golden.img.gz`, `clone-card.sh write ... /dev/sdX 2`, boot
+      it on Opal 2. Then Tunnel 2 is nursed by it.
+- [ ] **Reflash the classroom Picos** with the fleet flasher (`tools/fleet/flash.py`): everything
+      since picolab 0.2.1 (marquee, shows, boot sequence, buffer + backfill, fixed addresses +
+      PINs, messages over Wi-Fi/website/Bluetooth, link icon, NOT CONNECTED cards, dead-network
+      rejoin, join stagger). Bins renumbered 30-79: relabel lids first. Recalibrate distance after.
+- [ ] **Make mrklabs.com/whsbt redirect to whs.makerlabkids.com/bluetooth** (on the NOT CONNECTED card).
+- [ ] **`ALERT_URL`** for the Surface (carried over).
+- [ ] **Physical fault tests** (an evening, with the clock): pull a Pi; pull a Tunnel; pull the
+      provider; pull the internet; power everything off and on in random order; swap an Opal;
+      swap a Pi (cloned card); two rollouts in a row. Pass times in the plan of 2026-10-31.
 
 ## Bench board (The Wrigglers, now bin 38)
 

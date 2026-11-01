@@ -103,6 +103,15 @@ board's PIN (asked once per phone, see below). The slots live on the
 board in `msg.json`; the editor is `msg.js`, which the install puts on
 the Pico next to `cal.js`.
 
+### A dead Pi never strands a bin
+
+If the board is joined to a WormHole whose Burrows all fail for five minutes
+(its own, burrow0 at the Portal, the Tunnels' forwards), it leaves that
+network, remembers that access point as bad for half an hour, and rejoins
+the strongest WormHole it can hear, preferring another. After a power cut
+every board waits a random 0-10 s before its first join, so fifty of them
+do not hit one access point in the same second.
+
 ### Is it connected?
 
 The screen's bottom-right corner carries the link: a filled dot when a

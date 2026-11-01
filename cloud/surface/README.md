@@ -147,6 +147,21 @@ default, since unplugged bins are normal. After changing schema.sql run
 `npx wrangler d1 execute wormhole --remote --file schema.sql` once (idempotent) to add the
 `events` and `alerts` tables.
 
+## Rollouts: update one Burrow at a time
+
+`POST /api/admin/rollout {edge, build}` (admin): the Worker fetches that commit's tarball from
+GitHub (`ROLLOUT_TARBALL_BASE` + `/<build>`, default codeload), stores it in the castings bucket
+under `rollouts/<build>.tgz`, records its sha256, and from then on that Burrow's snapshot reply
+carries `update_to: {build, sha256, url}` with `url` = this Surface's `/v1/edge/rollout/<build>`
+(bearer token). The row closes when the Burrow's snapshot reports that build; 30 minutes without
+is an error; `POST /api/admin/rollout/cancel {edge}`. `GET /api/admin/rollout` lists them and says
+which Burrow is open; the admin page's Devices tab has the input and the buttons. Only one Burrow
+updates at a time by construction. Table `rollouts` in schema.sql.
+
+The Devices page also alerts when a Burrow runs on its own Wi-Fi (`tunnel.wifi_fallback == "up"`)
+and when followers of a backhaul provider report no internet through it (`sameOpal` matches a
+follower's provider BSSID to a provider's station MAC).
+
 ## Messages for a bin's screen
 
 `/api/messages` (cookie): `GET ?uid=` lists a bin's five slots and their delivery status;

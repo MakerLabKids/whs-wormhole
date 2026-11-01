@@ -47,7 +47,13 @@ describe("rollouts: one Burrow at a time, by a click", () => {
     expect(r.status).toBe(409);
     // burrow1's snapshot gets the instruction; burrow2's does not
     j = await snapshot("burrow1", { version: "0.1.0", build: "1111111 2026-10-31T20:00:00Z" });
-    expect(j.update_to).toEqual({ build: "abcdef1", sha256: await sha256Hex(TARBALL), url: "https://codeload.github.com/MakerLabKids/whs-wormhole/tar.gz/abcdef1" });
+    expect(j.update_to).toEqual({ build: "abcdef1", sha256: await sha256Hex(TARBALL), url: "https://example.com/v1/edge/rollout/abcdef1" });
+    // the Burrow downloads it from us, with its token
+    expect((await SELF.fetch("https://example.com/v1/edge/rollout/abcdef1")).status).toBe(401);
+    const dl = await edgeFetch("burrow1", "/v1/edge/rollout/abcdef1");
+    expect(dl.status).toBe(200);
+    expect(new Uint8Array(await dl.arrayBuffer())).toEqual(TARBALL);
+    expect((await edgeFetch("burrow1", "/v1/edge/rollout/1234567")).status).toBe(404);
     j = await snapshot("burrow2", { build: "1111111" });
     expect(j.update_to).toBeUndefined();
     // it reports the new build: closed, and burrow2 may go next

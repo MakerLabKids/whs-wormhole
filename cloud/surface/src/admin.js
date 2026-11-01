@@ -109,16 +109,21 @@ async function requestRollout(request, env, session) {
   if (!edge || !build) return err(400, "edge (burrowN) and build (a commit sha) required");
   const open = await env.DB.prepare("SELECT edge FROM rollouts WHERE done_at IS NULL AND error IS NULL").first();
   if (open && open.edge !== edge) return err(409, `${open.edge} is still updating; one Burrow at a time`, { open: open.edge });
-  const url = REPO_TARBALL(env, build);
+  // fetch the commit's tarball from GitHub once, keep it in our bucket, hand the Pis OUR url: one
+  // GitHub fetch per rollout, and the Pis download from Cloudflare with their token (fast, no
+  // codeload stalls on a school link)
+  const src = REPO_TARBALL(env, build);
   let sha256;
   try {
-    const r = await fetch(url, { headers: { "user-agent": "wormhole-surface" } });
+    const r = await fetch(src, { headers: { "user-agent": "wormhole-surface" } });
     if (!r.ok) return err(502, `GitHub answered ${r.status} for ${build}`);
     const buf = await r.arrayBuffer();
     sha256 = await sha256Hex(buf);
+    await env.CASTINGS.put(`rollouts/${build}.tgz`, buf, { httpMetadata: { contentType: "application/gzip" }, customMetadata: { sha256 } });
   } catch (e) {
     return err(502, "could not fetch the commit's tarball: " + (e.message || e));
   }
+  const url = `${new URL(request.url).origin}/v1/edge/rollout/${build}`;
   const t = now();
   await env.DB.prepare(
     `INSERT INTO rollouts (edge, build, sha256, url, requested_by, requested_at, done_at, error) VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, NULL)

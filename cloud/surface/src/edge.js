@@ -38,6 +38,7 @@ export async function handleEdge(request, env, ctx, path) {
   if (path === "/v1/edge/events" && m === "POST") return postEvents(request, env, edge);
   if (path === "/v1/edge/rollups" && m === "POST") return rollups(request, env);
   if (path === "/v1/edge/verify" && m === "POST") return verify(request, env);
+  if (path.startsWith("/v1/edge/rollout/") && m === "GET") return rolloutTarball(env, path.slice("/v1/edge/rollout/".length));
   if (path.startsWith("/v1/edge/castings/")) {
     const id = path.slice("/v1/edge/castings/".length);
     if (m === "PUT") return putCasting(request, env, edge, id);
@@ -50,6 +51,14 @@ export async function handleEdge(request, env, ctx, path) {
 }
 
 // R2 key: castings/r<room>/<YYYY>/<MM>/<DD>/<id>.jsonl.gz, date from t0 (UTC).
+// the tarball a rollout was made from, for the Burrow that was told to move to it
+async function rolloutTarball(env, build) {
+  if (!/^[0-9a-f]{7,40}$/.test(build)) return err(400, "bad build");
+  const obj = await env.CASTINGS.get(`rollouts/${build}.tgz`);
+  if (!obj) return err(404, "no tarball for that build");
+  return new Response(obj.body, { headers: { "content-type": "application/gzip", "x-sha256": obj.customMetadata?.sha256 || "" } });
+}
+
 export function r2Key(room, t0, id) {
   const d = new Date(t0 * 1000);
   const p = (n) => String(n).padStart(2, "0");
