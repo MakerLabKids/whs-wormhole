@@ -952,6 +952,7 @@
       (isNum(roomNo) ? '<a class="btn ghost sm" href="' + (S.local ? '/signal' : '/signal/' + roomNo) + '">signal meter</a>' : '') + '</h3>' +
       '<dl class="kv">' +
       '<dt>seen</dt><dd>' + (isNum(seen) ? esc(ago(seen)) + ' <span class="muted">(' + esc(dateTime(seen)) + ')</span>' : '–') + '</dd>' +
+      (meta.enrolled ? '<dt>Pi</dt><dd class="mono">' + esc(meta.enrolled.serial) + ' <span class="muted">enrolled ' + esc(ago(meta.enrolled.enrolled_at)) + (meta.enrolled.replaced ? ', replaced ' + esc(meta.enrolled.replaced) : '') + '</span></dd>' : '') +
       '<dt>up</dt><dd>' + dur(s.up_s) + ' <span class="muted">· clock ' + esc(s.clk || '?') + ' · disk ' + (isNum(s.disk_pct) ? s.disk_pct + '%' : '–') + '</span></dd>' +
       '<dt>links</dt><dd>' + (s.cloud_ok ? '<span class="good">cloud ok</span>' : '<span class="bad">cloud down</span>') + (isNum(s.peers_ok) ? ' · peers ' + s.peers_ok : '') +
         ' · bins ' + (s.bins != null ? s.bins : '–') + (s.live_clients ? ' · ' + s.live_clients + ' live viewers' : '') + (s.watching ? ' · watching ' + s.watching : '') + '</dd>' +
@@ -1096,7 +1097,7 @@
         body.className = 'devices-wrap';
         body.innerHTML = '<div class="card">' + alertsHTML(r[1]) + '</div>' +
           '<h3>Devices <small class="muted">(refreshes every 60 s)</small></h3>' +
-          devicesHTML(rows.map(function (x) { return { name: x.edge, status: x.status || {}, meta: { room: x.room, last_seen: x.last_seen, bins: x.bins } }; })) +
+          devicesHTML(rows.map(function (x) { return { name: x.edge, status: x.status || {}, meta: { room: x.room, last_seen: x.last_seen, bins: x.bins, enrolled: x.enrolled } }; })) +
           (isAdmin ? '<div class="card" id="rollout">' + rolloutHTML(r[3], rows) + '</div>' : '') +
           '<div class="card">' + eventsHTML((r[2] && r[2].events) || [], 'Recent events, all rooms') + '</div>';
         var rb = body.querySelectorAll('#rollout button[data-edge]');

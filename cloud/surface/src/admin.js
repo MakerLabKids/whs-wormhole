@@ -160,6 +160,11 @@ async function edges(env) {
   const { results } = await env.DB.prepare(
     "SELECT edge_id, room, ts, clk, status, snapshot, roster_at, updated_at FROM edges ORDER BY edge_id",
   ).all();
+  let enrolled = {};
+  try {
+    const e = await env.DB.prepare("SELECT edge, serial, enrolled_at, replaced, eth_mac, wlan_mac FROM enrolled").all();
+    for (const r of e.results) enrolled[r.edge] = { serial: r.serial, enrolled_at: r.enrolled_at, replaced: r.replaced, eth_mac: r.eth_mac, wlan_mac: r.wlan_mac };
+  } catch (e) { enrolled = {}; }
   return json({
     ok: true,
     edges: results.map((r) => {
@@ -173,7 +178,7 @@ async function edges(env) {
           via: e.edge && e.edge !== r.edge_id ? e.edge : null, buffered: d.buffered ?? null };
       }).sort((a, b) => (b.ts || 0) - (a.ts || 0));
       return { edge: r.edge_id, room: r.room, ts: r.ts, clk: r.clk, last_seen: r.updated_at, roster_at: r.roster_at,
-        version: status.version ?? null, status, bins };
+        version: status.version ?? null, status, bins, enrolled: enrolled[r.edge_id] || null };
     }),
   });
 }
