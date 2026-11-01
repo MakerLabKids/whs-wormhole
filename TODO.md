@@ -42,11 +42,13 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       Update burrow0, watch it report the build; then the others one by one. (The Pi side was
       exercised tonight against GitHub directly: codeload stalled a 24 MB download, hence the
       bucket.)
-- [ ] **Deploy the Surface** (`npx wrangler d1 execute wormhole --remote --file schema.sql`, then
-      `npx wrangler deploy`): standby enrolment (7c69e0c), Pico code releases (5b8067e). Then a live
-      code update on the bench board (bin 38) from the Devices page. Golden image is 7c69e0c
-      (standby-aware, 2026-11-01 13:56); burn spares from it. Older images
+- [x] **Surface deployed 2026-11-01 ~14:50** (standby enrolment + Pico code releases). First live code
+      update: bench board (bin 38) 58939f0 over Wi-Fi, 17 files in 4 pushes, swapped, confirmed after a
+      minute; name, bin.json, messages, calibration, shows + website playlist, and its main.py settings
+      (pins, Roswell elevation, 3 unfitted parts) all kept. Golden image is 7c69e0c (standby-aware);
       burrow-golden-0514253 / -73219d5 can be deleted.
+- [ ] Watch a real standby takeover once (a spare Pi on a room's Opal, then unplug the room's Pi):
+      built and tested in code, not yet seen on hardware.
 - [x] **Extra Pis never break a room** and **Pico code over Wi-Fi**: built and tested 2026-11-01
       (roles.py + Surface enrol; lib/ota.py + boot.py + Burrow relay + Devices panel; e2e 11/11
       against real GitHub). On all four Pis; on the bench board.

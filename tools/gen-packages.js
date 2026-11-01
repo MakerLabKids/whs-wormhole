@@ -109,7 +109,7 @@ Lab guide + wiring diagrams:  https://makerlabkids.github.io/whs-wormhole/
 Electronics glossary:         https://makerlabkids.github.io/whs-wormhole/glossary.html
 Programming cheat sheet:      https://makerlabkids.github.io/whs-wormhole/cheatsheet.html
 Repo + docs:                  https://github.com/MakerLabKids/whs-wormhole
-Firmware (.uf2, flash once):  https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2
+Firmware (.uf2, flash once):  https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260824-v1.29.0.uf2
 `;
 fs.writeFileSync(path.join(ROOT, "docs", "TOC.txt"), toc);
 console.log("wrote docs/TOC.txt");
