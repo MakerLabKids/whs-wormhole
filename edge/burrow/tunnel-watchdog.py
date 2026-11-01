@@ -67,6 +67,14 @@ REBOOT_DAILY_S = 86400    # ...then once a day, forever
 REBOOT_MIN_GAP_S = 3600   # never two reboots within an hour
 REBOOT_SETTLE_S = 240     # after a reboot, give the Opal this long before judging it
 WIFI_AFTER_S = 5 * 60     # bring the Pi's own Wi-Fi up after this long down
+# Election, decentralised: an Opal offers the backhaul (its hidden WormHole-Core)
+# only after PROBATION_S of clean internet on its own upstream, drops the offer
+# after DROP_AFTER_S without internet, and may not offer again for BAR_S.
+# Followers join the strongest offer they hear. No vote: whoever is good, is.
+PROBATION_S = 10 * 60
+DROP_AFTER_S = 2 * 60
+BAR_S = 30 * 60
+BACKHAUL_IFACE = "default_radio1"     # the 5 GHz iface that carries WormHole-Core (wifi get_config)
 EVENTS_KEEP = 10
 
 
@@ -81,6 +89,54 @@ def upstreams_of(cfg):
     keys = ("ssid", "key", "bssid", "device", "band", "encryption")
     flat = {k: cfg[k] for k in keys if cfg.get(k)}
     return [flat] if flat.get("ssid") else []
+
+
+def backhaul_election(r, st, now, cloud_ok, status):
+    """Offer or withdraw this Opal's backhaul by its own measured internet.
+    st keeps: clean_since (first clean check in the current run of good ones),
+    bad_since, backhaul ("on"/"off"/"barred"), barred_until. Only an Opal on
+    a real upstream (not itself a follower on WormHole-Core) can offer."""
+    on_backhaul = (status.get("ssid") or "") == "WormHole-Core"
+    if cloud_ok and not on_backhaul:
+        if not st.get("clean_since"):
+            st["clean_since"] = int(now)
+        st["bad_since"] = None
+    else:
+        st["clean_since"] = None
+        if not st.get("bad_since"):
+            st["bad_since"] = int(now)
+    want = None
+    if st.get("barred_until") and now < st["barred_until"]:
+        want = False
+        st["backhaul"] = "barred"
+    elif st.get("clean_since") and now - st["clean_since"] >= PROBATION_S:
+        want = True
+    elif st.get("bad_since") and now - st["bad_since"] >= DROP_AFTER_S:
+        want = False
+    if want is None:
+        return
+    try:
+        cfg = r.call("wifi", "get_config") or {}
+        cur = None
+        for radio in cfg.get("res", []):
+            for i in radio.get("ifaces", []):
+                if i.get("name") == BACKHAUL_IFACE:
+                    cur = bool(i.get("enabled"))
+        if cur is None or cur == want:
+            if cur is not None:
+                st["backhaul"] = "on" if want else ("barred" if st.get("backhaul") == "barred" else "off")
+            return
+        r.call("wifi", "set_config", {"ifaces": [{"name": BACKHAUL_IFACE, "enabled": want}]})
+        if want:
+            st["backhaul"] = "on"
+            event(st, now, "backhaul offered: %d min of clean internet on %s" % (PROBATION_S // 60, status.get("ssid") or "?"))
+        else:
+            st["backhaul"] = "barred" if not cloud_ok else "off"
+            if not cloud_ok:
+                st["barred_until"] = int(now + BAR_S)
+                event(st, now, "backhaul withdrawn: no internet for %d min; not offered again for %d min" % (DROP_AFTER_S // 60, BAR_S // 60))
+    except Exception as e:
+        event(st, now, "backhaul toggle failed: %s" % str(e)[:80])
 
 
 def ensure_auto_connect(r, st, now):
@@ -239,10 +295,13 @@ class WifiFallback:
     """The Pi's own radio, used only while the cable path is dead."""
     CON = "burrow-wifi"
 
-    def __init__(self, cfg, run=nmcli):
+    def __init__(self, cfg, run=nmcli, upstreams=None):
         self.cfg = cfg or {}
         self.run = run
         self.iface = self.cfg.get("iface", "wlan0")
+        # the ladder when no other WormHole is in range: the Opal's own upstreams
+        # (phone hotspot, school net, home nets), with their keys
+        self.ladder = [u for u in (upstreams or []) if u.get("ssid") and u.get("ssid") != "WormHole-Core"]
 
     def available(self):
         if not self.cfg.get("ssid"):
@@ -262,20 +321,35 @@ class WifiFallback:
         return parse_nmcli_scan(out) if rc == 0 else []
 
     def up(self, exclude_bssids):
-        bssid = choose_fallback_bssid(self.scan(), self.cfg["ssid"], exclude_bssids)
-        if not bssid:
-            return None
+        """Join another WormHole access point if one is in range, else walk
+        the upstream ladder (hotspot, school, home) by name. Returns what
+        was joined (a bssid, or an ssid), or None."""
+        seen = self.scan()
+        bssid = choose_fallback_bssid(seen, self.cfg["ssid"], exclude_bssids)
+        if bssid and self._join(self.cfg["ssid"], self.cfg["key"], bssid):
+            return bssid
+        visible = {s.get("ssid") for s in seen if isinstance(s, dict)} | {s[1] for s in seen if isinstance(s, (tuple, list)) and len(s) > 1}
+        for u in self.ladder:
+            if u.get("hidden") or u["ssid"] in visible:
+                if self._join(u["ssid"], u.get("key", ""), None, open_net=(u.get("encryption") == "none")):
+                    return u["ssid"]
+        return None
+
+    def _join(self, ssid, key, bssid, open_net=False):
         rc, out = self.run("-t", "-f", "NAME", "connection", "show")
         exists = rc == 0 and self.CON in out.splitlines()
         common = ["connection.autoconnect", "no", "ipv4.route-metric", "50", "ipv6.method", "disabled",
-                  "802-11-wireless.bssid", bssid, "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", self.cfg["key"]]
+                  "802-11-wireless.ssid", ssid, "802-11-wireless.bssid", bssid or ""]
+        if open_net:
+            common += ["wifi-sec.key-mgmt", "none"]
+        else:
+            common += ["wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", key or ""]
         if exists:
             self.run("connection", "modify", self.CON, *common)
         else:
-            self.run("connection", "add", "type", "wifi", "ifname", self.iface, "con-name", self.CON,
-                     "ssid", self.cfg["ssid"], *common)
+            self.run("connection", "add", "type", "wifi", "ifname", self.iface, "con-name", self.CON, "ssid", ssid, *common)
         rc, out = self.run("connection", "up", self.CON, timeout=60)
-        return bssid if rc == 0 else None
+        return rc == 0
 
     def down(self):
         if self.is_up():
@@ -397,7 +471,7 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
     st = load_json(STATE, {})
     st["last_check"] = int(now)
     upstreams = upstreams_of(cfg)
-    wifi = (wifi_factory or WifiFallback)(cfg.get("wifi_fallback"))
+    wifi = (wifi_factory or WifiFallback)(cfg.get("wifi_fallback")) if wifi_factory else WifiFallback(cfg.get("wifi_fallback"), upstreams=cfg.get("upstreams"))
 
     cloud_ok = cloud_check(cloud_url)
     st["cloud_ok"] = cloud_ok
@@ -407,6 +481,8 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
         r.login(cfg["password"])
         status = r.call("repeater", "get_status") or {}
         ensure_auto_connect(r, st, now)
+        st["provider_bssid"] = (status.get("bssid") or (status.get("wpa_status") or {}).get("bssid") or "").lower() or None
+        backhaul_election(r, st, now, cloud_ok, status)
     except Exception as e:
         # The Opal's LAN itself is gone: nothing to join or reboot, just report
         # and get our own radio up so the report leaves the building.

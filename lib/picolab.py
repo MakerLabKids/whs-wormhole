@@ -1372,6 +1372,9 @@ PUSH_EVERY_S = 60          # how often a joined station POSTs /ingest to its Bur
 PUSH_TIMEOUT_S = 3         # per attempt; the loop stalls at most this long
 AP_AFTER_LOST_S = 60       # open our own hotspot this long after losing the network
 RESCAN_EVERY_S = 120       # while on the hotspot: look for the ladder networks this often
+DEAD_NET_S = 300           # joined, but no Burrow has accepted a push this long: leave and rejoin elsewhere
+BAD_AP_S = 1800            # an access point we left that way is avoided this long
+JOIN_STAGGER_S = 10        # the first join after power-on waits a random 0..this many seconds
 AP_HOLD_MAX_S = 600        # ...unless a phone is on the hotspot: then wait up to this long
 # NOTE: the Pico W cannot run the hotspot and the station at the same time
 # (MicroPython's rp2 port does not route between two active interfaces), so
@@ -1861,6 +1864,9 @@ class WebApp:
     self._net_deadline = 0
     self._net_next = 0            # uptime of the next rescan while lost
     self._lost_at = None          # uptime when the link went away
+    self._joined_at = 0           # uptime when the current network was joined
+    self._bad_aps = {}            # bssid -> uptime we gave up on it (a network whose Burrows were all dead)
+    self.net_leaves = 0           # how often we walked away from a network with no working Burrow
     self._joined_at = None        # uptime when the link came (back)
     self._ap_hold_since = None    # uptime when we first deferred a rescan for a hotspot user
     self.edges = []
@@ -1940,6 +1946,11 @@ class WebApp:
         except Exception:
           present = ladder      # scan failed: just try them all in order
 
+        if present and JOIN_STAGGER_S:
+          # fifty bins coming back from a power cut should not all hit the
+          # access point and the DHCP server in the same second
+          import random
+          time.sleep_ms(random.randrange(JOIN_STAGGER_S * 1000))
         for name in present:
           if _try_join(sta, name, password):
             self._on_joined(name)
@@ -2074,6 +2085,8 @@ class WebApp:
         ok = self.sta.isconnected()
       except Exception:
         ok = False
+      if ok and self._net_dead(up):
+        ok = False                      # the network is up but nobody behind it answers: treat it as lost
       if ok:
         return
       log("network", self.joined, "lost - retrying; hotspot opens in %ds" % AP_AFTER_LOST_S)
@@ -2130,6 +2143,52 @@ class WebApp:
         else:
           self._net_state = "idle"
 
+  def _net_dead(self, up):
+    """Joined for DEAD_NET_S, pushes tried, none accepted since the join:
+    this network's Burrows are all dead (a dead Pi, a Tunnel with no way
+    out). Remember its access point and leave; a rejoin prefers another."""
+    if not (self.push and self.creds) or self.edge_ok or not self.pushes:
+      return False
+    quiet_since = max(self._joined_at, self.last_push or 0)   # the last time anyone accepted us, or the join
+    if up - quiet_since < DEAD_NET_S:
+      return False
+    bssid = None
+    try:
+      sc = [x for x in self.sta.scan() if x[0] and x[0].decode() == self.joined]
+      if sc:
+        bssid = max(sc, key=lambda x: x[3])[1]              # the strongest is the one we are on, as a rule
+    except Exception:
+      pass
+    if bssid:
+      self._bad_aps[bytes(bssid)] = up
+    self.net_leaves += 1
+    log("network", self.joined, "has no working Burrow after %ds: leaving it to find another" % DEAD_NET_S)
+    try:
+      self.sta.disconnect()
+    except Exception:
+      pass
+    return True
+
+  def _pick_ap(self, name):
+    """The access point to join for `name`: the strongest one not given
+    up on in the last BAD_AP_S (all given up on: the strongest, and
+    forget the grudges)."""
+    try:
+      up = uptime_s()
+      aps = [x for x in self.sta.scan() if x[0] and x[0].decode() == name]
+    except Exception:
+      return None
+    if not aps:
+      return None
+    for b, t in list(self._bad_aps.items()):
+      if up - t > BAD_AP_S:
+        del self._bad_aps[b]
+    good = [x for x in aps if bytes(x[1]) not in self._bad_aps]
+    if not good:
+      self._bad_aps.clear()
+      good = aps
+    return bytes(max(good, key=lambda x: x[3])[1])
+
   def _start_connect(self):
     name = self._net_candidates[self._net_try_i]
     try:
@@ -2137,7 +2196,11 @@ class WebApp:
         self.sta.disconnect()
       except Exception:
         pass
-      self.sta.connect(name, (self.creds or {}).get("password", ""))
+      bssid = self._pick_ap(name) if self._bad_aps else None
+      if bssid:
+        self.sta.connect(name, (self.creds or {}).get("password", ""), bssid=bssid)
+      else:
+        self.sta.connect(name, (self.creds or {}).get("password", ""))
       self._net_state = "connecting"
       self._net_deadline = uptime_s() + 15
       log("trying to join", name, "...")

@@ -3,6 +3,7 @@
 
 import { postEvents } from "./alerts.js";
 import { chunks, err, hex, isInt, json, now, readJson, safeParse, timingSafeEqual } from "./util.js";
+import { rolloutFor } from "./admin.js";
 import { ackStatements, boardStateStatements, pendingMessages } from "./messages.js";
 
 const CASTING_CAP = 8 * 1024 * 1024;   // gz bytes per PUT
@@ -205,6 +206,9 @@ async function snapshot(request, env, edge) {
   stmts.push(...ackStatements(env, bins, t));
   stmts.push(...boardStateStatements(env, body.messages_state, edge, t));
   await env.DB.batch(stmts);
-  return json({ ok: true, messages: await pendingMessages(env) });
+  const reply = { ok: true, messages: await pendingMessages(env) };
+  const upd = await rolloutFor(env, edge, body.status, t);
+  if (upd) reply.update_to = upd;           // this Burrow's turn: download, verify, install, report
+  return json(reply);
 }
 

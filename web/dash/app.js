@@ -945,7 +945,7 @@
       return '<div><b>' + esc(p) + '</b> ↑ ' + mbps(n.up_mbps) + ' ↓ ' + mbps(n.down_mbps) + ' Mbit/s' + ping + loss + ' <span class="muted">' + ago(n.at) + (n.error ? ' · last try failed: ' + esc(n.error) : '') + '</span></div>';
     }).join('') || '<span class="muted">no throughput targets</span>';
     var roomNo = meta.room != null ? meta.room : s.room;
-    return '<div class="card device ' + cls + '"><h3><span class="lamp tile-' + cls + '"></span>' + esc(name) + ' <small class="muted">room ' + esc(roomNo) + ' · v' + esc(s.version || '?') + '</small>' +
+    return '<div class="card device ' + cls + '"><h3><span class="lamp tile-' + cls + '"></span>' + esc(name) + ' <small class="muted">room ' + esc(roomNo) + ' · v' + esc(s.version || '?') + (s.build ? ' · <span class="mono">' + esc(String(s.build).split(' ')[0]) + '</span>' : ' · <span class="bad">no build stamp</span>') + '</small>' +
       (isNum(roomNo) ? '<a class="btn ghost sm" href="' + (S.local ? '/signal' : '/signal/' + roomNo) + '">signal meter</a>' : '') + '</h3>' +
       '<dl class="kv">' +
       '<dt>seen</dt><dd>' + (isNum(seen) ? esc(ago(seen)) + ' <span class="muted">(' + esc(dateTime(seen)) + ')</span>' : '–') + '</dd>' +
@@ -975,6 +975,28 @@
           '<td>' + (isNum(b.ts) ? esc(ago(b.ts)) + ' <span class="muted">clock ' + esc(b.clk || '?') + '</span>' : '–') + (b.buffered > 0 ? ' <span class="bad">' + b.buffered + ' buffered</span>' : '') + '</td>' +
           '<td>' + (b.via ? 'via <b>' + esc(b.via) + '</b>' : esc(b.src || 'push')) + '</td><td class="mono">' + esc(b.ip || '') + '</td></tr>';
       }).join('') + '</tbody></table></div></details>';
+  }
+  /* rollouts: one Burrow at a time. Type a commit, click Update on one Pi; the next button stays off
+     until that Pi reports the new build (its snapshot carries it) or the request errors out. */
+  function rolloutHTML(j, rows) {
+    var open = j && j.open, byEdge = {};
+    ((j && j.rollouts) || []).forEach(function (r) { byEdge[r.edge] = r; });
+    var remembered = ''; try { remembered = localStorage.getItem('rollout.build') || ''; } catch (e) {}
+    var h = '<h3>Update the Burrows <small class="muted">one at a time</small></h3>' +
+      '<p class="muted">Paste the commit (from <span class="mono">git log</span> on main) and click Update on one Burrow. ' +
+      'It downloads that commit from GitHub, checks the hash the Surface computed, installs and restarts, then reports its build here. ' +
+      'The other buttons wake up when it is done.</p>' +
+      '<div class="toolbar">commit <input id="rollout-build" class="mono" placeholder="e.g. 4df0cf4" value="' + esc(remembered) + '" style="width:12em"></div>' +
+      '<div class="tablewrap"><table><thead><tr><th>Burrow</th><th>running</th><th>asked for</th><th>state</th><th></th></tr></thead><tbody>';
+    rows.forEach(function (x) {
+      var r = byEdge[x.edge] || null, running = x.status && x.status.build ? String(x.status.build).split(' ')[0] : '';
+      var state = !r ? '' : r.error ? '<span class="bad">' + esc(r.error) + '</span>' : r.done_at ? '<span class="good">done ' + esc(ago(r.done_at)) + '</span>' : '<span class="warn">updating… since ' + esc(ago(r.requested_at)) + '</span>';
+      var busy = open && open !== x.edge, mine = open === x.edge;
+      h += '<tr><td><b>' + esc(x.edge) + '</b></td><td class="mono">' + esc(running || '?') + '</td><td class="mono">' + esc(r ? r.build : '') + '</td><td>' + state + '</td><td>' +
+        (mine ? '<button type="button" class="btn sm ghost" data-edge="' + esc(x.edge) + '" data-act="cancel">cancel</button>'
+              : '<button type="button" class="btn sm" data-edge="' + esc(x.edge) + '" data-act="go"' + (busy ? ' disabled title="' + esc(open) + ' is updating"' : '') + '>Update</button>') + '</td></tr>';
+    });
+    return h + '</tbody></table></div>';
   }
   var LEVEL_ICON = { alert: '🔴', warn: '🟠', info: '·' };
   function eventsHTML(events, title) {
@@ -1066,13 +1088,25 @@
     function every(ms, fn) { fn(); timers.push(setInterval(fn, ms)); }
 
     if (tab === 'edges') every(60000, function () {
-      Promise.all([api('/api/admin/edges'), api('/api/admin/alerts').catch(function () { return null; }), api('/api/admin/events?limit=60').catch(function () { return null; })]).then(function (r) {
+      Promise.all([api('/api/admin/edges'), api('/api/admin/alerts').catch(function () { return null; }), api('/api/admin/events?limit=60').catch(function () { return null; }), api('/api/admin/rollout').catch(function () { return null; })]).then(function (r) {
         var j = r[0], rows = Array.isArray(j) ? j : (j && (j.edges || j.rows)) || [];
         body.className = 'devices-wrap';
         body.innerHTML = '<div class="card">' + alertsHTML(r[1]) + '</div>' +
           '<h3>Devices <small class="muted">(refreshes every 60 s)</small></h3>' +
           devicesHTML(rows.map(function (x) { return { name: x.edge, status: x.status || {}, meta: { room: x.room, last_seen: x.last_seen, bins: x.bins } }; })) +
+          (isAdmin ? '<div class="card" id="rollout">' + rolloutHTML(r[3], rows) + '</div>' : '') +
           '<div class="card">' + eventsHTML((r[2] && r[2].events) || [], 'Recent events, all rooms') + '</div>';
+        var rb = body.querySelectorAll('#rollout button[data-edge]');
+        for (var i = 0; i < rb.length; i++) rb[i].onclick = function (ev) {
+          var edge = ev.target.getAttribute('data-edge'), act = ev.target.getAttribute('data-act');
+          var build = (body.querySelector('#rollout-build') || {}).value || '';
+          try { localStorage.setItem('rollout.build', build.trim()); } catch (e) {}
+          if (act === 'cancel') { api('/api/admin/rollout/cancel', { method: 'POST', body: { edge: edge } }).then(function () { render(); }).catch(fail); return; }
+          if (!/^[0-9a-f]{7,40}$/.test(build.trim())) { alert('Type the commit to move to (7+ hex characters, from git log).'); return; }
+          if (!confirm('Update ' + edge + ' to ' + build.trim() + '? It downloads, verifies, installs and restarts; about two minutes.')) return;
+          ev.target.disabled = true;
+          api('/api/admin/rollout', { method: 'POST', body: { edge: edge, build: build.trim() } }).then(function () { render(); }).catch(function (e) { alert(e.message); ev.target.disabled = false; });
+        };
         var tb = body.querySelector('#alert-test');
         if (tb) tb.onclick = function () {
           var out = body.querySelector('#alert-test-out'); out.textContent = 'sending…'; tb.disabled = true;

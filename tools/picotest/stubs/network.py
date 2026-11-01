@@ -19,7 +19,8 @@ class WLAN:
         if not self._active: raise OSError("scan on inactive interface")
         WORLD["scans"] += 1
         return [(n.encode(), b"\x00"*6, 6, -60, 3, False) for n in WORLD["present"]]
-    def connect(self, ssid, pw):
+    def connect(self, ssid, pw, bssid=None):
+        self.last_bssid = bssid
         self._ssid = ssid; self._pending = WORLD["connect_ticks"]
     def disconnect(self): self._ssid = None
     def isconnected(self):

@@ -224,8 +224,38 @@ export async function probeTunnel(env, edgeId) {
 
 // The cron: a Burrow that stopped reporting, and one that came back; a tunnel that died.
 export async function watchEdges(env, t = now(), probe = probeTunnel) {
-  const { results } = await env.DB.prepare("SELECT edge_id, room, updated_at FROM edges").all();
-  const out = { opened: [], closed: [], silent: [], tunnel_down: [] };
+  const { results } = await env.DB.prepare("SELECT edge_id, room, updated_at, status FROM edges").all();
+  const out = { opened: [], closed: [], silent: [], tunnel_down: [], on_wifi: [], disagree: [] };
+  // peer verification of the election: a Burrow offering the backhaul claims clean internet; a
+  // follower joined to that offer measures the internet through it. If they disagree, say so.
+  const sts = results.map((r) => ({ edge: r.edge_id, room: r.room, st: safeParse(r.status, {}) || {} }));
+  for (const p of sts) {
+    const t = p.st.tunnel || {};
+    if (t.backhaul !== "on") continue;
+    const mine = new Set((t.own_bssids || []).map((b) => String(b).toLowerCase()));
+    const unhappy = sts.filter((f) => f.edge !== p.edge && f.st.tunnel && mine.has(String(f.st.tunnel.provider_bssid || "").toLowerCase()) && f.st.cloud_ok === false);
+    if (!unhappy.length) continue;
+    out.disagree.push({ provider: p.edge, followers: unhappy.map((f) => f.edge) });
+    const key = `elect:${p.edge}`;
+    const res = await openAlert(env, key, p.edge, `${p.edge} offers the backhaul but ${unhappy.map((f) => f.edge).join(", ")} see no internet through it`,
+      `${p.edge} (room ${p.room}) passed its own probation and offers WormHole-Core; ${unhappy.map((f) => f.edge).join(" and ")} joined it and report no internet. Logged; the follower moves on by itself, the provider withdraws after two minutes without internet.`, "default", "warning", now());
+    if (res.opened) out.opened.push(p.edge + ":elect");
+  }
+  for (const r of results) {
+    // a Burrow on its own Wi-Fi: its Opal path is dead, and someone should go look
+    const st = safeParse(r.status, {}) || {};
+    const wifi = st.tunnel && st.tunnel.wifi_fallback;
+    const key = `wifi:${r.edge_id}`;
+    if (wifi === "up") {
+      out.on_wifi.push(r.edge_id);
+      const res = await openAlert(env, key, r.edge_id, `${r.edge_id} on its own Wi-Fi`,
+        `${r.edge_id} (room ${r.room}) lost its cable path (its Opal, or the Opal's way out) and is running on the Pi's own Wi-Fi. Data and SSH still work; the Opal needs a look.`, "high", "warning", now());
+      if (res.opened) out.opened.push(r.edge_id + ":wifi");
+    } else if (wifi === "off" || wifi === "unavailable") {
+      const res = await closeAlert(env, key, `${r.edge_id} back on its cable`, `${r.edge_id} (room ${r.room}) is back on its Opal.`, now());
+      if (res) out.closed.push({ edge: r.edge_id + ":wifi", minutes: res.minutes });
+    }
+  }
   for (const r of results) {
     const age = t - (r.updated_at || 0);
     const key = `edge:${r.edge_id}`;

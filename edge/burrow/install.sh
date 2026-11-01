@@ -32,6 +32,12 @@ if [ -f /etc/burrow/tunnel.json ]; then
 fi
 chown -R root:root /opt/burrow
 chmod -R a+rX /opt/burrow
+install -m 755 "$HERE/first-boot-identity.sh" /opt/burrow/first-boot-identity.sh
+install -m 755 "$HERE/self-update.sh" /opt/burrow/self-update.sh
+install -m 644 "$HERE/systemd/burrow-update.path" "$HERE/systemd/burrow-update.service" /etc/systemd/system/
+systemctl enable --now burrow-update.path >/dev/null 2>&1 || true
+install -m 644 "$HERE/systemd/burrow-identity.service" /etc/systemd/system/burrow-identity.service
+systemctl enable burrow-identity.service >/dev/null 2>&1 || true
 install -m 644 "$HERE/systemd/burrow.service" /etc/systemd/system/burrow.service
 install -m 644 "$HERE/systemd/tunnel-watchdog.service" "$HERE/systemd/tunnel-watchdog.timer" /etc/systemd/system/
 systemctl daemon-reload

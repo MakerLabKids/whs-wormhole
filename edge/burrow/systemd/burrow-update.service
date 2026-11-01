@@ -1,0 +1,6 @@
+[Unit]
+Description=Burrow self-update (download, verify, install, restart)
+
+[Service]
+Type=oneshot
+ExecStart=/opt/burrow/self-update.sh

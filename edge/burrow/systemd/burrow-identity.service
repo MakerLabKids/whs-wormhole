@@ -1,0 +1,11 @@
+[Unit]
+Description=Burrow first-boot identity (burrow-identity.json on the boot partition)
+Before=burrow.service tunnel-watchdog.timer cloudflared.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/burrow/first-boot-identity.sh
+
+[Install]
+WantedBy=multi-user.target

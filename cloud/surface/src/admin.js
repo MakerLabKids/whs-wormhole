@@ -4,7 +4,7 @@
 
 import { listAlerts, listEvents, testNotify } from "./alerts.js";
 import { hashPassword, normalizePassphrase } from "./auth.js";
-import { HttpError, err, json, now, readJson, safeParse, timingSafeEqual, toInt } from "./util.js";
+import { HttpError, err, json, now, readJson, safeParse, sha256Hex, timingSafeEqual, toInt } from "./util.js";
 
 // Kid-friendly worm/compost words for printed passphrases (3 words, hyphenated).
 export const WORDS = [
@@ -53,6 +53,9 @@ export async function handleAdmin(request, env, ctx, path, session) {
   if (sub === "/alerts" && m === "GET") return readOnly || listAlerts(env);
   if (sub === "/alerts/test" && m === "POST") return adminOnly || testNotify(env);
   if (sub === "/events" && m === "GET") return readOnly || listEvents(request, env);
+  if (sub === "/rollout" && m === "GET") return readOnly || rolloutStatus(env);
+  if (sub === "/rollout" && m === "POST") return adminOnly || requestRollout(request, env, session);
+  if (sub === "/rollout/cancel" && m === "POST") return adminOnly || cancelRollout(request, env);
 
   if (sub === "/teams" && m === "GET") return adminOnly || listTeams(env);
   if (sub === "/teams" && m === "POST") return adminOnly || createTeam(request, env);
@@ -88,6 +91,64 @@ async function bootstrap(request, env) {
     "INSERT INTO teams (name, role, pass_hash, pass_salt, created_at) VALUES (?1, 'admin', ?2, ?3, ?4) RETURNING *",
   ).bind(name, pass_hash, pass_salt, now()).first();
   return json({ ok: true, team: teamRow(r) });
+}
+
+// ---- rollouts: one Burrow at a time, started by a click ------------------------------------
+const REPO_TARBALL = (env, build) => `${env.ROLLOUT_TARBALL_BASE || "https://codeload.github.com/MakerLabKids/whs-wormhole/tar.gz"}/${build}`;
+
+async function rolloutStatus(env) {
+  const { results } = await env.DB.prepare("SELECT edge, build, sha256, requested_by, requested_at, done_at, error FROM rollouts").all();
+  const open = results.find((r) => !r.done_at && !r.error) || null;
+  return json({ ok: true, rollouts: results, open: open ? open.edge : null });
+}
+
+async function requestRollout(request, env, session) {
+  const body = await readJson(request, 64 << 10);
+  const edge = typeof body.edge === "string" && /^burrow\d$/.test(body.edge) ? body.edge : null;
+  const build = typeof body.build === "string" && /^[0-9a-f]{7,40}$/.test(body.build) ? body.build : null;
+  if (!edge || !build) return err(400, "edge (burrowN) and build (a commit sha) required");
+  const open = await env.DB.prepare("SELECT edge FROM rollouts WHERE done_at IS NULL AND error IS NULL").first();
+  if (open && open.edge !== edge) return err(409, `${open.edge} is still updating; one Burrow at a time`, { open: open.edge });
+  const url = REPO_TARBALL(env, build);
+  let sha256;
+  try {
+    const r = await fetch(url, { headers: { "user-agent": "wormhole-surface" } });
+    if (!r.ok) return err(502, `GitHub answered ${r.status} for ${build}`);
+    const buf = await r.arrayBuffer();
+    sha256 = await sha256Hex(buf);
+  } catch (e) {
+    return err(502, "could not fetch the commit's tarball: " + (e.message || e));
+  }
+  const t = now();
+  await env.DB.prepare(
+    `INSERT INTO rollouts (edge, build, sha256, url, requested_by, requested_at, done_at, error) VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, NULL)
+     ON CONFLICT(edge) DO UPDATE SET build = excluded.build, sha256 = excluded.sha256, url = excluded.url, requested_by = excluded.requested_by,
+       requested_at = excluded.requested_at, done_at = NULL, error = NULL`,
+  ).bind(edge, build, sha256, url, session?.team?.name || session?.role || "admin", t).run();
+  return rolloutStatus(env);
+}
+
+async function cancelRollout(request, env) {
+  const body = await readJson(request, 4096);
+  if (typeof body.edge !== "string") return err(400, "edge required");
+  await env.DB.prepare("UPDATE rollouts SET error = 'cancelled', done_at = NULL WHERE edge = ?1 AND done_at IS NULL").bind(body.edge).run();
+  return rolloutStatus(env);
+}
+
+// the snapshot's side: what to tell this Burrow, and whether its reported build closes the request
+export async function rolloutFor(env, edge, status, t) {
+  const r = await env.DB.prepare("SELECT build, sha256, url, requested_at FROM rollouts WHERE edge = ?1 AND done_at IS NULL AND error IS NULL").bind(edge).first();
+  if (!r) return null;
+  const reported = String(status?.build || "").split(" ")[0];
+  if (reported && (reported.startsWith(r.build) || r.build.startsWith(reported))) {
+    await env.DB.prepare("UPDATE rollouts SET done_at = ?1 WHERE edge = ?2").bind(t, edge).run();
+    return null;
+  }
+  if (t - (r.requested_at || t) > 30 * 60) {
+    await env.DB.prepare("UPDATE rollouts SET error = 'timed out after 30 min' WHERE edge = ?1").bind(edge).run();
+    return null;
+  }
+  return { build: r.build, sha256: r.sha256, url: r.url };
 }
 
 async function edges(env) {

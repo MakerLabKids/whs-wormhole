@@ -16,6 +16,7 @@ class FakeSurface:
         self.rollups = {}        # (uid, step, ts) -> data
         self.snapshots = []
         self.messages = []              # listed in every snapshot reply (the website's queue)
+        self.update_to = None           # an update instruction in the snapshot reply
         self.events = []
         self.reject_events = False
         self.calls = []
@@ -61,7 +62,10 @@ class FakeSurface:
                 with outer.lock:
                     if self.path == "/v1/edge/snapshot":
                         outer.snapshots.append(body)
-                        return self._send(200, {"ok": True, "messages": list(outer.messages)})
+                        rep = {"ok": True, "messages": list(outer.messages)}
+                        if outer.update_to:
+                            rep["update_to"] = outer.update_to
+                        return self._send(200, rep)
                     if self.path == "/v1/edge/events":
                         if outer.reject_events:
                             return self._send(503, {"ok": False, "error": "try later"})

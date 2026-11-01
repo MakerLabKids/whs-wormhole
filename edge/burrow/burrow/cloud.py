@@ -5,6 +5,7 @@ GET /v1/edge/ping answering with our JSON (a captive portal answers with HTML).
 """
 import gzip
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -109,6 +110,8 @@ class Cloud:
         if body.get("roster") is not None:
             self._roster_sent = util.now()
         self.state["snapshots"] += 1
+        if isinstance(j, dict) and isinstance(j.get("update_to"), dict):
+            self._request_update(j["update_to"])
         if isinstance(j, dict) and isinstance(j.get("messages"), list):
             by_uid = {}
             for it in j["messages"]:
@@ -117,6 +120,23 @@ class Cloud:
             self.messages = by_uid
             self.state["messages"] = sum(len(v) for v in by_uid.values())
         return j
+
+    def _request_update(self, upd):
+        """The admin clicked Update for this Burrow: leave {build, sha256, url}
+        in the data dir for burrow-update.service (root, watching that path),
+        which downloads, verifies, installs and restarts us. Once per build."""
+        build, sha, url = upd.get("build"), upd.get("sha256"), upd.get("url")
+        if not (isinstance(build, str) and isinstance(sha, str) and isinstance(url, str)):
+            return
+        if self.state.get("update_requested") == build:
+            return
+        path = os.path.join(self.cfg["data_dir"], "update-request.json")
+        try:
+            util.atomic_write_json(path, {"build": build, "sha256": sha, "url": url, "at": util.now()})
+            self.state["update_requested"] = build
+            log("update: asked to move to %s; handing it to the updater" % build)
+        except Exception as e:
+            log("update: could not write the request:", e)
 
     def messages_for(self, uid):
         """Pending website messages for one Bin (each with uid, slot, seq, pin...)."""

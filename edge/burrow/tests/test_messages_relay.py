@@ -88,3 +88,30 @@ class MessageStateTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UpdateRequestTest(unittest.TestCase):
+    """The admin's Update click: the snapshot reply names a build, the service leaves a request for the root updater."""
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.fs = FakeSurface(token="tok1")
+        tf = os.path.join(self.tmp, "cloud.token")
+        with open(tf, "w") as f:
+            f.write("tok1")
+        self.svc = make_service(self.tmp, "burrow1", 1, cloud_url=self.fs.url, token_file=tf)
+
+    def tearDown(self):
+        self.svc.stop()
+        self.fs.close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_request_file_is_written_once_per_build(self):
+        import json
+        self.fs.update_to = {"build": "abcdef1", "sha256": "00" * 32, "url": "https://codeload.github.com/x/tar.gz/abcdef1"}
+        self.assertTrue(self.svc.cloud.pass_once())
+        path = os.path.join(self.svc.cfg["data_dir"], "update-request.json")
+        self.assertTrue(os.path.exists(path))
+        self.assertEqual(json.load(open(path))["build"], "abcdef1")
+        os.remove(path)
+        self.assertTrue(self.svc.cloud.pass_once())
+        self.assertFalse(os.path.exists(path), "the same build is not requested twice")

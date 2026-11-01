@@ -152,6 +152,7 @@ class FakeRouter:
     NEXT_VISIBLE = ["BYLD", "WormHole-Core"]
     NEXT_UNREACHABLE = False
     NEXT_AUTO = False
+    NEXT_BACKHAUL = False
     NEXT_FORWARDS = []
     LOG = []
 
@@ -173,7 +174,13 @@ class FakeRouter:
         if (obj, method) == ("firewall", "get_port_forward_list"):
             return {"res": list(FakeRouter.NEXT_FORWARDS)}
         if (obj, method) == ("wifi", "get_config"):
-            return {"res": [{"ifaces": [{"bssid": "94:83:C4:00:00:01"}]}, {"ifaces": [{"bssid": "94:83:C4:00:00:02"}]}]}
+            return {"res": [{"ifaces": [{"bssid": "94:83:C4:00:00:01"}]},
+                            {"ifaces": [{"bssid": "94:83:C4:00:00:02", "name": "default_radio1", "ssid": "WormHole-Core", "enabled": FakeRouter.NEXT_BACKHAUL}]}]}
+        if (obj, method) == ("wifi", "set_config"):
+            for i in (params or {}).get("ifaces", []):
+                if i.get("name") == "default_radio1":
+                    FakeRouter.NEXT_BACKHAUL = bool(i.get("enabled"))
+            return []
         if (obj, method) == ("repeater", "get_config"):
             return {"auto": FakeRouter.NEXT_AUTO, "smart_reconnect": True}
         if (obj, method) == ("repeater", "set_config"):
@@ -418,3 +425,85 @@ class AutoConnectTest(unittest.TestCase):
         FakeRouter.LOG = []
         wd.ensure_auto_connect(r, st, 1100)           # now on: nothing to do
         self.assertNotIn(("repeater", "set_config", {"auto": True}), FakeRouter.LOG)
+
+
+class WifiLadderTest(unittest.TestCase):
+    """The Pi's own Wi-Fi: another WormHole access point first, else the upstream ladder by name."""
+    def runner(self, scan_text):
+        calls = []
+        def run(*args, **kw):
+            calls.append(args)
+            if args[:2] == ("-t", "-f") and "status" in args:
+                return 0, "wlan0:wifi\neth0:ethernet\n"
+            if "wifi" in args and "list" in args:
+                return 0, scan_text
+            if args[:3] == ("-t", "-f", "NAME") and "connection" in args and "show" in args and "--active" not in args:
+                return 0, "Wired connection 1\n"
+            return 0, ""
+        return run, calls
+
+    def test_joins_the_school_net_when_no_wormhole_is_in_range(self):
+        run, calls = self.runner("aa\\:bb\\:cc\\:00\\:00\\:01:BYLD:70\naa\\:bb\\:cc\\:00\\:00\\:02:Loki:40\n")
+        w = wd.WifiFallback({"ssid": "WormHole", "key": "k"}, run=run,
+                            upstreams=[{"ssid": "Q-tastic", "key": "q"}, {"ssid": "BYLD", "encryption": "none"}, {"ssid": "Loki", "key": "l"}])
+        wd.time.sleep = lambda s: None
+        self.assertEqual(w.up([]), "BYLD")                       # Q-tastic is not in range; BYLD is, and comes before Loki
+        add = [c for c in calls if "add" in c]
+        self.assertTrue(add and "BYLD" in add[0] and "none" in add[0])
+
+    def test_prefers_a_wormhole_access_point(self):
+        run, calls = self.runner("aa\\:bb\\:cc\\:00\\:00\\:09:WormHole:55\naa\\:bb\\:cc\\:00\\:00\\:01:BYLD:70\n")
+        w = wd.WifiFallback({"ssid": "WormHole", "key": "k"}, run=run, upstreams=[{"ssid": "BYLD", "encryption": "none"}])
+        wd.time.sleep = lambda s: None
+        self.assertEqual(w.up([]), "aa:bb:cc:00:00:09")
+
+
+class ElectionTest(unittest.TestCase):
+    """The backhaul is offered after probation, withdrawn after a short failure, barred for a while."""
+    def setUp(self):
+        FakeRouter.LOG = []
+        FakeRouter.NEXT_BACKHAUL = False
+        self.r = FakeRouter("192.168.82.1")
+        self.st = {}
+        self.status = {"state_s": "connected", "ssid": "BYLD"}
+
+    def test_probation_then_offer(self):
+        t = 1000
+        wd.backhaul_election(self.r, self.st, t, True, self.status)
+        self.assertFalse(FakeRouter.NEXT_BACKHAUL, "not yet: probation")
+        wd.backhaul_election(self.r, self.st, t + wd.PROBATION_S - 1, True, self.status)
+        self.assertFalse(FakeRouter.NEXT_BACKHAUL)
+        wd.backhaul_election(self.r, self.st, t + wd.PROBATION_S, True, self.status)
+        self.assertTrue(FakeRouter.NEXT_BACKHAUL)
+        self.assertEqual(self.st["backhaul"], "on")
+        self.assertTrue(any("backhaul offered" in e[1] for e in self.st["events"]))
+
+    def test_a_flaky_upstream_never_earns_it(self):
+        t = 1000
+        for k in range(20):                       # good for 4 minutes, bad for 1, over and over
+            ok = (k % 5) != 4
+            wd.backhaul_election(self.r, self.st, t + k * 60, ok, self.status)
+        self.assertFalse(FakeRouter.NEXT_BACKHAUL)
+
+    def test_withdraw_and_bar(self):
+        FakeRouter.NEXT_BACKHAUL = True
+        self.st["backhaul"] = "on"
+        t = 1000
+        wd.backhaul_election(self.r, self.st, t, False, self.status)
+        self.assertTrue(FakeRouter.NEXT_BACKHAUL, "two minutes of grace")
+        wd.backhaul_election(self.r, self.st, t + wd.DROP_AFTER_S, False, self.status)
+        self.assertFalse(FakeRouter.NEXT_BACKHAUL)
+        self.assertEqual(self.st["backhaul"], "barred")
+        # internet back, clean for an hour: still barred until BAR_S has passed
+        wd.backhaul_election(self.r, self.st, t + wd.DROP_AFTER_S + 60, True, self.status)
+        for k in range(1, 12):
+            wd.backhaul_election(self.r, self.st, t + wd.DROP_AFTER_S + 60 * k, True, self.status)
+        self.assertFalse(FakeRouter.NEXT_BACKHAUL)
+        wd.backhaul_election(self.r, self.st, t + wd.DROP_AFTER_S + wd.BAR_S + wd.PROBATION_S + 10, True, self.status)
+        self.assertTrue(FakeRouter.NEXT_BACKHAUL)
+
+    def test_a_follower_on_the_backhaul_never_offers(self):
+        st = {}
+        wd.backhaul_election(self.r, st, 1000, True, {"ssid": "WormHole-Core"})
+        wd.backhaul_election(self.r, st, 1000 + wd.PROBATION_S + 1, True, {"ssid": "WormHole-Core"})
+        self.assertFalse(FakeRouter.NEXT_BACKHAUL)

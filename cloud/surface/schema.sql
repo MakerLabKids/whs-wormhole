@@ -161,3 +161,18 @@ CREATE TABLE IF NOT EXISTS bin_messages (
   edge    TEXT,
   seen_at INTEGER
 );
+
+-- Rollouts: the admin asks ONE Burrow at a time to move to a commit. The Surface fetches that
+-- commit's tarball from GitHub once to learn its sha256; the Burrow's snapshot reply carries
+-- {build, sha256, url} while the request is open; the Burrow downloads, verifies, installs,
+-- restarts and reports its build; the row closes when the reported build matches.
+CREATE TABLE IF NOT EXISTS rollouts (
+  edge         TEXT PRIMARY KEY,
+  build        TEXT NOT NULL,     -- the commit (short or full sha)
+  sha256       TEXT NOT NULL,     -- of the tarball
+  url          TEXT NOT NULL,
+  requested_by TEXT,
+  requested_at INTEGER,
+  done_at      INTEGER,
+  error        TEXT
+);

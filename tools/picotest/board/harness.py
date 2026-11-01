@@ -144,6 +144,16 @@ step(70)
 network.WORLD["present"] = set(["WormHole", "wormmaster"])
 step(130)
 check("ladder prefers wormmaster", app.joined == "wormmaster")
+# a network whose Burrows never answer: leave it after DEAD_NET_S, avoid that access point, rejoin elsewhere
+app.edges = ["127.0.0.1:1"]                       # every push refused from here on (nothing listens on port 1)
+app._edge_i = 0; app.edge_ok = False; app._push_due = 0
+step(picolab.DEAD_NET_S - 30)
+check("still on the network before DEAD_NET_S", app.joined == "wormmaster")
+step(70)
+check("walked away from the dead network after DEAD_NET_S", app.net_leaves == 1)   # (it rejoins at once: the stub has one AP, so the grudge is forgiven)
+network.WORLD["present"] = set(["WormHole", "wormmaster"])
+step(130)
+check("rejoined, asking for an access point it has not given up on", app.joined is not None and network.WLAN.instances[network.STA_IF].last_bssid is not None)
 app.close()
 bad = [n for n, ok in checks if not ok]
 print("\n%d checks, %d failed %s" % (len(checks), len(bad), bad))
