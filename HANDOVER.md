@@ -157,8 +157,13 @@ Each item: where, how verified, deployed or not.
   at all). Removed and rebooted both; install.sh now removes it on every deploy and the watchdog
   raises an event when wlan0 is missing. The fallback scan now waits for the radio, and skips the
   Pi's own Opal by station MAC (`same_opal`), since `own_bssids` held random addresses.
-- **Live fault test, burrow3, started 00:12:20**: `nmcli device disconnect eth0` with a timer
-  (`faulttest-undo2`, +14 min) that reconnects it. Result: see the line below once known.
+- **Live fault tests** (00:12-01:20): see the "Proven live" paragraph in edge/burrow/README.md.
+  Found and fixed: Wi-Fi fallback took 7-9 min (now 2-4); it joined a WormHole with no internet
+  and hijacked the default route (now proves each candidate through wlan0); the cable path was
+  judged through the default route (now eth0 only); a hung watchdog run would stop the timer
+  (TimeoutStartSec=240); the election's AP toggle broke Tunnel 1's backhaul rejoin (now
+  observe-only, heals disabled APs); the hidden backhaul defeats Opal auto-connect (Tunnels 2
+  and 3 taught Loki; teach-fallback.py). burrow3 is on its own Wi-Fi via Tunnel 2 until rebooted.
 - **Undated readings on the website**: `/api/edge/<room>/undated?uid=&csv=1` pass-through and a
   button on the bin page (3e63cf6).
 - **Enrolment** (36aa6e3): `POST /v1/edge/enrol` on the Surface (ENROL_SECRET, TUNNEL_TOKENS,
@@ -193,6 +198,7 @@ Each item: where, how verified, deployed or not.
 
 ## Things I am not sure about
 
+- Election: observe-only now (ELECTION_ACTS = False); see edge/burrow/README.
 - `wifi set_config`: RESOLVED 2026-11-01, `{"iface_name": "default_radio1", "enabled": bool}`; the nested form 500s. Proven on Tunnel 1 (guest5g on/off, repeater stayed up).
 - `sameOpal` MAC heuristic: verified on the Portal only (92:83:c4:84:d2:0b ->
   94:83:c4:84:d2:0b/0c).

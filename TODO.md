@@ -5,6 +5,18 @@ record of what got done.
 
 ## Deploy (from 2026-10-31)
 
+- [ ] **burrow3: reboot it** (power cycle, or `sudo reboot` once SSH through its tunnel works).
+      Since a fault test at 00:12 on 2026-11-01 its Ethernet is "disconnected by user" in
+      NetworkManager; it has been running on its own Wi-Fi through Tunnel 2 since, uploading
+      fine, on code 354b8b3. After the reboot: `edge/burrow/tools/update-burrow.sh 3`.
+- [ ] **Teach each Tunnel a visible fallback at school**: `tools/routers/teach-fallback.py
+      192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN). At home they know Loki.
+- [ ] **Decide: unhide the backhaul?** A visible WormHole-Core (still WPA3) would let every
+      Opal rejoin it by itself after any power cut, with no Pi involved. The cost is the SSID
+      showing in phone Wi-Fi lists. Changing it restarts the Portal's 5 GHz radio once.
+- [ ] **Secrets for the Surface**: `npx wrangler secret put ENROL_SECRET` (value: enrol_secret in
+      /workspace/.env) and `npx wrangler secret put TUNNEL_TOKENS` ({"burrow0": "...", ...}).
+
 - [ ] **Surface `wrangler deploy` + schema** (the night of 2026-10-31): rollouts, R2-backed
       tarballs, the undated/board-state tables, the Wi-Fi and election alerts, the admin
       Update panel. `npx wrangler deploy && npx wrangler d1 execute wormhole --remote --file schema.sql`.

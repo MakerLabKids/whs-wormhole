@@ -129,17 +129,29 @@ uploading, stays reachable by SSH through its tunnel, and the Surface alerts
 "on its own Wi-Fi". It also nurses the Opal: reboots it over the admin API,
 keeps its auto-connect on. The Picos on that Tunnel rejoin elsewhere.
 
-**The provider dies.** There is no fixed Portal. Every Opal is a client on
-the same ladder; one that has had ten minutes of clean internet on a real
-upstream offers the hidden backhaul (`WormHole-Core`), withdraws it after two
-minutes without internet, and may not offer again for thirty (the
-watchdog's `backhaul_election`). Followers join the strongest offer they
-hear and report which; the Surface alerts when followers see no internet
-through a provider that claims clean. A flaky Opal keeps failing probation.
+**The provider dies.** Today each Tunnel falls back to its own ladder (a
+VISIBLE saved network: Loki at home, BYLD at school) and carries on with its
+own internet; the Pis follow their Opal. The election
+(`backhaul_election`) runs but only REPORTS who would qualify
+(`backhaul_candidate`): switching a follower's backhaul AP off left Tunnel 1
+unable to rejoin WormHole-Core after its next drop (2026-11-01), and the
+Tunnels are pinned to the Portal's BSSID, so a new provider could not be
+followed anyway. It switches a disabled backhaul AP back on. A real handover
+needs followers that join WormHole-Core by name (not BSSID) and a test that
+a provider can drop its AP safely; `ELECTION_ACTS` turns the acting path on.
 
 **Power cycles.** Every Opal rejoins its saved networks by itself (the
-watchdog keeps that setting on; it was off on the Tunnels until tonight).
-Picos stagger their first join by up to ten seconds.
+watchdog keeps "auto" on), BUT only networks it can see: the backhaul is
+hidden, so each Tunnel must also have a visible network saved, or it sits
+idle when its Pi is down (Tunnel 2, 2026-10-31 evening).
+`tools/routers/teach-fallback.py HOST SSID [key_env]` does that once per
+site. Picos stagger their first join by up to ten seconds.
+
+**Proven live (2026-11-01).** Cutting a Pi's cable (`tools/fault-test.sh`):
+its own Wi-Fi took over and its uploads continued (burrow3, through Tunnel 2,
+for over an hour); a WormHole whose Opal has no internet is now rejected and
+the next one tried; the watchdog drops the Wi-Fi when the cable is healthy;
+the cable path is judged through eth0 only.
 
 **Updates, one at a time.** `/opt/burrow/BUILD` says which commit runs
 (`build` in /api/status, on the admin page). The admin pastes a commit and
