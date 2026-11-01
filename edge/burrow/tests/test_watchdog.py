@@ -88,6 +88,12 @@ class Upstreams(unittest.TestCase):
         for up in self.UPS:
             self.assertIs(wd.connect_params(up).get("remember"), True)
 
+    def test_every_join_takes_the_manual_flag(self):
+        # the Opal's auto-connect returns to the saved network flagged manual; without the flag
+        # in the join it sometimes stayed on the previous network (Tunnel 2, 2026-11-01)
+        for up in self.UPS:
+            self.assertIs(wd.connect_params(up).get("manual"), True)
+
     def test_open_network_sends_no_key(self):
         self.assertNotIn("key", wd.connect_params(self.UPS[0]))
         self.assertIn("key", wd.connect_params(self.UPS[1]))

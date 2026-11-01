@@ -287,6 +287,12 @@ def connect_params(up):
     # to reconnect to, hidden or not. A saved hidden network keeps its directed-scan flag.
     params = {k: up[k] for k in ("ssid", "key", "bssid", "device", "band", "encryption") if up.get(k)}
     params["remember"] = True
+    # manual: the saved network GL.iNet's auto-connect returns to after an outage is the one
+    # flagged manual, i.e. the last one joined. A join WITHOUT this flag sometimes left the flag
+    # on the previous network (Tunnel 2, 2026-11-01 11:2x: on WormHole-Core, flag still on Loki,
+    # which is how Tunnel 1 stayed on Loki after a 60 s backhaul cut); with it the flag always
+    # moves. (manual: false does not keep it off a fallback: the join takes it anyway.)
+    params["manual"] = True
     if up.get("encryption") == "none":
         params.pop("key", None)
     return params

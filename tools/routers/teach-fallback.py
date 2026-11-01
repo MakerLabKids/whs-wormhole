@@ -22,7 +22,8 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 BACKHAUL = {"ssid": "WormHole-Core", "bssid": "94:83:c4:84:d2:0c", "device": "radio1", "band": "5g", "encryption": "sae",
-            "remember": True}   # without it GL.iNet saves nothing and auto-connect has nothing to rejoin
+            "remember": True,   # without it GL.iNet saves nothing and auto-connect has nothing to rejoin
+            "manual": True}     # the saved network auto-connect returns to after an outage (the last joined; say so)
 
 
 def env_value(key):
@@ -73,7 +74,11 @@ def main():
     time.sleep(20)
     st = state(host)
     print("after rejoining the backhaul: %s" % (st,))
-    return 0 if st == ("connected", "WormHole-Core") else 1
+    saved = call(host, "repeater", "get_saved_ap_list").get("res", [])
+    flags = [(n.get("ssid"), n.get("manual")) for n in saved]
+    print("saved (ssid, manual): %s" % (flags,))
+    home = ("WormHole-Core", True) in flags      # auto-connect returns to the manual one
+    return 0 if st == ("connected", "WormHole-Core") and home else 1
 
 
 if __name__ == "__main__":

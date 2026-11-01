@@ -162,6 +162,12 @@ remembers, and the watchdog reports `saved_networks`. Proven 2026-11-01: with th
 Portal's 5 GHz off for 60 s and every Tunnel Pi's watchdog paused, all three Tunnels
 were back on the (hidden) WormHole-Core 35 s after it returned, by their own
 auto-connect. After repeated failed joins GL.iNet backs off to 5-min retries.
+Which saved network it returns to is the one flagged `manual`: the last one joined.
+Repeat trials 2026-11-01: 60 s cut -> all three back in 18 s, 5 min -> 42 s, but in one
+run Tunnel 1, whose flag sat on Loki after a watchdog join, went to Loki and stayed.
+A join without `manual: true` sometimes leaves the flag behind; with it the flag
+always moves (and a fallback join takes it whatever it says), so every join now
+sends it and return-home (below) undoes a stay on a fallback.
 `tools/routers/teach-fallback.py HOST SSID [key_env]` saves a second network
 (Loki at home, BYLD at school) for when the Portal itself is gone.
 

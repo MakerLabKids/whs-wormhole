@@ -26,8 +26,8 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       Loki (2.4 GHz AP dragged to ch 11). Harmless so far; if a Bin in room 0 can't join the
       Portal's WormHole, `wifi up radio0` on the Portal (or reboot it) is the first thing to try.
 - [ ] **Teach each Tunnel a fallback at school**: `tools/routers/teach-fallback.py
-      192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN, or on the Pi). At home they know Loki
-      (Tunnel 3 saved it 2026-11-01; Tunnels 1 and 2 have only the backhaul saved).
+      192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN, or on the Pi). At home all three
+      know Loki (2026-11-01), with the `manual` flag on WormHole-Core; teach-fallback now checks that.
 - [x] **Golden image** /workspace/burrow-golden.img.gz is burrow3's card (2026-11-01 08:20, build
       0514253, room 3 so its tunnel.json has the backhaul entry). Write: `sudo
       edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX` (about 4 min).

@@ -39,7 +39,7 @@ def desired(room, wormhole_key, backhaul_key):
                    "htmode": "auto", "channel": ROOM_CHANNEL[room], "txpower": "Max",
                    "random_bssid": False},
         "repeater_cfg": {"auto": True, "smart_reconnect": True},   # auto=False stranded the Tunnels (2026-10-31)
-        "backhaul": {"ssid": "WormHole-Core", "key": backhaul_key, "bssid": PORTAL_CORE_BSSID, "remember": True,
+        "backhaul": {"ssid": "WormHole-Core", "key": backhaul_key, "bssid": PORTAL_CORE_BSSID, "remember": True, "manual": True,
                      "device": "radio1", "band": "5g", "encryption": "sae"},
         "forwards": [{"name": "Burrow", "proto": "tcp", "src": "wan", "src_dport": "8080",
                       "dest": "lan", "dest_ip": "192.168.8%d.10" % room, "dest_port": "8080",
