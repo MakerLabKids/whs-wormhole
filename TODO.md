@@ -9,15 +9,20 @@ record of what got done.
 Oct 20) went back in the pile; every Pico gets flashed fresh before it is used, so nothing old is
 out there and nothing needs migrating. A Pico is set up once by cable and updated over Wi-Fi after.
 
-1. **Rotate the leaked passwords (security, first).** Found 2026-11-01 in the public repo:
-   - `router_admin` (Opal admin) is the same value as `backhaul_key` and the Pis' password, and it
-     was public in tools/routers/test_glinet.py since 89bf5e7 (now a dummy, still in history).
-     Give them three new, different values: all four Opals' admin password, the WormHole-Core key
-     (Portal wlan1 + each Tunnel's saved entry + each Pi's tunnel.json upstream), the Pi user
-     password; then .env. Claude can script it; rooms blip ~1 min each.
-   - The WormHole Wi-Fi key is public on purpose (the boards need it) but it is the same value as
-     `guess_psk` and `qtastic_psk`: change the Guess and Q-tastic networks' keys.
-   - Purging public history is optional once rotated.
+1. **Leaked passwords: the routers are done; the website admin login is left.**
+   - DONE 2026-11-01 17:17: new `router_admin` = `backhaul_key` (from .env) on all four Opals, the
+     Portal's WormHole-Core, each Tunnel's saved entry and each Pi's tunnel.json; the old value is refused
+     everywhere and all three Tunnels are back on the backhaul. (Procedure: notes/CLAUDE-RUNBOOK.md 4.9.)
+   - LEFT: the Surface admin login (= the Pi user's password) is still the leaked value: line 1 of
+     ~/.config/wormhole/pi-password. Needs a new value from the human (or a generated one); set it with
+     the admin reset (POST /api/admin/teams/<id>/reset), which also drops open admin sessions.
+   - Kept on purpose (the human's call): the WormHole/Pico key, which equals guess_psk and qtastic_psk.
+   - Purging public history: optional, only with the human's go-ahead.
+1b. **Fans (arrived 2026-11-01).** Code is in (1db189d): the fan goes on the relay, GP15 (pin 20). Every
+   15 min, inside humidity over 80% runs it 1 min; at power-on it toggles with each boot screen while
+   `FAN_BOOT_DEMO = True`. After the demo period: set `FAN_BOOT_DEMO = False` (3 s at power-on). Not yet
+   run on a real board with a fan. Owed deploys: wrangler deploy (the dashboard's GitHub link now goes to
+   the Pages lab guide) and the Burrows (they serve the same page).
 2. **Set up the Picos for the bins** (first one, then the rest): fleet flasher
    `tools/fleet/flash.py` (MicroPython 1.29, the worm-bin code, boot.py + lib/ota.py, wifi.json,
    bin.json with the bin number 30-79). Label the lids to match. Do ONE first: Claude checks its
