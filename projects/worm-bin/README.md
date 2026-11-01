@@ -28,6 +28,16 @@ All I2C devices share the standard bus (SDA=GP0, SCL=GP1, 3V3, GND).
 | Small servo (SG90) | GP17 (pin 22) | power from VBUS (pin 40) |
 | Relay module | GP15 (pin 20) | module VCC per its spec (most take VBUS 5V) |
 
+**The fan** plugs in through the relay: the relay switches the fan's own power
+(a 5V fan can take VBUS through the relay's COM/NO contacts; a 12V fan needs its
+own supply). Every 15 minutes, if the inside BME280 reads over 80% humidity,
+the fan runs for 1 minute. At power-on it proves it works: during the demo
+period it flips on and off with every screen of the power-on sequence
+(`FAN_BOOT_DEMO = True`); set it to `False` and it just runs 3 seconds. All of
+it is in the config at the top of `main.py` (`FAN_HUMID_PCT`, `FAN_EVERY_MIN`,
+`FAN_RUN_S`, `FAN_BOOT_S`; `FAN = False` for a bin with no fan). The dashboard's
+relay button still switches it by hand.
+
 Free for expansion: GP26 (ADC0), GP28 (ADC2), ADS1115 A3, and the whole
 second I2C bus (I2C1).
 

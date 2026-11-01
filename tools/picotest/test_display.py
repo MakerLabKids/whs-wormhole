@@ -269,6 +269,21 @@ assert d._boot is None and d.oled.title() == ("Dirt Nerds", 24, 0), (d._boot, d.
 assert run(d, 4990) == [] and run(d, 20) and d._mq, "a fresh 5 s hold, then the marquee as usual"
 # no boot messages and nothing else: boot([]) is a no-op cycle start
 d = fresh(["Dirt Nerds", "x"]); d.boot([("cards", lambda: [])]); assert d._boot is None
+# "call" steps (the fan's toggle) run between screens, take no time and no screen
+fan = []
+d = D(); d.oled = FakeOled(); d.marquee = "m"; d.shows = [ShowA]; d.cards = lambda: None
+d.show(["", "WOODSTOCK"], title=False)
+steps = [("hold", 1000), ("card", "", ["AND..."], 1000), ("cards", lambda: [("Note", ["hi"])])]
+steps = [x for st in steps for x in (("call", lambda: fan.append(len(fan) % 2 == 0)), st)] + [("call", lambda: fan.append("off"))]
+d.boot(steps)
+assert fan == [True] and d._boot is not None, fan
+run(d, 1010); assert d._card == ("", ["AND..."]) and fan == [True, False], (d._card, fan)
+while d._card == ("", ["AND..."]): run(d, 10)
+assert d._card == ("Note", ["hi"]) and fan == [True, False, True], (d._card, fan)
+d.show(["Dirt Nerds", "x"])
+while d._card: run(d, 10)
+assert d._boot is None and fan == [True, False, True, "off"], fan
+d = fresh(["Dirt Nerds", "x"]); d.boot([("call", lambda: 1 / 0)]); assert d._boot is None   # a failing call never stops the boot
 print("boot sequence OK")
 
 # ---- the status icon (bottom right) and notices ----

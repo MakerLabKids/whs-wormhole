@@ -9,7 +9,7 @@
 #   VL53L0X time-of-flight at 0x29 (SOIL COMPACTION: distance from the
 #     lid down to the bedding surface. As worms process and the bedding
 #     settles, that gap grows; a sudden change flags a disturbance)
-#   Big servo GP16, small servo GP17, relay GP15
+#   Big servo GP16, small servo GP17, relay GP15 (switches the fan)
 #   OLED 0x3C: ONE screen built from whatever is reporting (pages only
 #     if that overflows)
 #
@@ -58,6 +58,17 @@ LIGHT_PIN = 28        # GL5528 photoresistor divider; native ADC pin (default GP
 SERVO_BIG_PIN = 16    # MG995; own 5V supply, grounds joined (default GP16)
 SERVO_SMALL_PIN = 17  # SG90; VBUS power is fine (default GP17)
 RELAY_PIN = 15        # relay module IN (default GP15)
+# THE FAN is plugged in through the relay above (the relay switches the fan's power).
+# Every FAN_EVERY_MIN minutes, if the bin's humidity (the inside BME280) is over
+# FAN_HUMID_PCT, the fan runs FAN_RUN_S seconds. At power-on it shows it works:
+# FAN_BOOT_DEMO = True toggles it on and off with every screen of the power-on
+# sequence; False just runs it FAN_BOOT_S seconds. FAN = False: no fan at all.
+FAN = True
+FAN_HUMID_PCT = 80    # default 80 %
+FAN_EVERY_MIN = 15    # default 15 minutes
+FAN_RUN_S = 60        # default 60 seconds
+FAN_BOOT_DEMO = True  # the demo period; after it, False (FAN_BOOT_S at power-on only)
+FAN_BOOT_S = 3
 
 # How fast the servos slew to a commanded angle, in degrees per second.
 # Motion is ramped and TIME-BASED (not an instant snap) so it looks smooth
@@ -409,6 +420,41 @@ relay = Pin(RELAY_PIN, Pin.OUT)
 relay.value(0)
 
 
+class Fan:
+  """The fan on the relay: a humidity check every FAN_EVERY_MIN minutes, a run
+  of FAN_RUN_S when the bin is too damp, and the power-on show-off."""
+
+  def __init__(self, pin):
+    self.pin = pin
+    self.until = None              # ticks when a timed run ends
+    self.next = time.ticks_add(time.ticks_ms(), 60000)   # first check a minute in: readings settled
+
+  def run(self, ms, why):
+    self.pin.value(1)
+    self.until = time.ticks_add(time.ticks_ms(), ms)
+    picolab.log("Fan on %d s: %s" % (ms // 1000, why))
+
+  def toggle(self):
+    self.pin.value(0 if self.pin.value() else 1)
+
+  def off(self):
+    self.pin.value(0)
+    self.until = None
+
+  def poll(self, hum):
+    now = time.ticks_ms()
+    if self.until is not None and time.ticks_diff(now, self.until) >= 0:
+      self.off()
+      picolab.log("Fan off")
+    if time.ticks_diff(now, self.next) >= 0:
+      self.next = time.ticks_add(now, FAN_EVERY_MIN * 60000)
+      if hum is not None and hum > FAN_HUMID_PCT:
+        self.run(FAN_RUN_S * 1000, "humidity %.0f%% > %d%%" % (hum, FAN_HUMID_PCT))
+
+
+fan = Fan(relay) if FAN else None
+
+
 def set_handler(req):
   a = picolab.query_int(req, "big")
   if a is not None:
@@ -642,6 +688,11 @@ if WORM_SHOWS:
   boot_steps += [("show", wormshow.School), ("card", "", ["AND..."], BOOT_AND_MS),
                  ("card", "", ["MAKER LAB KIDS"], BOOT_MLK_MS), ("show", wormshow.MakerLabStill)]
 boot_steps.append(("cards", messages.boot_cards))
+if fan and FAN_BOOT_DEMO:
+  # the fan flips on, off, on... with every screen of the power-on sequence, and ends off
+  boot_steps = [x for st in boot_steps for x in (("call", fan.toggle), st)] + [("call", fan.off)]
+elif fan:
+  fan.run(FAN_BOOT_S * 1000, "power-on check")
 display.boot(boot_steps)
 tick = picolab.Throttle(READ_EVERY_MS)
 heartbeat = picolab.Throttle(5000)
@@ -693,6 +744,8 @@ try:
       link_was = link
 
     d = data_fn()
+    if fan:
+      fan.poll(d.get("in_hum_pct"))
     # One screen if everything reporting fits; otherwise page through what
     # exists, advancing only when the current page's dwell has elapsed.
     pages = screen_pages(screen_rows(d))

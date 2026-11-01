@@ -474,6 +474,7 @@ class Display:
       ("card", title, lines, ms)    a card like a message's (title "" for none)
       ("show", cls)                 a show, full length
       ("cards", fn)                 fn() -> [(title, lines)], CARD_MS each (the boot messages)
+      ("call", fn)                  run fn() and go straight on (the fan's toggle on each screen)
     tick() drives it, so the loop keeps running underneath."""
     self._boot = list(steps)
     self._boot_next(time.ticks_ms())
@@ -502,6 +503,11 @@ class Display:
           cards = []
         if cards:
           self._boot[0:0] = [("card", t, l, self.CARD_MS) for t, l in cards]
+      elif kind == "call":
+        try:
+          step[1]()
+        except Exception as e:
+          log("boot call:", e)
     self._boot = None
     self._hold_at, self._x = now, None
     if self._pop_notice(now):
