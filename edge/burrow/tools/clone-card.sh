@@ -7,7 +7,7 @@
 #   edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX        # a new card: it enrols itself
 #   edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX 2      # ...or is told: burrow2
 #
-# The image is the whole card, gzip'd; the Pi keeps serving while it is read
+# The image is the whole card, gzip'd (write puts only boot + root on the new card, ~6.5 GB, and makes a fresh empty /data); the Pi keeps serving while it is read
 # (the root is read-only under the overlay, /data is the only live writer,
 # so the copy is consistent enough for a fresh box: /data on the new card is
 # wiped on first boot anyway). The identity file is one line of JSON on the
@@ -33,8 +33,20 @@ case "$cmd" in
     [ -b "$dev" ] || { echo "$dev is not a block device"; exit 2; }
     read -r -p "This ERASES $dev and writes a Burrow card${n:+ for burrow$n}. Type the device name again to go: " again
     [ "$again" = "$dev" ] || { echo "not that; nothing written"; exit 1; }
-    gzip -dc "$img" | dd of="$dev" bs=4M status=progress conv=fsync
-    partprobe "$dev" 2>/dev/null || true; sleep 2
+    # Write only up to the start of the data partition (p3): boot + root are ~6.5 GB of a 32 GB
+    # card, the rest is /data, which a clone wipes on first boot anyway. Then make p3 a fresh
+    # empty ext4 labelled burrowdata (fstab mounts /data by that label).
+    p3_start=$(gzip -dc "$img" 2>/dev/null | head -c 512 | python3 -c "import sys,struct; d=sys.stdin.buffer.read(); print(struct.unpack('<I', d[446+32+8:446+32+12])[0])")
+    [ "${p3_start:-0}" -gt 0 ] || { echo "cannot read the image's partition table"; exit 1; }
+    bytes=$((p3_start * 512))
+    echo "writing the first $((bytes / 1048576)) MiB (boot + root), then a fresh /data"
+    set +o pipefail
+    gzip -dc "$img" 2>/dev/null | head -c "$bytes" | dd of="$dev" bs=4M iflag=fullblock status=progress conv=fsync
+    set -o pipefail
+    partprobe "$dev" 2>/dev/null || blockdev --rereadpt "$dev" 2>/dev/null || true; sleep 2
+    data=$(lsblk -nrpo NAME "$dev" | sed -n 4p)            # disk, p1, p2, p3
+    [ -b "$data" ] || { echo "no third partition on $dev after writing"; exit 1; }
+    mkfs.ext4 -q -F -L burrowdata "$data"
     boot=$(lsblk -nrpo NAME,LABEL "$dev" | awk '$2=="bootfs"{print $1}' | head -1)
     [ -n "$boot" ] || boot="${dev}1"
     # the donor's per-Pi secrets do not travel: strip them and mark the card "needs identity"
