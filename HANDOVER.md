@@ -148,6 +148,27 @@ Each item: where, how verified, deployed or not.
 6. Picos: the fleet reflash at school; the Surface-side view of undated rows
    (today only the Burrow's /api/undated and CSV).
 
+## Progress after the handover (2026-11-01, 00:00-, Opus 5.5 session)
+
+- **Election toggle proven** (b130c3c, 354b8b3): `wifi set_config {"iface_name", "enabled"}`; the
+  nested form 500s. Tunnel 1 switched its own backhaul off as a follower while staying on the
+  Portal's. The call takes >8 s: 60 s limit plus read-back.
+- **Pi Wi-Fi was disabled in firmware on burrow1 and burrow3** (`dtoverlay=disable-wifi`, no wlan0
+  at all). Removed and rebooted both; install.sh now removes it on every deploy and the watchdog
+  raises an event when wlan0 is missing. The fallback scan now waits for the radio, and skips the
+  Pi's own Opal by station MAC (`same_opal`), since `own_bssids` held random addresses.
+- **Live fault test, burrow3, started 00:12:20**: `nmcli device disconnect eth0` with a timer
+  (`faulttest-undo2`, +14 min) that reconnects it. Result: see the line below once known.
+- **Undated readings on the website**: `/api/edge/<room>/undated?uid=&csv=1` pass-through and a
+  button on the bin page (3e63cf6).
+- **Enrolment** (36aa6e3): `POST /v1/edge/enrol` on the Surface (ENROL_SECRET, TUNNEL_TOKENS,
+  table `enrolled`); Pi side in first-boot-identity.sh for cards marked `needs-identity`;
+  clone-card.sh strips donor secrets. The fleet secret is `enrol_secret` in /workspace/.env and at
+  /etc/burrow/enrol.secret on burrow0 and burrow1. Unverified on a real fresh card.
+- The bench Pico is unpowered (USB gone, not heard for 95 min at 00:13).
+- Human now also owes: `wrangler secret put ENROL_SECRET` (value from .env) and
+  `wrangler secret put TUNNEL_TOKENS` (JSON of the four cloudflared tokens).
+
 ## How to work here (hard-won)
 
 - Never `pkill -f <pattern>` where the pattern matches your own shell (it kills
