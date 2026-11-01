@@ -193,3 +193,32 @@ CREATE TABLE IF NOT EXISTS enrolled (
   enrolled_at INTEGER,
   replaced    TEXT              -- the serial this Pi replaced, if any
 );
+
+-- Shows for a Bin's screen, sent from the website (lib/pbmshow.py plays them): show_files holds
+-- each PBM (base64, small: <= 128x64, <= 100 frames); show_lists the bin's playlist and a revision
+-- that bumps on every change. A Burrow's snapshot reply lists the bins whose board has not
+-- reported the newest rev; the Burrow fetches the files by sha256 (GET /v1/edge/shows/<sha>) and
+-- hands them to the Bin, which reports shows_rev in its data once it has them.
+CREATE TABLE IF NOT EXISTS show_files (
+  uid     TEXT NOT NULL,
+  name    TEXT NOT NULL,          -- [a-z0-9-], the file is shows/<name>.pbm on the board
+  sha256  TEXT NOT NULL,
+  size    INTEGER,
+  frames  INTEGER,
+  w       INTEGER,
+  h       INTEGER,
+  data    TEXT,                   -- base64 of the PBM
+  set_by  TEXT,
+  set_at  INTEGER,
+  PRIMARY KEY (uid, name)
+);
+CREATE INDEX IF NOT EXISTS show_files_sha ON show_files (sha256);
+CREATE TABLE IF NOT EXISTS show_lists (
+  uid       TEXT PRIMARY KEY,
+  rev       INTEGER NOT NULL,     -- bumps on every upload, delete or playlist change
+  list      TEXT,                 -- JSON array of show names in order, NULL = the board's default
+  set_by    TEXT,
+  set_at    INTEGER,
+  board_rev INTEGER,              -- what the board last reported having
+  board_at  INTEGER
+);

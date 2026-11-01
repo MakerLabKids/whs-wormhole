@@ -6,6 +6,7 @@ import { chunks, err, hex, isInt, json, now, readJson, safeParse, timingSafeEqua
 import { rolloutFor } from "./admin.js";
 import { authEnrolled, enrol } from "./enrol.js";
 import { ackStatements, boardStateStatements, pendingMessages } from "./messages.js";
+import { ackShowStatements, edgeShowFile, pendingShows } from "./shows.js";
 
 const CASTING_CAP = 8 * 1024 * 1024;   // gz bytes per PUT
 const VERIFY_CAP = 40;                 // R2 reads per verify (free Workers: 50 subrequests)
@@ -40,6 +41,7 @@ export async function handleEdge(request, env, ctx, path) {
   if (path === "/v1/edge/events" && m === "POST") return postEvents(request, env, edge, ctx);
   if (path === "/v1/edge/rollups" && m === "POST") return rollups(request, env);
   if (path === "/v1/edge/verify" && m === "POST") return verify(request, env);
+  if (path.startsWith("/v1/edge/shows/") && m === "GET") return edgeShowFile(env, path.slice("/v1/edge/shows/".length));
   if (path.startsWith("/v1/edge/rollout/") && m === "GET") return rolloutTarball(env, path.slice("/v1/edge/rollout/".length));
   if (path.startsWith("/v1/edge/castings/")) {
     const id = path.slice("/v1/edge/castings/".length);
@@ -216,8 +218,9 @@ async function snapshot(request, env, edge) {
   // the Bins' acks for website messages ride in their data; the reply lists what is still waiting
   stmts.push(...ackStatements(env, bins, t));
   stmts.push(...boardStateStatements(env, body.messages_state, edge, t));
+  stmts.push(...ackShowStatements(env, bins, t));          // the boards' shows_rev
   await env.DB.batch(stmts);
-  const reply = { ok: true, messages: await pendingMessages(env) };
+  const reply = { ok: true, messages: await pendingMessages(env), shows: await pendingShows(env) };
   const upd = await rolloutFor(env, edge, body.status, t);
   if (upd) reply.update_to = upd;           // this Burrow's turn: download, verify, install, report
   return json(reply);

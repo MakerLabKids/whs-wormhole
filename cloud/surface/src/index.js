@@ -8,6 +8,7 @@ import { handleAdmin } from "./admin.js";
 import { watchEdges } from "./alerts.js";
 import { getSession, listTeams, login, logout, meBody } from "./auth.js";
 import { handleEdge } from "./edge.js";
+import { apiShows } from "./shows.js";
 import { apiMessages } from "./messages.js";
 import { HttpError, err, ipHash, json, now } from "./util.js";
 import { apiBins, apiHistory, apiNow, apiPublicNow } from "./viewer.js";
@@ -55,6 +56,7 @@ async function handleApi(request, env, ctx, path) {
   if (path === "/api/logout" && m === "POST") return logout(request, env, session);
   if (path.startsWith("/api/admin")) return handleAdmin(request, env, ctx, path, session);
   if (path === "/api/messages") return apiMessages(request, env, session);
+  if (path === "/api/shows") return apiShows(request, env, session);
 
   if (!session) return err(401, "login required");
   if (m !== "GET") return err(405, "method not allowed");

@@ -15,7 +15,7 @@ const WIDTH = 16;
 const PENDING_DAYS = 30;
 const clean = (s) => String(s ?? "").replace(/[^\x20-\x7e]/g, "").trim().slice(0, WIDTH);
 
-async function mayMessage(env, session, uid, slot) {
+export async function mayMessage(env, session, uid, slot) {
   if (session.role === "teacher" || session.role === "admin") return null;
   if (slot && slot > TEAM_SLOTS) return err(403, "slots 4 and 5 are the teacher's");
   const b = await env.DB.prepare("SELECT bin, room FROM bins WHERE uid = ?1").bind(uid).first();
