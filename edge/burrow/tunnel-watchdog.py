@@ -62,6 +62,10 @@ NEEDS_IDENTITY = os.environ.get("BURROW_NEEDS_IDENTITY", "/etc/burrow/needs-iden
 STATE = os.environ.get("TUNNEL_STATE", "/run/tunnel-watchdog.json")
 
 HOLDOFF_S = 90            # do not re-send a join while one may still be in progress
+SWITCH_AFTER_S = 100      # connected but no cloud: switch upstream only when it lasts this long (two runs);
+                          # 2026-11-01 10:00 ONE failed 8 s check moved Tunnel 1 off a healthy backhaul
+RETURN_AFTER_S = 15 * 60  # rooms 1-3 on a fallback (Loki/BYLD) with good internet this long: try the backhaul again
+RETURN_MAX_BACKOFF_S = 4 * 3600
 REBOOT_AFTER_S = 15 * 60  # first reboot: 15 min of failure despite joins
 REBOOT_HOURLY_N = 3       # then once an hour, this many times...
 REBOOT_DAILY_S = 86400    # ...then once a day, forever
@@ -306,16 +310,68 @@ def pick_upstream(upstreams, visible_ssids, current_ssid=None, current_failed=Fa
     return None
 
 
-def decide(status, cloud_ok, last_join_at, now):
-    """'ok' | 'join' | 'switch' | 'wait'.
-    connected + cloud -> ok. connected, no cloud -> switch upstream (after
-    holdoff). not connected -> join (after holdoff)."""
+def decide(status, cloud_ok, last_join_at, now, no_cloud_since=None):
+    """'ok' | 'hold' | 'join' | 'switch' | 'wait'.
+    connected + cloud -> ok. connected, no cloud -> hold until that has lasted
+    SWITCH_AFTER_S (no_cloud_since), then switch upstream (after holdoff).
+    not connected -> join (after holdoff)."""
     connected = (status or {}).get("state_s") == "connected"
     if connected and cloud_ok is not False:      # None = no cloud_url to check against
         return "ok"
+    if connected and (no_cloud_since is None or now - no_cloud_since < SWITCH_AFTER_S):
+        return "hold"
     if last_join_at and now - last_join_at < HOLDOFF_S:
         return "wait"
     return "switch" if connected else "join"
+
+
+def return_home(r, st, now, upstreams, status, cloud_ok):
+    """Rooms 1-3 (preferred upstream WormHole-Core): after RETURN_AFTER_S on a fallback with good
+    internet, rejoin the backhaul, but only when a scan shows its BSSID. Each try doubles the wait
+    (to RETURN_MAX_BACKOFF_S); arriving home resets it. A failed join falls back by the usual path
+    (the hidden-miss rule moves on to the next upstream next run)."""
+    pref = upstreams[0] if upstreams else None
+    if not pref or pref.get("ssid") != "WormHole-Core":
+        return None
+    if status.get("ssid") == pref.get("ssid"):
+        st["off_home_since"] = None
+        st["home_backoff"] = None
+        return None
+    if status.get("state_s") != "connected" or cloud_ok is not True:
+        return None
+    st["off_home_since"] = st.get("off_home_since") or int(now)
+    if now - st["off_home_since"] < RETURN_AFTER_S:
+        return None
+    backoff = st.get("home_backoff") or RETURN_AFTER_S
+    if st.get("home_try_at") and now - st["home_try_at"] < backoff:
+        return None
+    st["home_try_at"] = int(now)
+    want = (pref.get("bssid") or "").lower()
+    if want:
+        old_timeout = getattr(r, "timeout", None)
+        try:
+            r.timeout = 40
+            scan = r.call("repeater", "scan") or {}
+        finally:
+            if old_timeout is not None:
+                r.timeout = old_timeout
+        seen = {(x.get("bssid") or "").lower() for x in (scan.get("res") or scan.get("list") or [])}
+        if want not in seen:
+            print("return home: backhaul %s not in scan, staying on %s" % (want, status.get("ssid")))
+            return "not-seen"
+    st["home_backoff"] = min(backoff * 2, RETURN_MAX_BACKOFF_S)
+    old_timeout = getattr(r, "timeout", None)
+    try:
+        r.timeout = 40
+        r.call("repeater", "connect", connect_params(pref))
+    finally:
+        if old_timeout is not None:
+            r.timeout = old_timeout
+    st["last_join_at"] = int(now)
+    st["last_join_ssid"] = pref.get("ssid")
+    event(st, now, "back to the backhaul: %d min on %s with good internet"
+          % ((now - st["off_home_since"]) / 60, status.get("ssid")))
+    return "joined"
 
 
 def reboot_due_at(down_since, reboots):
@@ -741,8 +797,24 @@ def main(now=None, router_factory=None, cloud_check=None, wifi_factory=None):
     except Exception as e:
         print("forwards: %s" % e)
 
-    what = decide(status, cloud_ok, st.get("last_join_at"), now)
+    if status.get("state_s") == "connected" and cloud_ok is False:
+        st["no_cloud_since"] = st.get("no_cloud_since") or int(now)
+    else:
+        st["no_cloud_since"] = None
+    what = decide(status, cloud_ok, st.get("last_join_at"), now, st.get("no_cloud_since"))
+    if what == "hold":
+        st["state"] = "no-internet?"
+        if not st.get("down_since"):      # the outage clock starts at the first failed check
+            st["down_since"] = int(now)
+        save_state(st)
+        print("connected via %s but the cloud check failed (%ds): checking again before switching"
+              % (status.get("ssid"), now - st["no_cloud_since"]))
+        return 0
     if what == "ok":
+        try:
+            return_home(r, st, now, upstreams, status, cloud_ok)
+        except Exception as e:
+            print("return home: %s" % str(e)[:100])
         if st.get("down_since"):
             event(st, now, "recovered after %d min (%d reboots)"
                   % ((now - st["down_since"]) / 60, len(st.get("reboots") or [])))

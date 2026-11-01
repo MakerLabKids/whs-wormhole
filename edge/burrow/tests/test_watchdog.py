@@ -24,8 +24,11 @@ class Decide(unittest.TestCase):
     def test_connected_with_cloud_is_ok(self):
         self.assertEqual(wd.decide({"state_s": "connected"}, True, None, 1000), "ok")
 
-    def test_connected_without_cloud_switches(self):
-        self.assertEqual(wd.decide({"state_s": "connected"}, False, None, 1000), "switch")
+    def test_connected_without_cloud_holds_then_switches(self):
+        # 2026-11-01 10:00: one failed check moved Tunnel 1 off a healthy backhaul
+        self.assertEqual(wd.decide({"state_s": "connected"}, False, None, 1000), "hold")
+        self.assertEqual(wd.decide({"state_s": "connected"}, False, None, 1000, 1000 - 30), "hold")
+        self.assertEqual(wd.decide({"state_s": "connected"}, False, None, 1000, 1000 - wd.SWITCH_AFTER_S), "switch")
 
     def test_idle_joins(self):
         self.assertEqual(wd.decide({"state_s": "idle"}, False, None, 1000), "join")
@@ -320,6 +323,9 @@ class Runs(unittest.TestCase):
     def test_connected_without_internet_switches_upstream(self):
         self.cloud = False      # repeater says connected to BYLD but nothing gets out
         self.run_at(1000)
+        self.assertFalse(self.calls("repeater", "connect"))      # one failed check: hold
+        self.assertEqual(self.state()["state"], "no-internet?")
+        self.run_at(1120)                                        # still failing next run: switch
         c = self.calls("repeater", "connect")
         self.assertEqual(c[0]["ssid"], "WormHole-Core")
         self.assertEqual(self.state()["state"], "no-internet")
@@ -356,7 +362,22 @@ class Runs(unittest.TestCase):
         self.cloud = False
         self.run_at(1120)                     # used to crash: None + REBOOT_AFTER_S
         self.assertEqual(self.state()["down_since"], 1120)
+        self.assertFalse(self.calls("repeater", "connect"))   # first failed check only holds
+        self.run_at(1240)
+        self.assertEqual(self.state()["down_since"], 1120)
         self.assertTrue(self.calls("repeater", "connect"))
+
+    def test_one_failed_check_moves_nothing(self):
+        self.run_at(1000)
+        self.cloud = False
+        self.run_at(1120)
+        self.cloud = True
+        self.run_at(1240)
+        self.assertFalse(self.calls("repeater", "connect"))
+        st = self.state()
+        self.assertEqual(st["state"], "ok")
+        self.assertIsNone(st["no_cloud_since"])
+        self.assertIsNone(st["down_since"])
 
     def test_recovery_clears_outage_and_drops_wifi(self):
         FakeRouter.NEXT_STATE = "idle"
@@ -696,6 +717,79 @@ class PortalBackhaulWatchTest(unittest.TestCase):
         wd.portal_backhaul_watch(r, st, 5000, self.BCFG, reachable=lambda u: False)
         self.assertEqual(self.toggles(r)[-1], True)
 
+
+
+class ReturnHomeRouter:
+    def __init__(self, bssids):
+        self.bssids, self.calls, self.timeout = bssids, [], 8
+
+    def call(self, obj, method, params=None):
+        self.calls.append((obj, method, params))
+        if (obj, method) == ("repeater", "scan"):
+            return {"res": [{"ssid": "", "bssid": b} for b in self.bssids]}
+        return {}
+
+
+class ReturnHomeTest(unittest.TestCase):
+    UPS = [{"ssid": "WormHole-Core", "bssid": "94:83:c4:84:d2:0c", "key": "k", "hidden": True},
+           {"ssid": "Loki", "key": "l"}]
+    LOKI = {"state_s": "connected", "ssid": "Loki"}
+
+    def setUp(self):
+        self.events = []
+        self._event = wd.event
+        wd.event = lambda st, now, text: self.events.append(text)
+
+    def tearDown(self):
+        wd.event = self._event
+
+    def joins(self, r):
+        return [p for o, m, p in r.calls if (o, m) == ("repeater", "connect")]
+
+    def test_waits_15_min_then_rejoins_when_backhaul_seen(self):
+        r, st = ReturnHomeRouter(["94:83:C4:84:D2:0C"]), {}
+        self.assertIsNone(wd.return_home(r, st, 1000, self.UPS, self.LOKI, True))
+        self.assertIsNone(wd.return_home(r, st, 1000 + 14 * 60, self.UPS, self.LOKI, True))
+        self.assertEqual(wd.return_home(r, st, 1000 + 15 * 60, self.UPS, self.LOKI, True), "joined")
+        j = self.joins(r)
+        self.assertEqual(len(j), 1)
+        self.assertEqual(j[0]["ssid"], "WormHole-Core")
+        self.assertTrue(j[0]["remember"])
+        self.assertEqual(st["last_join_ssid"], "WormHole-Core")   # a miss falls back via the hidden-miss rule
+        self.assertIn("back to the backhaul", self.events[0])
+
+    def test_backoff_doubles_and_resets_at_home(self):
+        r, st = ReturnHomeRouter(["94:83:c4:84:d2:0c"]), {}
+        t = 1000
+        wd.return_home(r, st, t, self.UPS, self.LOKI, True)
+        t += 15 * 60
+        wd.return_home(r, st, t, self.UPS, self.LOKI, True)          # try 1
+        wd.return_home(r, st, t + 29 * 60, self.UPS, self.LOKI, True)
+        self.assertEqual(len(self.joins(r)), 1)                        # next wait is 30 min
+        wd.return_home(r, st, t + 30 * 60, self.UPS, self.LOKI, True)  # try 2
+        self.assertEqual(len(self.joins(r)), 2)
+        self.assertEqual(st["home_backoff"], 60 * 60)
+        for i in range(10):
+            st["home_try_at"] = 0
+            wd.return_home(r, st, t + 10 * 3600, self.UPS, self.LOKI, True)
+        self.assertEqual(st["home_backoff"], wd.RETURN_MAX_BACKOFF_S)
+        wd.return_home(r, st, t + 20 * 3600, self.UPS, {"state_s": "connected", "ssid": "WormHole-Core"}, True)
+        self.assertIsNone(st["home_backoff"])
+        self.assertIsNone(st["off_home_since"])
+
+    def test_not_seen_in_scan_stays_put(self):
+        r, st = ReturnHomeRouter(["aa:bb:cc:dd:ee:ff"]), {"off_home_since": 1, "home_try_at": None}
+        self.assertEqual(wd.return_home(r, st, 1 + 20 * 60, self.UPS, self.LOKI, True), "not-seen")
+        self.assertFalse(self.joins(r))
+        self.assertIsNone(st.get("home_backoff"))
+
+    def test_no_return_without_internet_or_for_the_portal(self):
+        r, st = ReturnHomeRouter(["94:83:c4:84:d2:0c"]), {"off_home_since": 1}
+        self.assertIsNone(wd.return_home(r, st, 99999, self.UPS, self.LOKI, False))
+        self.assertIsNone(wd.return_home(r, st, 99999, self.UPS, self.LOKI, None))
+        portal = [{"ssid": "BYLD"}, {"ssid": "Loki", "key": "l"}]
+        self.assertIsNone(wd.return_home(r, {"off_home_since": 1}, 99999, portal, self.LOKI, True))
+        self.assertFalse(r.calls)
 
 if __name__ == "__main__":
     unittest.main()
