@@ -327,7 +327,7 @@ def decide(status, cloud_ok, last_join_at, now, no_cloud_since=None):
 
 def return_home(r, st, now, upstreams, status, cloud_ok):
     """Rooms 1-3 (preferred upstream WormHole-Core): after RETURN_AFTER_S on a fallback with good
-    internet, rejoin the backhaul, but only when a scan shows its BSSID. Each try doubles the wait
+    internet, rejoin the backhaul, but only when a scan shows the Portal (its BSSID prefix). Each try doubles the wait
     (to RETURN_MAX_BACKOFF_S); arriving home resets it. A failed join falls back by the usual path
     (the hidden-miss rule moves on to the next upstream next run)."""
     pref = upstreams[0] if upstreams else None
@@ -355,9 +355,12 @@ def return_home(r, st, now, upstreams, status, cloud_ok):
         finally:
             if old_timeout is not None:
                 r.timeout = old_timeout
-        seen = {(x.get("bssid") or "").lower() for x in (scan.get("res") or scan.get("list") or [])}
-        if want not in seen:
-            print("return home: backhaul %s not in scan, staying on %s" % (want, status.get("ssid")))
+        # The Opal's scan leaves hidden networks out (2026-11-01: 17 results, no WormHole-Core), so
+        # look for the Portal itself: any BSSID of the same radio (first five bytes), e.g. its 2.4 GHz WormHole.
+        prefix = want[:14]
+        seen = [(x.get("bssid") or "").lower() for x in (scan.get("res") or scan.get("list") or [])]
+        if not any(b.startswith(prefix) for b in seen):
+            print("return home: no sign of the Portal (%s*) in the scan, staying on %s" % (prefix, status.get("ssid")))
             return "not-seen"
     st["home_backoff"] = min(backoff * 2, RETURN_MAX_BACKOFF_S)
     old_timeout = getattr(r, "timeout", None)

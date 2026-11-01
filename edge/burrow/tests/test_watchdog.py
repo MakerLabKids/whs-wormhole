@@ -747,7 +747,7 @@ class ReturnHomeTest(unittest.TestCase):
         return [p for o, m, p in r.calls if (o, m) == ("repeater", "connect")]
 
     def test_waits_15_min_then_rejoins_when_backhaul_seen(self):
-        r, st = ReturnHomeRouter(["94:83:C4:84:D2:0C"]), {}
+        r, st = ReturnHomeRouter(["94:83:C4:84:D2:0B"]), {}      # the Portal's visible 2.4 GHz AP: hidden ones are not listed
         self.assertIsNone(wd.return_home(r, st, 1000, self.UPS, self.LOKI, True))
         self.assertIsNone(wd.return_home(r, st, 1000 + 14 * 60, self.UPS, self.LOKI, True))
         self.assertEqual(wd.return_home(r, st, 1000 + 15 * 60, self.UPS, self.LOKI, True), "joined")
