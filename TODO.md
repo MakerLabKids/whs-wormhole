@@ -21,8 +21,8 @@ out there and nothing needs migrating. A Pico is set up once by cable and update
 1b. **Fans (arrived 2026-11-01).** Code is in (1db189d): the fan goes on the relay, GP15 (pin 20). Every
    15 min, inside humidity over 80% runs it 1 min; at power-on it toggles with each boot screen while
    `FAN_BOOT_DEMO = True`. After the demo period: set `FAN_BOOT_DEMO = False` (3 s at power-on). Not yet
-   run on a real board with a fan. Owed deploys: wrangler deploy (the dashboard's GitHub link now goes to
-   the Pages lab guide) and the Burrows (they serve the same page).
+   run on a real board with a fan. The Surface is deployed (11-01: the navbar's GitHub link goes to the
+   Pages lab guide, checked live); the Burrows pick up the same page with their next update.
 2. **Set up the Picos for the bins** (first one, then the rest): fleet flasher
    `tools/fleet/flash.py` (MicroPython 1.29, the worm-bin code, boot.py + lib/ota.py, wifi.json,
    bin.json with the bin number 30-79). Label the lids to match. Do ONE first: Claude checks its
