@@ -58,7 +58,20 @@ case "$cmd" in
     mnt=$(mktemp -d); mount "$root" "$mnt"
     rm -f "$mnt/etc/burrow/cloud.token" "$mnt/etc/cloudflared/token"
     touch "$mnt/etc/burrow/needs-identity"
-    [ -s "$mnt/etc/burrow/enrol.secret" ] || echo "WARNING: no /etc/burrow/enrol.secret on this image: the Pi cannot enrol by itself"
+    if [ ! -s "$mnt/etc/burrow/enrol.secret" ]; then
+      # the fleet enrolment secret comes from the repo's .env (enrol_secret), never from the image:
+      # 2026-11-01 the golden image (burrow3's card) had none, so its clones could not enrol, and a
+      # standby could not take over. Written root-only; never printed.
+      envf="$(cd "$(dirname "$0")/../../.." && pwd)/.env"
+      sec=$(sed -n 's/^enrol_secret=//p' "$envf" 2>/dev/null | head -1 | tr -d "\"'")
+      if [ -n "$sec" ]; then
+        install -d -m 755 "$mnt/etc/burrow"
+        ( umask 077; printf '%s' "$sec" > "$mnt/etc/burrow/enrol.secret" )
+        echo "enrolment secret written from .env"
+      else
+        echo "WARNING: no enrol_secret in $envf and none on the image: the Pi cannot enrol by itself"
+      fi
+    fi
     umount "$mnt"
     if [ -n "$n" ]; then                    # an explicit identity instead of enrolment (no internet at first boot)
       mount "$boot" "$mnt"
