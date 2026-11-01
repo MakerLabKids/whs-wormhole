@@ -80,5 +80,6 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
 - [ ] A battery RTC module on the Pico would turn "estimated" backfill timestamps
       (rows from a boot that never reached a Burrow) into exact ones. Only matters
       if a bin loses power *and* network for the same stretch.
-- [ ] `projects/distance-station` demo: its README still describes the single-shot
-      driver; the new driver's continuous mode and `status` are worth a paragraph.
+- [x] `projects/distance-station` README: continuous mode + `status` paragraph (2026-11-01).
+- [ ] `projects/distance-station/main.py` CALIBRATION_MAP predates the full VL53L0X driver:
+      re-measure with a tape (needs a board on the bench).

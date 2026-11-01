@@ -65,6 +65,29 @@ we used to collect those pairs with a tape measure. Recalibrate if you
 mount the sensor differently: collect a few (raw, actual) points and edit
 the table.
 
+## Going further: continuous mode and the status code
+
+`main.py` takes one blocking shot per loop with `tof.ping()`. The driver
+(`lib/vl53l0x.py`, a port of Pololu's full ST init) can do better:
+
+```python
+tof.set_timing_budget(200000)   # 200 ms per shot: slower, much steadier
+tof.start_continuous(250)       # the chip measures every 250 ms on its own clock
+mm = tof.range()                # newest reading, or None if nothing new: never blocks
+if mm is not None and tof.status == 11:   # 11 = the chip trusts this shot
+    ...
+```
+
+Continuous mode keeps the OLED, the web server and the Wi-Fi responsive
+because the loop never waits on the laser. The status code is the
+sensor's own opinion of each shot: drop anything that is not 11 (too
+little light back, too much ambient, target out of range) instead of
+plotting it. The worm-bin firmware does exactly this, and treats two
+seconds without a trusted reading as a sensor fault. Note that the
+`CALIBRATION_MAP` in `main.py` was measured with an older driver that
+skipped the chip's start-up calibration and read tens of millimetres
+long; with this driver, redo the table before trusting it.
+
 ---
 
 Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
