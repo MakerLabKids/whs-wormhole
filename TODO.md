@@ -9,13 +9,14 @@ record of what got done.
 Oct 20) went back in the pile; every Pico gets flashed fresh before it is used, so nothing old is
 out there and nothing needs migrating. A Pico is set up once by cable and updated over Wi-Fi after.
 
-1. **Leaked passwords: the routers are done; the website admin login is left.**
-   - DONE 2026-11-01 17:17: new `router_admin` = `backhaul_key` (from .env) on all four Opals, the
-     Portal's WormHole-Core, each Tunnel's saved entry and each Pi's tunnel.json; the old value is refused
-     everywhere and all three Tunnels are back on the backhaul. (Procedure: notes/CLAUDE-RUNBOOK.md 4.9.)
-   - LEFT: the Surface admin login (= the Pi user's password) is still the leaked value: line 1 of
-     ~/.config/wormhole/pi-password. Needs a new value from the human (or a generated one); set it with
-     the admin reset (POST /api/admin/teams/<id>/reset), which also drops open admin sessions.
+1. **Leaked passwords: rotated 2026-11-01.**
+   - 17:17: new `router_admin` = `backhaul_key` (from .env) on all four Opals, the Portal's WormHole-Core,
+     each Tunnel's saved entry and each Pi's tunnel.json; the old value is refused everywhere.
+     (Procedure: notes/CLAUDE-RUNBOOK.md 4.9.)
+   - Then the Surface admin login: the same new value (the human's choice), set with the admin reset; old
+     login refused (401), admin sessions dropped. ~/.config/wormhole/pi-password line 1 updated to match.
+   - Still the old value: the Pis' `worm` user password. Low risk (sshd is keys-only, sudo needs no
+     password), change only if the human asks.
    - Kept on purpose (the human's call): the WormHole/Pico key, which equals guess_psk and qtastic_psk.
    - Purging public history: optional, only with the human's go-ahead.
 1b. **Fans (arrived 2026-11-01).** Code is in (1db189d): the fan goes on the relay, GP15 (pin 20). Every
