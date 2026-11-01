@@ -1,3 +1,4 @@
+import { makeRelease, picoStatus, setTarget } from "./picocode.js";
 // Admin API: team management, visitors, sessions, castings export, stats,
 // and the one-time bootstrap. Roles are enforced here.
 // teacher: read-only endpoints. admin: everything.
@@ -56,6 +57,9 @@ export async function handleAdmin(request, env, ctx, path, session) {
   if (sub === "/rollout" && m === "GET") return readOnly || rolloutStatus(env);
   if (sub === "/rollout" && m === "POST") return adminOnly || requestRollout(request, env, session);
   if (sub === "/rollout/cancel" && m === "POST") return adminOnly || cancelRollout(request, env);
+  if (sub === "/pico" && m === "GET") return readOnly || picoStatus(env);
+  if (sub === "/pico/release" && m === "POST") return adminOnly || makeRelease(request, env, session);
+  if (sub === "/pico/target" && m === "POST") return adminOnly || setTarget(request, env, session);
 
   if (sub === "/teams" && m === "GET") return adminOnly || listTeams(env);
   if (sub === "/teams" && m === "POST") return adminOnly || createTeam(request, env);

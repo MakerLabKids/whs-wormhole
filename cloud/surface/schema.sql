@@ -222,3 +222,23 @@ CREATE TABLE IF NOT EXISTS show_lists (
   board_rev INTEGER,              -- what the board last reported having
   board_at  INTEGER
 );
+
+-- Pico code over Wi-Fi (lib/ota.py on the Bins): a release is one commit's worm-bin code files
+-- (code paths only, never boot.py or data); targets say which bins should run which release
+-- ("*" = every bin); a Burrow's snapshot reply lists the bins it hears that run something else.
+CREATE TABLE IF NOT EXISTS pico_releases (
+  version    TEXT PRIMARY KEY,     -- the commit, 7 characters
+  files      TEXT NOT NULL,        -- JSON [{path, sha256, size}]
+  created_by TEXT,
+  created_at INTEGER
+);
+CREATE TABLE IF NOT EXISTS pico_blobs (
+  sha256 TEXT PRIMARY KEY,
+  data   TEXT NOT NULL             -- base64
+);
+CREATE TABLE IF NOT EXISTS pico_targets (
+  uid     TEXT PRIMARY KEY,        -- a bin's uid, or "*" for every bin without its own
+  version TEXT NOT NULL,
+  set_by  TEXT,
+  set_at  INTEGER
+);
