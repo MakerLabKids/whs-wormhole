@@ -1769,6 +1769,20 @@ class History:
     cl.sendall(b"}}")
 
 
+def _send_all(s, data):
+  """socket.send() may take only part of a big buffer (a short write) and say so in its
+  return value. A backfill batch (60 rows, many KB) did exactly that on 2026-11-01: the
+  Burrow waited for the rest, the Bin for a reply, and every batch timed out."""
+  mv = memoryview(data)
+  while len(mv):
+    n = s.send(mv)
+    if n is None:          # some ports return None for "all of it"
+      return
+    if n <= 0:
+      raise OSError("send stalled")
+    mv = mv[n:]
+
+
 def _http_post_json(host, port, path, body, timeout=PUSH_TIMEOUT_S):
   """Tiny blocking POST. Returns (status, parsed-json-or-None). Raises on
   network trouble; the caller decides what that means."""
@@ -1779,8 +1793,8 @@ def _http_post_json(host, port, path, body, timeout=PUSH_TIMEOUT_S):
     s.connect(addr)
     head = ("POST %s HTTP/1.0\r\nHost: %s\r\nContent-Type: application/json\r\n"
             "Content-Length: %d\r\nConnection: close\r\n\r\n" % (path, host, len(body)))
-    s.send(head.encode())
-    s.send(body)
+    _send_all(s, head.encode())
+    _send_all(s, body)
     resp = b""
     while len(resp) < 2048:
       chunk = s.recv(512)
