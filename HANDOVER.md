@@ -172,7 +172,7 @@ Each item: where, how verified, deployed or not.
 
 ## Things I am not sure about
 
-- `wifi set_config` for enabling/disabling an iface on GL.iNet 4.x: unverified.
+- `wifi set_config`: RESOLVED 2026-11-01, `{"iface_name": "default_radio1", "enabled": bool}`; the nested form 500s. Proven on Tunnel 1 (guest5g on/off, repeater stayed up).
 - `sameOpal` MAC heuristic: verified on the Portal only (92:83:c4:84:d2:0b ->
   94:83:c4:84:d2:0b/0c).
 - first-boot-identity.sh assumes the Pi's wired connection name is on eth0 and

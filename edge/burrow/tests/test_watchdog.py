@@ -177,9 +177,11 @@ class FakeRouter:
             return {"res": [{"ifaces": [{"bssid": "94:83:C4:00:00:01"}]},
                             {"ifaces": [{"bssid": "94:83:C4:00:00:02", "name": "default_radio1", "ssid": "WormHole-Core", "enabled": FakeRouter.NEXT_BACKHAUL}]}]}
         if (obj, method) == ("wifi", "set_config"):
-            for i in (params or {}).get("ifaces", []):
-                if i.get("name") == "default_radio1":
-                    FakeRouter.NEXT_BACKHAUL = bool(i.get("enabled"))
+            p = params or {}
+            if "ifaces" in p or "iface_name" not in p or not isinstance(p.get("enabled"), bool):
+                raise RuntimeError("HTTP 500")                # what the real Opal does with the nested form
+            if p["iface_name"] == "default_radio1":
+                FakeRouter.NEXT_BACKHAUL = p["enabled"]
             return []
         if (obj, method) == ("repeater", "get_config"):
             return {"auto": FakeRouter.NEXT_AUTO, "smart_reconnect": True}

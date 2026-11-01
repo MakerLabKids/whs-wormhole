@@ -126,7 +126,10 @@ def backhaul_election(r, st, now, cloud_ok, status):
             if cur is not None:
                 st["backhaul"] = "on" if want else ("barred" if st.get("backhaul") == "barred" else "off")
             return
-        r.call("wifi", "set_config", {"ifaces": [{"name": BACKHAUL_IFACE, "enabled": want}]})
+        # GL.iNet 4.x: flat {iface_name, enabled} (read from the router's rpc/wifi; the nested
+        # {"ifaces": [...]} form get_config returns is a 500). Proven on Tunnel 1, 2026-11-01:
+        # toggling an AP iface leaves the repeater link up.
+        r.call("wifi", "set_config", {"iface_name": BACKHAUL_IFACE, "enabled": bool(want)})
         if want:
             st["backhaul"] = "on"
             event(st, now, "backhaul offered: %d min of clean internet on %s" % (PROBATION_S // 60, status.get("ssid") or "?"))
