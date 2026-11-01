@@ -47,6 +47,10 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       minute; name, bin.json, messages, calibration, shows + website playlist, and its main.py settings
       (pins, Roswell elevation, 3 unfitted parts) all kept. Golden image is 7c69e0c (standby-aware);
       burrow-golden-0514253 / -73219d5 can be deleted.
+- [x] **Bad-update rollback proven on hardware** (2026-11-01 15:42-15:51): a throwaway commit whose main.py
+      crashes at start (509f0e1, branch deleted) was released to the bench board: it took all 17 files,
+      switched over, crashed, and exactly 5 min later boot.py's timer put 58939f0 back and reset; it reports
+      "509f0e1: not confirmed within 5 min" and never fetched it again; shows and settings intact.
 - [ ] Watch a real standby takeover once (a spare Pi on a room's Opal, then unplug the room's Pi):
       built and tested in code, not yet seen on hardware.
 - [x] **Extra Pis never break a room** and **Pico code over Wi-Fi**: built and tested 2026-11-01
