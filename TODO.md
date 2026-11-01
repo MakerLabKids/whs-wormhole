@@ -22,7 +22,6 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
 - [x] **Watchdog hold-before-switch + return-home** on all four Pis (2026-11-01 11:05: burrow1
       7223efa, the rest 9c5ba9c, same code). Repeat rejoin trials 10:16-10:57: 60 s outage ->
       back in 18-19 s, 5 min -> 42 s; an Opal returns to the network it was last told to join.
-- [ ] **`wrangler deploy` the Surface** (cloud/surface): the buffered-Bin alert (2026-11-01).
 - [ ] **Portal hostapd "Failed to set beacon parameters"** every 6 s since its 08:59 switch to
       Loki (2.4 GHz AP dragged to ch 11). Harmless so far (11:20: burrow0's Wi-Fi joined that AP
       fine); if a Bin in room 0 can't join the
@@ -43,8 +42,13 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       since picolab 0.2.1 (marquee, shows, boot sequence, buffer + backfill, fixed addresses +
       PINs, messages over Wi-Fi/website/Bluetooth, link icon, NOT CONNECTED cards, dead-network
       rejoin, join stagger). Bins renumbered 30-79: relabel lids first. Recalibrate distance after.
-- [ ] **Make mrklabs.com/whsbt redirect to whs.makerlabkids.com/bluetooth** (on the NOT CONNECTED card).
-- [ ] **`ALERT_URL`** for the Surface (carried over).
+- [ ] **mrklabs.com/whsbt -> whs.makerlabkids.com/bluetooth** (on the NOT CONNECTED card): set up
+      2026-11-01 but not working: every form lands on https://www.mrklabs.com/whsbt/ and IONOS says
+      404 (the apex forwards to www first). The rule must be on www.mrklabs.com (IONOS builder).
+- [ ] **Alerts reach no phone**: ALERT_URL is set (ntfy.sh), but every notify gets 429 "daily
+      message quota" (ntfy.sh meters free posts per IP; Cloudflare's egress is shared, see
+      2026-10-29). Pick: ntfy Supporter + ALERT_TOKEN, or a Discord webhook / Telegram bot URL in
+      ALERT_URL (both supported), then the Devices page's test button.
 - [ ] **Physical fault tests** (an evening, with the clock): pull a Pi; pull a Tunnel; pull the
       provider; pull the internet; power everything off and on in random order; swap an Opal;
       swap a Pi (cloned card); two rollouts in a row. Pass times in the plan of 2026-10-31.
