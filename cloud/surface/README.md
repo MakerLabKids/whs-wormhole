@@ -157,8 +157,11 @@ upload token (only its sha256 is kept, table `enrolled`) and the room's cloudfla
 Pi in a room replaces the previous one: the old token stops working and a `burrow.enrolled` warn
 event names both serials. The static `EDGE_TOKENS` keep working alongside.
 
-Setup once: `npx wrangler secret put ENROL_SECRET` (the value is `enrol_secret` in the repo's
-.env, also on the Pis at /etc/burrow/enrol.secret) and `npx wrangler secret put TUNNEL_TOKENS`.
+Setup once, from cloud/surface (the helper pipes each value from the repo's .env, never shown):
+`../../tools/surface-secret.sh ENROL_SECRET | npx wrangler secret put ENROL_SECRET` (.env
+`enrol_secret`, also on the Pis at /etc/burrow/enrol.secret) and
+`../../tools/surface-secret.sh TUNNEL_TOKENS | npx wrangler secret put TUNNEL_TOKENS` (.env
+`TUNNEL_TOKENS`, JSON; each Pi's own copy is /etc/cloudflared/token).
 
 ## Rollouts: update one Burrow at a time
 

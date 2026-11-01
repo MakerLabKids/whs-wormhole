@@ -100,9 +100,24 @@ the cloud has confirmed it by hashing the stored object. Nothing else deletes.
 Each Burrow's cloudflared tunnel is outbound-only and dashboard-managed, so SSH
 goes over it with no port opened on the Pi and no change on the Pi at all:
 
-1. In Cloudflare Zero Trust, on each Burrow's tunnel, add a public hostname
-   `ssh-burrowN.whs.makerlabkids.com` with service `ssh://localhost:22`
-   (and, if you want a login wall, an Access application on that hostname).
+1. In Cloudflare Zero Trust: Networks -> Tunnels -> the tunnel named for burrowN -> Edit (or
+   Configure) -> Public Hostname -> Add a public hostname. The same place the existing
+   `burrowN.whs.makerlabkids.com` entry lives; add a second one next to it:
+
+   | field     | value                                   |
+   |-----------|-----------------------------------------|
+   | Subdomain | `ssh-burrowN.whs` (e.g. `ssh-burrow0.whs`) |
+   | Domain    | `makerlabkids.com`                      |
+   | Path      | empty                                   |
+   | Type      | `SSH`                                   |
+   | URL       | `localhost:22`                          |
+
+   Do it on all four tunnels (burrow0..3); burrow2's works once its Pi is back. Cloudflare makes
+   the DNS record itself. Check: `getent hosts ssh-burrow0.whs.makerlabkids.com` answers.
+   Strongly suggested: a login wall, so the Pi's sshd is not open to the whole internet. Zero
+   Trust -> Access -> Applications -> Add -> Self-hosted, application domain
+   `ssh-burrow*.whs.makerlabkids.com` (or the four names), policy Allow, include your email. Then
+   the first `cloudflared access ssh` opens a browser to log in once.
 2. On the laptop, install `cloudflared` once, then
    `tools/ssh-burrow.sh N` (or by hand:
    `ssh -o ProxyCommand="cloudflared access ssh --hostname %h" worm@ssh-burrowN.whs.makerlabkids.com`).
