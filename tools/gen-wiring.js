@@ -25,11 +25,12 @@ const C = {
 // (Adafruit, SparkFun): black GND, red 3V3, blue SDA, yellow SCL (2026-11-01; was green/white).
 //   red    = 3V3 power        orange = 5V / VBUS        black = GND
 //   blue   = I2C SDA (data)   yellow = I2C SCL (clock)
-//   yellow = also the DS18B20 probe's DATA: the probe's own cable is red / black / yellow
+//   yellow = also a probe's own signal wire: the DS18B20 and the capacitive soil sensor both
+//            come with a red / black / yellow cable, so the drawing matches the wire in your hand
 //   green  = a lone signal (an analog output, a digital pin)
 const W = {
   pwr: "#C62828", gnd: "#1B1B1B", sda: "#1E64B4", scl: "#F2C400",
-  sig: "#43A047", vbus: "#E8762C", ow: "#F2C400",
+  sig: "#43A047", vbus: "#E8762C", probe: "#F2C400",
 };
 const CASING = "#8B949C";  // outline under light (yellow) wires
 
@@ -78,7 +79,7 @@ function text(x, y, s, o = {}) {
     + ` fill="${color}" text-anchor="${anchor}"${bold ? ' font-weight="bold"' : ""}`
     + `${italic ? ' font-style="italic"' : ""}${h}>${esc(s)}</text>`;
 }
-const CASED = () => [W.scl, W.ow];  // light colors that need an outline on white
+const CASED = () => [W.scl, W.probe];  // light colors that need an outline on white
 function wire(pts, color, width = 3.5) {
   const d = pts.map((p, i) => (i ? "L" : "M") + p[0] + " " + p[1]).join(" ");
   let s = "";
@@ -355,21 +356,21 @@ projects["light-lux"] = () => diagram(
   "light-lux wiring", "BH1750 lux sensor + OLED on the shared I2C bus",
   [1, 2, 36, 38], () => bodyI2C("BH1750", "0x23", C.yellow), i2cLegend("VCC"));
 
-function analog(title, sub, adcPin, accent, outName) {
+function analog(title, sub, adcPin, accent, outName, color = W.sig) {
   const x = DEV_X, y = 262, w = DEV_W, h = 92;
   let s = deviceBox(x, y, w, h, title, sub, accent);
   const p = { VCC: { x, y: y + 42 }, GND: { x, y: y + 60 }, OUT: { x, y: y + 78 } };
   s += devPin(x, p.VCC.y, "VCC") + devPin(x, p.GND.y, "GND") + devPin(x, p.OUT.y, outName);
   s += oledI2C();
   s += tap(RAIL_PWR, p.VCC, W.pwr) + tap(RAIL_GND, p.GND, W.gnd);
-  s += sig(adcPin, p.OUT, W.sig);
+  s += sig(adcPin, p.OUT, color);
   return s;
 }
 projects["soil-moisture"] = () => diagram(
   "soil-moisture wiring", "Capacitive soil sensor (analog) + OLED",
-  [1, 2, 31, 36, 38], () => analog("Soil moisture", "capacitive v1.2", 31, C.orange, "AOUT"),
+  [1, 2, 31, 36, 38], () => analog("Soil moisture", "capacitive v1.2", 31, C.orange, "AOUT", W.probe),
   [
-    { color: W.sig, text: "AOUT -> GP26 (pin 31, ADC0)" },
+    { color: W.probe, text: "yellow AOUT -> GP26 (pin 31, ADC0)" },
     { color: W.pwr, text: "3V3 (pin 36) -> VCC (OLED + sensor)" },
     { color: W.gnd, text: "GND (pin 38) -> GND (OLED + sensor)" },
     { color: W.sda, text: "OLED SDA/SCL on GP0 / GP1 (pins 1, 2)" },
@@ -441,7 +442,7 @@ function pullup47(ry) {
   let s = resistorGlyph(rx, ry - 26, 13, 32, 4700, true);
   s += text(rx + 6, ry - 30, "4.7k", { size: 9, color: C.ink, anchor: "middle", bold: true });
   s += wire([[RAIL_PWR, ry - 18], [rx + 6, ry - 18], [rx + 6, ry - 26]], W.pwr, 2.5);
-  s += wire([[rx + 6, ry + 6], [rx + 6, ry], [DEV_X - 8, ry]], W.ow, 2.5);
+  s += wire([[rx + 6, ry + 6], [rx + 6, ry], [DEV_X - 8, ry]], W.probe, 2.5);
   return s;
 }
 function ds18b20Box(y, title) {
@@ -461,12 +462,12 @@ projects["soil-temperature"] = () => diagram(
     s += devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.GND.y, "black GND") + devPin(x, p.DATA.y, "yellow DATA");
     s += oledI2C();
     s += tap(RAIL_PWR, p.VCC, W.pwr) + tap(RAIL_GND, p.GND, W.gnd);
-    s += sig(29, p.DATA, W.ow);
+    s += sig(29, p.DATA, W.probe);
     s += pullup47(y + 78);
     return s;
   },
   [
-    { color: W.ow, text: "yellow DATA -> GP22 (pin 29)" },
+    { color: W.probe, text: "yellow DATA -> GP22 (pin 29)" },
     { color: W.pwr, text: "red -> 3V3 (pin 36);  4.7k: DATA -> 3V3" },
     { color: W.gnd, text: "black -> GND (pin 38)" },
     { color: W.sda, text: "OLED SDA/SCL on GP0 / GP1 (pins 1, 2)" },
@@ -485,7 +486,7 @@ projects["soil-temperature-multi"] = () => diagram(
     // power + ground: every probe taps the same rails
     boxes.forEach(b => { s += tap(RAIL_PWR, b.p.VCC, W.pwr) + tap(RAIL_GND, b.p.GND, W.gnd); });
     // ONE data lane from GP22 feeds every probe's DATA pin
-    s += bus(29, boxes.map(b => b.p.DATA), W.ow);
+    s += bus(29, boxes.map(b => b.p.DATA), W.probe);
     // and ONE pullup for the whole bus
     s += pullup47(boxes[0].p.DATA.y);
     s += text(DEV_X + DEV_W / 2, 520, "probe 4, 5, 6... same three wires. No new resistor.",
@@ -493,7 +494,7 @@ projects["soil-temperature-multi"] = () => diagram(
     return s;
   },
   [
-    { color: W.ow, text: "ONE yellow DATA bus -> GP22 (pin 29), all probes" },
+    { color: W.probe, text: "ONE yellow DATA bus -> GP22 (pin 29), all probes" },
     { color: W.pwr, text: "ONE 4.7k pullup TOTAL: DATA -> 3V3" },
     { color: W.gnd, text: "all reds to 3V3 rail, all blacks to GND rail" },
     { text: "each probe has a factory serial number, so the" },
@@ -564,13 +565,13 @@ projects["soil-moisture-multi"] = () => diagram(
     [m1, m2].forEach(m => { s += tap(RAIL_PWR, m.p.VCC, W.pwr) + tap(RAIL_GND, m.p.GND, W.gnd); });
     // AOUT -> A0/A1: short lane just left of the device column
     const lane = DEV_X - 22;
-    s += wire([[DEV_X - 8, m1.p.OUT.y], [lane, m1.p.OUT.y], [lane, ap.A0.y], [DEV_X - 8, ap.A0.y]], W.sig, 2.5);
+    s += wire([[DEV_X - 8, m1.p.OUT.y], [lane, m1.p.OUT.y], [lane, ap.A0.y], [DEV_X - 8, ap.A0.y]], W.probe, 2.5);
     const lane2 = DEV_X - 34;
-    s += wire([[DEV_X - 8, m2.p.OUT.y], [lane2, m2.p.OUT.y], [lane2, ap.A1.y], [DEV_X - 8, ap.A1.y]], W.sig, 2.5);
+    s += wire([[DEV_X - 8, m2.p.OUT.y], [lane2, m2.p.OUT.y], [lane2, ap.A1.y], [DEV_X - 8, ap.A1.y]], W.probe, 2.5);
     return s;
   },
   [
-    { color: W.sig, text: "probe 1 AOUT -> A0, probe 2 AOUT -> A1" },
+    { color: W.probe, text: "probe 1 yellow AOUT -> A0, probe 2 -> A1" },
     { color: W.sda, text: "ADS1115 rides the same I2C bus as the OLED" },
     { color: W.pwr, text: "3V3 + GND rails feed everything" },
     { text: "A2 and A3 are still free (light divider, more" },

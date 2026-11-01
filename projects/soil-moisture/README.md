@@ -16,7 +16,7 @@ electronics at the top are not waterproof.
 | ---------- | ---- |
 | VCC | 3V3 (pin 36) |
 | GND | GND (any GND pin, e.g. 38) |
-| AOUT | GP26 (pin 31, ADC0) |
+| AOUT (the yellow wire) | GP26 (pin 31, ADC0) |
 
 
 ## Wiring diagram
@@ -56,7 +56,7 @@ numbers look random and refuse to settle, check the wiring.
 
 ---
 
-Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260824-v1.29.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
 
 ## Wiring multiples
 

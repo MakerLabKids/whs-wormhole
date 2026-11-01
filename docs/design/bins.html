@@ -84,7 +84,7 @@
 <pre><code>tools/fleet/flash.py</code></pre>
 <p>Then, for each board:</p>
 <ol class="steps">
-  <li><b>Brand-new board:</b> hold BOOTSEL while plugging it in. It mounts as a drive called <code>RP2350</code>; the script notices, copies <code>firmware/RPI_PICO2_W-20260406-v1.28.0.uf2</code> onto it, and waits for MicroPython to boot. <b>Board that already runs MicroPython</b> (your test units): just plug it in.</li>
+  <li><b>Brand-new board:</b> hold BOOTSEL while plugging it in. It mounts as a drive called <code>RP2350</code>; the script notices, copies <code>firmware/RPI_PICO2_W-20260824-v1.29.0.uf2</code> onto it, and waits for MicroPython to boot. <b>Board that already runs MicroPython</b> (your test units): just plug it in.</li>
   <li>The script reads the board's permanent uid. New uid → the next roster line without one. Known uid → that line again, so a re-flashed test unit keeps its team.</li>
   <li>It wipes the filesystem (<code>tools/wipe.py</code>, same as the "Fix a Board" page), copies every file the worm-bin project's <code>package.json</code> lists (<code>main.py</code>, <code>index.html</code>, <code>lib/*.py</code>, <code>cal.js</code>), then writes the three identity files:
 <pre><code>wifi.json   {"ssid": "WormHole", "password": "…", "rescue": "wormmaster"}

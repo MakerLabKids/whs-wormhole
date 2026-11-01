@@ -171,8 +171,9 @@
         (Adafruit, SparkFun) for <a class="term" href="#i2c">I2C</a>:
         <em>red</em> = <a class="term" href="#3v3-pin">3V3</a> power, <em>orange</em> = 5V (<a class="term" href="#vbus-vsys">VBUS</a>), <em>black</em> = <a class="term" href="#ground">GND</a>,
         <em>blue</em> = I2C SDA (data), <em>yellow</em> = I2C SCL (clock), <em>green</em> = a lone signal.
-        The DS18B20 temperature probe's own cable is red, black and yellow: its yellow is the
-        <a class="term" href="#onewire">1-Wire</a> data line, on its own pin.</dd>
+        The probes (DS18B20 temperature, capacitive soil moisture) come with red, black and
+        yellow cables: their yellow is the probe's own signal (the <a class="term" href="#onewire">1-Wire</a> data line, the
+        moisture reading), each on its own pin.</dd>
     <dt id="multimeter">Multimeter</dt>
     <dd>The measuring tool: volts, ohms, continuity (the beep mode that tells you two points
         are connected). When wiring lies, the multimeter tells the truth.</dd>
@@ -241,7 +242,7 @@
         too: <code>machine.bootloader()</code>, no finger required.</dd>
     <dt id="firmware">Firmware</dt>
     <dd>The <a class="term" href="#fourwords">software</a> that is flashed <em>into</em> the board and lives there: for us,
-        <a class="term" href="#micropython">MicroPython</a> v1.28.0. Full story under
+        <a class="term" href="#micropython">MicroPython</a> v1.29.0. Full story under
         <a class="term" href="#fourwords">"Four words, one machine"</a> in the <a class="term" href="#program-code">Code</a> words section.</dd>
     <dt id="flash-memory">Flash memory</dt>
     <dd>The Pico's onboard storage (4&nbsp;MB) where your files live: <code>main.py</code>,

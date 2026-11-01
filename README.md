@@ -19,7 +19,7 @@ you just added.
 | # | Session (Google Slides) | You prove | Code | One-click install |
 | - | ----------------------- | --------- | ---- | ----------------- |
 | 0 | [Intro](https://docs.google.com/presentation/d/1VmO9SPvXj8zbI5XZCL2dS0yMJWh22NcaxGVX-JmjQQw/edit) | Why we are here | | |
-| 1 | [Microcontrollers](https://docs.google.com/presentation/d/1RxtswPo1zEJnJrIV_41OHcRE-VmT5EBSG0QASNvSTmc/edit) | IDE connects, [firmware loads](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2) (BOOTSEL + drop the .uf2), code pushes, board runs on wall power alone | [`01-hello-world`](examples/01-hello-world) | [install](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/examples/01-hello-world/package.json) |
+| 1 | [Microcontrollers](https://docs.google.com/presentation/d/1RxtswPo1zEJnJrIV_41OHcRE-VmT5EBSG0QASNvSTmc/edit) | IDE connects, [firmware loads](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260824-v1.29.0.uf2) (BOOTSEL + drop the .uf2), code pushes, board runs on wall power alone | [`01-hello-world`](examples/01-hello-world) | [install](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/examples/01-hello-world/package.json) |
 | | | | [`02-repl`](examples/02-repl) | (live typing, nothing to install) |
 | | | | [`03-blink`](examples/03-blink) | [install](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/examples/03-blink/package.json) |
 | | | | [`04-webserver`](examples/04-webserver) | [install](https://viper-ide.org/?install=github:MakerLabKids/whs-wormhole/examples/04-webserver/package.json) |
@@ -32,7 +32,7 @@ you just added.
 1. **Get MicroPython on the board (one time).** Hold the BOOTSEL button while
    plugging the Pico into USB. It appears as a flash drive. Drag on the
    Pico 2 W firmware:
-   [download the exact tested build from this repo](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260406-v1.28.0.uf2)
+   [download the exact tested build from this repo](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260824-v1.29.0.uf2)
    (see [`firmware/`](firmware/); newer builds live at
    [micropython.org/download/RPI_PICO2_W](https://micropython.org/download/RPI_PICO2_W/)).
    The drive disappears and the board reboots into MicroPython.

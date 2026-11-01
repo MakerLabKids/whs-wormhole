@@ -2,7 +2,7 @@
   "ssid": "WormHole",
   "rescue": "wormmaster",
   "password_file": "~/.config/wormhole/wifi-password",
-  "firmware": "firmware/RPI_PICO2_W-20260406-v1.28.0.uf2",
+  "firmware": "firmware/RPI_PICO2_W-20260824-v1.29.0.uf2",
   "project": "projects/worm-bin",
   "bin_first": 30,
   "teacher_pin": "2718",
