@@ -45,10 +45,10 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
 - [x] **mkrlbs.com/whsbt -> whs.makerlabkids.com/bluetooth** works (2026-11-01; case-insensitive,
       HTTP://MKRLBS.COM/WHSBT for a smaller QR). The NOT CONNECTED card said mrklabs.com (a typo,
       fixed in worm-bin main.py; the classroom boards get it with the reflash).
-- [ ] **Alerts reach no phone**: ALERT_URL is set (ntfy.sh), but every notify gets 429 "daily
-      message quota" (ntfy.sh meters free posts per IP; Cloudflare's egress is shared, see
-      2026-10-29). Pick: ntfy Supporter + ALERT_TOKEN, or a Discord webhook / Telegram bot URL in
-      ALERT_URL (both supported), then the Devices page's test button.
+- [ ] **`wrangler deploy` the Surface** (f411615): alerts stopped reaching the phone on 2026-11-01
+      because of our own re-send loop (burrow1's event batches timed out while the Surface
+      notified; each re-send called ntfy again). Fixed: reply first, notify after, re-sent
+      batches deduplicated. After the deploy, burrow1's queue (48 events) drains in one go.
 - [ ] **Physical fault tests** (an evening, with the clock): pull a Pi; pull a Tunnel; pull the
       provider; pull the internet; power everything off and on in random order; swap an Opal;
       swap a Pi (cloned card); two rollouts in a row. Pass times in the plan of 2026-10-31.

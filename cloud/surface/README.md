@@ -126,13 +126,11 @@ that stopped reporting for 3 minutes. Both can notify a human through any ntfy-s
    `whs-wormhole-<something random>`.
 2. `npx wrangler secret put ALERT_URL` and paste `https://ntfy.sh/<that topic>` (a bare
    `ntfy.sh/<topic>` or just `<topic>` is accepted too).
-3. **ntfy.sh needs a paid tier from a Worker.** ntfy.sh meters anonymous posts, and posts
-   from free accounts, per source IP; a Worker shares its IPs with everyone else's Workers, so
-   the quota is already spent ("daily message quota reached", HTTP 429). Proven 2026-10-29:
-   the same free account's token showed 250/250 used when asked from the Worker and 8/250
-   when asked from a laptop two minutes earlier - the counter is per IP, not per account. A Supporter tier ($5/month, 2 500 messages/day) is metered per
-   user: create an access token (ntfy.sh/account > Access tokens) and
-   `npx wrangler secret put ALERT_TOKEN` (or `https://user:pass@ntfy.sh/<topic>` in ALERT_URL).
+3. Optional: an ntfy access token (ntfy.sh/account > Access tokens) as
+   `npx wrangler secret put ALERT_TOKEN`, or `https://user:pass@ntfy.sh/<topic>` in ALERT_URL.
+   This setup delivers (2026-10-30: alerts arrived from every Burrow). **If ntfy answers 429,
+   suspect our own sending first** (see "When alerts stop arriving" below): on 2026-10-29 and
+   2026-11-01 the 429s followed floods of sends from our side, not a limit on normal use.
    **Free alternatives** that work from a Worker, same ALERT_URL secret:
    - Discord: make a server, channel > Edit > Integrations > Webhooks > New, copy the URL
      (`https://discord.com/api/webhooks/...`). The Discord phone app buzzes on each message.
@@ -141,6 +139,20 @@ that stopped reporting for 3 minutes. Both can notify a human through any ntfy-s
      `https://api.telegram.org/bot<token>/sendMessage?chat_id=<id>`.
 4. `npx wrangler deploy`. The Devices page shows "notifier configured" and lists open alerts;
    its "send a test alert to the phone" button (admin) shows exactly what ntfy answered.
+
+### When alerts stop arriving
+
+Check how much WE are sending before blaming the notifier:
+- Devices page / `GET /api/admin/alerts`: `notify_error` per alert. Many alerts for the same
+  key opened minutes apart = a loop.
+- `GET /api/admin/events`: the same edge + ts + text stored many times = a Burrow re-sending a
+  batch. On the Burrow, `/api/events` -> `state` shows sent / failed / last_error.
+- 2026-11-01: postEvents notified every alert in a batch, one after another, before replying.
+  A slow notifier made a 48-event batch outlast burrow1's 20 s timeout; burrow1 re-sent it
+  every 20-30 s (8 events stored ~50 times each in 20 min, 132 failed posts), and each copy
+  called ntfy again: hundreds of sends an hour, which ntfy then refused. Fixed (f411615): the
+  reply goes out as soon as the events are stored, notifications run after it
+  (ctx.waitUntil), and a re-sent batch (same edge, ts, kind, text) is stored and alerted once.
 
 `ALERT_BINS=1` (a var in wrangler.jsonc) also notifies every bin that goes quiet; off by
 default, since unplugged bins are normal. After changing schema.sql run
