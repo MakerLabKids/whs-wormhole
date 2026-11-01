@@ -72,15 +72,21 @@ def fetch(host, port, path, dest, sha, timeout=10, sock=None):
       raise OSError("HTTP %d" % status)
     h = hashlib.sha256()
     n = 0
+    # the body: whatever came with the headers, then read to the end. (The Burrow writes the
+    # headers and the file separately, so the first read often holds no body at all: 2026-11-01
+    # the board got 0 bytes and "sha256 does not match" until this read on past an empty start.)
     with open(tmp, "wb") as f:
       chunk = rest
-      while chunk:
-        n += len(chunk)
-        if n > MAX_FILE:
-          raise OSError("too big")
-        h.update(chunk)
-        f.write(chunk)
+      while True:
+        if chunk:
+          n += len(chunk)
+          if n > MAX_FILE:
+            raise OSError("too big")
+          h.update(chunk)
+          f.write(chunk)
         chunk = s.recv(1024)
+        if not chunk:
+          break
     if _hex(h.digest()) != sha:
       raise OSError("sha256 does not match")
     try:

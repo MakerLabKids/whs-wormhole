@@ -43,6 +43,32 @@ dest = SD + "/x.pbm"
 s = Sock(b"HTTP/1.0 200 OK\r\nContent-Type: image/x-portable-bitmap\r\n\r\n" + body)
 assert showsync.fetch("10.0.0.1", 8080, "/shows/%s.pbm" % sha(body), dest, sha(body), sock=s)
 assert open(dest, "rb").read() == body and b"GET /shows/" in s.sent
+
+
+class SplitSock(Sock):
+  """Like the real Burrow: the headers in one TCP write, the file in another, so a read
+  returns the headers alone. (The first version stopped there: 0 bytes, sha mismatch.)"""
+  def __init__(self, head, body, step=None):
+    Sock.__init__(self, b"")
+    self.parts = [head, body] if step is None else [head] + [body[i:i + step] for i in range(0, len(body), step)]
+  def recv(self, n):
+    if not self.parts:
+      return b""
+    p = self.parts[0]
+    out, rest = p[:n], p[n:]
+    if rest:
+      self.parts[0] = rest
+    else:
+      self.parts.pop(0)
+    return out
+
+
+os.remove(dest)
+assert showsync.fetch("h", 1, "/p", dest, sha(body), sock=SplitSock(b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(body), body))
+assert open(dest, "rb").read() == body
+os.remove(dest)
+assert showsync.fetch("h", 1, "/p", dest, sha(body), sock=SplitSock(b"HTTP/1.1 200 OK\r\n\r\n", body, step=1))   # a byte at a time
+assert open(dest, "rb").read() == body
 try:
   showsync.fetch("h", 1, "/p", dest, sha(body), sock=Sock(b"HTTP/1.0 200 OK\r\n\r\n" + body + b"x"))
   raise AssertionError("a tampered file must fail")
