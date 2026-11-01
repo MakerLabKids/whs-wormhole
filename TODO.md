@@ -10,13 +10,11 @@ hostnames (SSH through Cloudflare works on all four); burrow2 rebuilt from a clo
 enrolled; all four Pis on the same build; every Tunnel has WormHole-Core saved (`remember`) and
 is on the backhaul; the Portal's backhaul AP watch on burrow0.
 
-- [ ] **Decide: unhide the backhaul?** Back on the table. 2026-11-01 08:01-08:07: Tunnel 2, with
-      WormHole-Core SAVED, auto-connect on and its Pi's watchdog paused, did NOT rejoin the
-      (freshly restarted, working) backhaul by itself in 6 min; one explicit join from its Pi got
-      it in 20 s. Tunnel 3's auto-connect DID fall back to Loki (visible, saved). Not conclusive:
-      Tunnel 2 had just failed several joins against the broken AP and GL backs off to 5-min
-      retries. Clean retest: Portal 5 GHz off 60 s / on, Tunnel watchdogs paused, watch 15 min.
-      Today the Pis' watchdogs do the rejoin, so this only matters for a Tunnel whose Pi is down.
+- [x] **Unhide the backhaul? No need.** Proven 2026-11-01 08:27-08:29: Portal 5 GHz off 60 s and on,
+      all three Tunnels' Pis' watchdogs paused; all three Tunnels (two with ONLY the hidden backhaul
+      saved) were back on WormHole-Core 35 s after the radio returned, by their own auto-connect.
+      The fix was `remember`. (Tunnel 2's 6-min miss earlier that morning followed repeated failed
+      joins against the wedged AP: GL.iNet backs off to 5-min retries.)
 - [ ] **Save the Portal's own upstreams** (it is on Guess with only Guess saved): its Pi's
       watchdog now joins with remember, so this fills in as it switches; or rejoin Loki once.
 - [ ] **Teach each Tunnel a fallback at school**: `tools/routers/teach-fallback.py

@@ -158,10 +158,10 @@ a provider can drop its AP safely; `ELECTION_ACTS` turns the acting path on.
 **Power cycles.** An Opal's own auto-connect only walks its SAVED list, and
 GL.iNet saves a network only when the join says `remember: true`; until
 2026-11-01 none of ours did, so every saved list was empty. Every join now
-remembers, and the watchdog reports `saved_networks`. Whether an Opal rejoins
-a saved HIDDEN network by itself is still open: on 2026-11-01 Tunnel 2 (backhaul
-saved, its Pi's watchdog paused) did not rejoin in 6 min, while Tunnel 3 did fall
-back to the visible, saved Loki. Today the Pis' watchdogs do the rejoin either way.
+remembers, and the watchdog reports `saved_networks`. Proven 2026-11-01: with the
+Portal's 5 GHz off for 60 s and every Tunnel Pi's watchdog paused, all three Tunnels
+were back on the (hidden) WormHole-Core 35 s after it returned, by their own
+auto-connect. After repeated failed joins GL.iNet backs off to 5-min retries.
 `tools/routers/teach-fallback.py HOST SSID [key_env]` saves a second network
 (Loki at home, BYLD at school) for when the Portal itself is gone.
 
