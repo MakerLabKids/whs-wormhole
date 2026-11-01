@@ -1016,6 +1016,34 @@
     });
     return h + '</tbody></table></div>';
   }
+  /* Pico code over Wi-Fi (lib/ota.py on the Bins): make a release from a commit, send it to one
+     bin, then (once that one is running it) to every bin. A bin keeps its name, shows, messages,
+     calibration, Wi-Fi and its main.py settings; a version that does not start cleanly rolls back. */
+  function picoHTML(j) {
+    if (!j) return '<h3>Update the Bins\' code</h3><div class="empty">not available (deploy the Surface and run schema.sql)</div>';
+    var rel = j.releases || [], tg = {}, star = null;
+    (j.targets || []).forEach(function (t) { if (t.uid === '*') star = t.version; else tg[t.uid] = t.version; });
+    var latest = rel[0] ? rel[0].version : '';
+    var remembered = ''; try { remembered = localStorage.getItem('pico.commit') || ''; } catch (e) {}
+    var h = '<h3>Update the Bins\' code <small class="muted">over Wi-Fi, settings kept</small></h3>' +
+      '<p class="muted">Paste a commit and Make release, then Update one bin and watch it here; when it runs the new version, Update every bin. ' +
+      'A bin keeps its name, shows, messages, calibration, Wi-Fi and the settings in its main.py; one that does not start cleanly within 5 minutes puts its old code back.</p>' +
+      '<div class="toolbar">commit <input id="pico-commit" class="mono" placeholder="e.g. 4df0cf4" value="' + esc(remembered) + '" style="width:12em"> ' +
+      '<button type="button" class="btn sm" id="pico-release">Make release</button> ' +
+      (latest ? 'release <select id="pico-version" class="mono">' + rel.map(function (r) { return '<option>' + esc(r.version) + '</option>'; }).join('') + '</select> ' +
+        '<button type="button" class="btn sm" data-pico="*">Update every bin</button>' + (star ? ' <button type="button" class="btn sm ghost" data-pico-stop="*">stop (every bin: ' + esc(star) + ')</button>' : '') : '') +
+      ' <span id="pico-out" class="muted"></span></div>' +
+      '<div class="tablewrap"><table><thead><tr><th>bin</th><th>name</th><th>running</th><th>asked for</th><th>state</th><th></th></tr></thead><tbody>';
+    (j.bins || []).forEach(function (b) {
+      var want = tg[b.uid] || star || '';
+      var state = b.error ? '<span class="bad">rolled back: ' + esc(b.error) + '</span>' : b.trial ? '<span class="warn">trying it (confirms after a minute)</span>' :
+        want && b.code === want ? '<span class="good">up to date</span>' : want ? '<span class="warn">on its way</span>' : '';
+      h += '<tr><td>' + esc(b.bin != null ? b.bin : '?') + '</td><td>' + esc(b.name || b.uid) + '</td><td class="mono">' + esc(b.code || '?') + '</td><td class="mono">' + esc(want) +
+        '</td><td>' + state + '</td><td>' + (latest ? '<button type="button" class="btn sm" data-pico="' + esc(b.uid) + '">Update</button>' : '') +
+        (tg[b.uid] ? ' <button type="button" class="btn sm ghost" data-pico-stop="' + esc(b.uid) + '">stop</button>' : '') + '</td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
   var LEVEL_ICON = { alert: '🔴', warn: '🟠', info: '·' };
   function eventsHTML(events, title) {
     if (!events || !events.length) return '<h3>' + esc(title || 'Recent events') + '</h3><div class="empty">nothing has happened yet</div>';
@@ -1106,13 +1134,14 @@
     function every(ms, fn) { fn(); timers.push(setInterval(fn, ms)); }
 
     if (tab === 'edges') every(60000, function () {
-      Promise.all([api('/api/admin/edges'), api('/api/admin/alerts').catch(function () { return null; }), api('/api/admin/events?limit=60').catch(function () { return null; }), api('/api/admin/rollout').catch(function () { return null; })]).then(function (r) {
+      Promise.all([api('/api/admin/edges'), api('/api/admin/alerts').catch(function () { return null; }), api('/api/admin/events?limit=60').catch(function () { return null; }), api('/api/admin/rollout').catch(function () { return null; }), isAdmin ? api('/api/admin/pico').catch(function () { return null; }) : null]).then(function (r) {
         var j = r[0], rows = Array.isArray(j) ? j : (j && (j.edges || j.rows)) || [];
         body.className = 'devices-wrap';
         body.innerHTML = '<div class="card">' + alertsHTML(r[1]) + '</div>' +
           '<h3>Devices <small class="muted">(refreshes every 60 s)</small></h3>' +
           devicesHTML(rows.map(function (x) { return { name: x.edge, status: x.status || {}, meta: { room: x.room, last_seen: x.last_seen, bins: x.bins, enrolled: x.enrolled } }; })) +
           (isAdmin ? '<div class="card" id="rollout">' + rolloutHTML(r[3], rows) + '</div>' : '') +
+          (isAdmin ? '<div class="card" id="pico">' + picoHTML(r[4]) + '</div>' : '') +
           '<div class="card">' + eventsHTML((r[2] && r[2].events) || [], 'Recent events, all rooms') + '</div>';
         var rb = body.querySelectorAll('#rollout button[data-edge]');
         for (var i = 0; i < rb.length; i++) rb[i].onclick = function (ev) {
@@ -1125,6 +1154,25 @@
           ev.target.disabled = true;
           api('/api/admin/rollout', { method: 'POST', body: { edge: edge, build: build.trim() } }).then(function () { render(); }).catch(function (e) { alert(e.message); ev.target.disabled = false; });
         };
+        var pout = function (t, cls) { var o = body.querySelector('#pico-out'); if (o) o.innerHTML = '<span class="' + (cls || 'muted') + '">' + esc(t) + '</span>'; };
+        var prel = body.querySelector('#pico-release');
+        if (prel) prel.onclick = function () {
+          var c = ((body.querySelector('#pico-commit') || {}).value || '').trim();
+          if (!/^[0-9a-f]{7,40}$/.test(c)) { alert('Type the commit (7+ hex characters, from git log).'); return; }
+          try { localStorage.setItem('pico.commit', c); } catch (e) {}
+          prel.disabled = true; pout('fetching ' + c + ' from GitHub…');
+          api('/api/admin/pico/release', { method: 'POST', body: { commit: c } }).then(function () { render(); }).catch(function (e) { pout(e.message, 'bad'); prel.disabled = false; });
+        };
+        Array.prototype.forEach.call(body.querySelectorAll('#pico [data-pico]'), function (b) {
+          b.onclick = function () {
+            var uid = b.getAttribute('data-pico'), v = (body.querySelector('#pico-version') || {}).value;
+            if (!confirm((uid === '*' ? 'Every bin' : 'This bin') + ' gets ' + v + ' on its next push (a few minutes). Its name, shows, messages and settings stay. Go?')) return;
+            api('/api/admin/pico/target', { method: 'POST', body: { uid: uid, version: v } }).then(function () { render(); }).catch(function (e) { pout(e.message, 'bad'); });
+          };
+        });
+        Array.prototype.forEach.call(body.querySelectorAll('#pico [data-pico-stop]'), function (b) {
+          b.onclick = function () { api('/api/admin/pico/target', { method: 'POST', body: { uid: b.getAttribute('data-pico-stop'), version: null } }).then(function () { render(); }).catch(function (e) { pout(e.message, 'bad'); }); };
+        });
         var tb = body.querySelector('#alert-test');
         if (tb) tb.onclick = function () {
           var out = body.querySelector('#alert-test-out'); out.textContent = 'sending…'; tb.disabled = true;
