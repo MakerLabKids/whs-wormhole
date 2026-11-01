@@ -90,3 +90,53 @@ class ShowRelayTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CodeRelayTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.fs = FakeSurface(token="tok1")
+        tf = os.path.join(self.tmp, "cloud.token")
+        with open(tf, "w") as f:
+            f.write("tok1")
+        self.svc = make_service(self.tmp, "burrow1", 1, cloud_url=self.fs.url, token_file=tf)
+
+    def tearDown(self):
+        self.svc.stop()
+        self.fs.close()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def get(self, path):
+        try:
+            with urllib.request.urlopen(self.svc.url + path, timeout=5) as r:
+                return r.status, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read()
+
+    def test_a_code_update_is_cached_once_and_handed_over_until_the_bin_runs_it(self):
+        main, lib = b"# main v2\n", b"VERSION = '2'\n"
+        sm, sl = hashlib.sha256(main).hexdigest(), hashlib.sha256(lib).hexdigest()
+        self.fs.code_files = {sm: main, sl: lib}
+        self.fs.code = [{"uid": UID, "version": "abc1234", "files": [{"path": "main.py", "sha256": sm, "size": len(main)},
+                                                                      {"path": "lib/picolab.py", "sha256": sl, "size": len(lib)}]}]
+        self.assertTrue(self.svc.cloud.pass_once())
+        self.assertEqual(len([c for c in self.fs.calls if c[1].startswith("/v1/edge/code/")]), 2)
+        st, r = http("POST", self.svc.url + "/ingest", bin_payload(code="old0000"))
+        self.assertEqual(r["code"]["version"], "abc1234")
+        self.assertEqual([f["path"] for f in r["code"]["files"]], ["main.py", "lib/picolab.py"])
+        self.assertEqual(self.get("/code/%s" % sl), (200, lib))
+        st, r = http("POST", self.svc.url + "/ingest", bin_payload(code="abc1234"))
+        self.assertNotIn("code", r)
+        self.assertTrue(self.svc.cloud.pass_once())
+        self.assertEqual(len([c for c in self.fs.calls if c[1].startswith("/v1/edge/code/")]), 2)   # cached
+
+    def test_a_release_naming_a_data_file_is_dropped_whole(self):
+        main = b"# main\n"
+        sm = hashlib.sha256(main).hexdigest()
+        self.fs.code_files = {sm: main}
+        self.fs.code = [{"uid": UID, "version": "evil", "files": [{"path": "main.py", "sha256": sm},
+                                                                  {"path": "bin.json", "sha256": sm}]}]
+        self.assertTrue(self.svc.cloud.pass_once())
+        st, r = http("POST", self.svc.url + "/ingest", bin_payload())
+        self.assertNotIn("code", r)
+        self.assertEqual([c for c in self.fs.calls if c[1].startswith("/v1/edge/code/")], [])

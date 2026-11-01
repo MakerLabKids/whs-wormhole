@@ -18,6 +18,8 @@ class FakeSurface:
         self.messages = []              # listed in every snapshot reply (the website's queue)
         self.shows = []                 # [{uid, rev, list, files: [{name, sha256, size}]}] in the reply
         self.show_files = {}            # sha256 -> bytes, served at /v1/edge/shows/<sha>
+        self.code = []                  # [{uid, version, files: [{path, sha256, size}]}] in the reply
+        self.code_files = {}            # sha256 -> bytes, served at /v1/edge/code/<sha>
         self.update_to = None           # an update instruction in the snapshot reply
         self.events = []
         self.reject_events = False
@@ -54,6 +56,9 @@ class FakeSurface:
                     return self._send(401, {"error": "unauthorized"})
                 if self.path == "/v1/edge/ping":
                     return self._send(200, {"ok": True, "ts": int(time.time())})
+                if self.path.startswith("/v1/edge/code/"):
+                    b = outer.code_files.get(self.path.rsplit("/", 1)[1])
+                    return self._send(200, b, "text/plain") if b is not None else self._send(404, {"error": "nf"})
                 if self.path.startswith("/v1/edge/shows/"):
                     b = outer.show_files.get(self.path.rsplit("/", 1)[1])
                     return self._send(200, b, "image/x-portable-bitmap") if b is not None else self._send(404, {"error": "nf"})
@@ -67,7 +72,7 @@ class FakeSurface:
                 with outer.lock:
                     if self.path == "/v1/edge/snapshot":
                         outer.snapshots.append(body)
-                        rep = {"ok": True, "messages": list(outer.messages), "shows": list(outer.shows)}
+                        rep = {"ok": True, "messages": list(outer.messages), "shows": list(outer.shows), "code": list(outer.code)}
                         if outer.update_to:
                             rep["update_to"] = outer.update_to
                         return self._send(200, rep)

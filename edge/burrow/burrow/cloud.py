@@ -17,6 +17,7 @@ from .util import log
 
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,23}$")
+PATH_RE = re.compile(r"^(main\.py|index\.html|cal\.js|msg\.js|toc\.txt|lib/[A-Za-z0-9_]+\.py)$")   # = lib/ota.py code_path_ok
 
 
 class Cloud:
@@ -44,6 +45,10 @@ class Cloud:
         # and handed to a Bin, whose push reports shows_rev once it has them.
         self.shows = {}
         self.shows_dir = os.path.join(cfg.get("data_dir", "/tmp"), "shows-cache")
+        # Code updates for the Bins (the admin's pick on the website): {uid: {version, files:
+        # [{path, sha256, size}]}}, files fetched once into code_dir and handed over the same way.
+        self.code = {}
+        self.code_dir = os.path.join(cfg.get("data_dir", "/tmp"), "code-cache")
 
     @staticmethod
     def _read(path):
@@ -139,6 +144,17 @@ class Cloud:
             self.shows = shows
             self.state["shows"] = len(shows)
             self.fetch_shows()
+        if isinstance(j, dict) and isinstance(j.get("code"), list):
+            code = {}
+            for it in j["code"]:
+                if isinstance(it, dict) and isinstance(it.get("uid"), str) and isinstance(it.get("version"), str):
+                    files = [f for f in (it.get("files") or []) if isinstance(f, dict) and SHA_RE.match(str(f.get("sha256", "")))
+                             and PATH_RE.match(str(f.get("path", ""))) and ".." not in str(f.get("path"))]
+                    if files and len(files) == len(it.get("files") or []):
+                        code[it["uid"]] = {"version": it["version"][:40], "files": files}
+            self.code = code
+            self.state["code"] = len(code)
+            self._fetch_blobs([f for c in code.values() for f in c["files"]], "/v1/edge/code/", self.code_dir, "code_error")
         return j
 
     # ---- shows (website -> Bin) ------------------------------------------
@@ -147,29 +163,46 @@ class Cloud:
 
     def fetch_shows(self, cap=20):
         """Download the listed show files we do not have yet (each checked against its sha256)."""
+        return self._fetch_blobs([f for s in self.shows.values() for f in s["files"]], "/v1/edge/shows/",
+                                 self.shows_dir, "shows_error", cap)
+
+    def _fetch_blobs(self, files, prefix, folder, err_key, cap=20):
         got = 0
-        for s in self.shows.values():
-            for f in s["files"]:
-                if got >= cap or os.path.exists(self.show_path(f["sha256"])):
-                    continue
-                try:
-                    req = urllib.request.Request(self.base + "/v1/edge/shows/" + f["sha256"],
-                                                 headers={"Authorization": "Bearer " + self.token,
-                                                          "User-Agent": "burrow/" + self.cfg["edge"]})
-                    with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                        data = r.read(200 * 1024 + 1)
-                    if hashlib.sha256(data).hexdigest() != f["sha256"]:
-                        raise ValueError("sha256 does not match")
-                    os.makedirs(self.shows_dir, exist_ok=True)
-                    tmp = self.show_path(f["sha256"]) + ".tmp"
-                    with open(tmp, "wb") as out:
-                        out.write(data)
-                    os.replace(tmp, self.show_path(f["sha256"]))
-                    got += 1
-                except Exception as e:
-                    self.state["shows_error"] = "%s: %s" % (f["name"], str(e)[:80])
-                    log("cloud: show %s not fetched: %s" % (f["name"], e))
+        for f in files:
+            dest = os.path.join(folder, f["sha256"] + ".pbm" if folder == self.shows_dir else f["sha256"])
+            if got >= cap or os.path.exists(dest):
+                continue
+            label = f.get("name") or f.get("path")
+            try:
+                req = urllib.request.Request(self.base + prefix + f["sha256"],
+                                             headers={"Authorization": "Bearer " + self.token,
+                                                      "User-Agent": "burrow/" + self.cfg["edge"]})
+                with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                    data = r.read(300 * 1024 + 1)
+                if hashlib.sha256(data).hexdigest() != f["sha256"]:
+                    raise ValueError("sha256 does not match")
+                os.makedirs(folder, exist_ok=True)
+                tmp = dest + ".tmp"
+                with open(tmp, "wb") as out:
+                    out.write(data)
+                os.replace(tmp, dest)
+                got += 1
+            except Exception as e:
+                self.state[err_key] = "%s: %s" % (label, str(e)[:80])
+                log("cloud: %s not fetched: %s" % (label, e))
         return got
+
+    def code_path(self, sha):
+        return os.path.join(self.code_dir, sha)
+
+    def code_for(self, uid, board_version=None):
+        """A code update for a Bin, or None: only when it runs something else and every file is here."""
+        c = self.code.get(uid)
+        if not c or board_version == c["version"]:
+            return None
+        if not all(os.path.exists(self.code_path(f["sha256"])) for f in c["files"]):
+            return None
+        return {"version": c["version"], "files": [{"path": f["path"], "sha256": f["sha256"], "size": f.get("size")} for f in c["files"]]}
 
     def shows_for(self, uid, board_rev=None):
         """What to tell a Bin about its shows, or None: only when its board is behind and every

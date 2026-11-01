@@ -91,15 +91,18 @@ class Handler(BaseHTTPRequestHandler):
 
     def _show_file(self, sha):
         """A website show for a Bin on our LAN: the files are public pictures, named by their sha256."""
+        return self._blob(self.svc.show_file, sha, "image/x-portable-bitmap")
+
+    def _blob(self, find, sha, ctype):
         if not re.match(r"^[0-9a-f]{64}$", sha or ""):
             return self._json({"error": "bad name"}, 400)
-        path = self.svc.show_file(sha)
+        path = find(sha)
         if not path:
             return self._json({"error": "not here"}, 404)
         with open(path, "rb") as f:
             data = f.read()
         self.send_response(200)
-        self.send_header("Content-Type", "image/x-portable-bitmap")
+        self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -119,6 +122,8 @@ class Handler(BaseHTTPRequestHandler):
         p = urllib.parse.urlsplit(self.path).path
         if p.startswith("/shows/") and p.endswith(".pbm"):
             return self._show_file(p[len("/shows/"):-len(".pbm")])
+        if p.startswith("/code/"):
+            return self._blob(self.svc.code_file, p[len("/code/"):], "text/plain; charset=utf-8")
         if not self._authorized():
             return self._json({"error": "forbidden"}, 403)
         u = urllib.parse.urlsplit(self.path)
@@ -196,6 +201,9 @@ class Handler(BaseHTTPRequestHandler):
         shows = self.svc.shows_for(row["uid"], d.get("shows_rev"))
         if shows:
             reply["shows"] = shows         # the Bin fetches the files from us (GET /shows/<sha>.pbm), then reports shows_rev
+        code = self.svc.code_for(row["uid"], d.get("code"))
+        if code:
+            reply["code"] = code           # a code update: the Bin fetches GET /code/<sha>, switches over, reports code
         self._json(reply)
 
     def _ingest_batch(self):

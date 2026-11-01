@@ -103,6 +103,16 @@ class Service:
         except Exception:
             return None
 
+    def code_for(self, uid, board_version=None):
+        try:
+            return self.cloud.code_for(uid, board_version)
+        except Exception:
+            return None
+
+    def code_file(self, sha):
+        p = self.cloud.code_path(sha)
+        return p if os.path.exists(p) else None
+
     def show_file(self, sha):
         """A cached show file's path, or None."""
         p = self.cloud.show_path(sha)
