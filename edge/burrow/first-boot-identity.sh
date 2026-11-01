@@ -35,7 +35,7 @@ if [ ! -f "$F" ] && [ -f "$MARK" ]; then
   secret=$(cat /etc/burrow/enrol.secret 2>/dev/null || true)
   [ -n "$secret" ] || { echo "enrol: no /etc/burrow/enrol.secret on this card"; exit 0; }
   eth=$(cat /sys/class/net/eth0/address 2>/dev/null || true); wlan=$(cat /sys/class/net/wlan0/address 2>/dev/null || true)
-  body=$($py -c "import json,sys; print(json.dumps({'secret': sys.argv[1], 'serial': sys.argv[2], 'room': int(sys.argv[3]), 'eth_mac': sys.argv[4], 'wlan_mac': sys.argv[5]}))" "$secret" "$serial" "$room" "$eth" "$wlan")
+  body=$($py -c "import json,sys; print(json.dumps({'secret': sys.argv[1], 'serial': sys.argv[2], 'room': int(sys.argv[3]), 'eth_mac': sys.argv[4], 'wlan_mac': sys.argv[5], 'standby_ok': True}))" "$secret" "$serial" "$room" "$eth" "$wlan")
   reply=""
   for i in $(seq 1 30); do
     reply=$(curl -fsS --max-time 20 -H 'content-type: application/json' -d "$body" "$url/v1/edge/enrol" 2>/dev/null) && break

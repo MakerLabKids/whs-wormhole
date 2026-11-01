@@ -125,6 +125,7 @@ class RolesTest(unittest.TestCase):
         self.sys.enrol_reply = {"edge": "burrow2", "room": 2, "role": "standby", "token": "x"}   # the Surface still hears it
         self.assertEqual(roles.tick(1000 + 361, self.sys), "waiting")
         self.assertTrue(self.sys.enrols[-1]["promote"])
+        self.assertTrue(self.sys.enrols[-1]["standby_ok"])
         self.assertFalse(self.sys.rebooted)
         self.sys.enrol_reply = {"edge": "burrow2", "room": 2, "role": "primary", "token": "new", "tunnel_token": "tt2"}
         self.assertEqual(roles.tick(1000 + 481, self.sys), "promoted")

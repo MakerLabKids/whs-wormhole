@@ -221,7 +221,7 @@ def ask(sys_, cfg, promote):
     secret = (open(SECRET).read().strip() if os.path.exists(SECRET) else "")
     url = (cfg.get("cloud") or {}).get("url") or "https://whs.makerlabkids.com"
     body = {"secret": secret, "serial": sys_.serial(), "room": int(cfg["room"]),
-            "eth_mac": sys_.mac("eth0"), "wlan_mac": sys_.mac("wlan0")}
+            "eth_mac": sys_.mac("eth0"), "wlan_mac": sys_.mac("wlan0"), "standby_ok": True}
     if promote:
         body["promote"] = True
     r = sys_.enrol(url, body)

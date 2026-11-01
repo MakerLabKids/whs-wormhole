@@ -64,7 +64,9 @@ describe("an extra Pi never breaks a room (standby, takeover, step-down)", () =>
     const a = await (await enrol({ secret: SECRET, serial: "aaaa0000000000a1", room: 2 })).json();
     expect(a).toMatchObject({ edge: "burrow2", role: "primary", tunnel_token: "tunnel-token-2" });
     expect((await snap(a.token, "burrow2", 2)).status).toBe(200);              // it reports: alive
-    const b = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2 })).json();
+    expect((await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2 })).status).toBe(409);   // an old card is turned away
+    expect((await ping(a.token)).status).toBe(200);
+    const b = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2, standby_ok: true })).json();
     expect(b).toMatchObject({ edge: "burrow2-sb-00b2", role: "standby", primary: "burrow2", room: 2 });
     expect(b.tunnel_token).toBeUndefined();                                    // never the room's tunnel
     expect((await ping(a.token)).status).toBe(200);                            // the room's Pi is untouched
@@ -76,10 +78,10 @@ describe("an extra Pi never breaks a room (standby, takeover, step-down)", () =>
   });
 
   it("the standby takes over only once the room's Pi has gone quiet; the old Pi's token stops", async () => {
-    let r = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2, promote: true })).json();
+    let r = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2, promote: true, standby_ok: true })).json();
     expect(r.role).toBe("standby");                                            // burrow2 reported moments ago
     await age("burrow2", 11 * 60);                                             // quiet for 11 minutes
-    r = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2, promote: true })).json();
+    r = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2, promote: true, standby_ok: true })).json();
     expect(r).toMatchObject({ edge: "burrow2", role: "primary", tunnel_token: "tunnel-token-2" });
     const old = await env.DB.prepare("SELECT replaced FROM enrolled WHERE edge = 'burrow2'").first();
     expect(old.replaced).toBe("aaaa0000000000a1");
@@ -87,7 +89,7 @@ describe("an extra Pi never breaks a room (standby, takeover, step-down)", () =>
   });
 
   it("the old Pi, back again, is told it is a standby now (it steps down instead of fighting)", async () => {
-    const back = await (await enrol({ secret: SECRET, serial: "aaaa0000000000a1", room: 2 })).json();
+    const back = await (await enrol({ secret: SECRET, serial: "aaaa0000000000a1", room: 2, standby_ok: true })).json();
     expect(back).toMatchObject({ edge: "burrow2-sb-00a1", role: "standby", primary: "burrow2" });
   });
 

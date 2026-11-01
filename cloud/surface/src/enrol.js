@@ -32,6 +32,11 @@ export async function enrol(request, env) {
   const prev = await env.DB.prepare("SELECT serial FROM enrolled WHERE edge = ?1").bind(primary).first();
   const seen = await env.DB.prepare("SELECT updated_at FROM edges WHERE edge_id = ?1").bind(primary).first();
   const holderLive = !!(prev && prev.serial !== serial && seen && seen.updated_at && t - seen.updated_at < LIVE_S);
+  if (holderLive && body.standby_ok !== true) {
+    // a card from before standbys (2026-11-01) would take the standby name and still put itself on
+    // the room's .10: turn it away instead; it stays on DHCP, harmless, and asks again next boot
+    return err(409, `${primary} is alive in room ${room}; this card is too old to join as a standby (burn it from a newer golden image)`, { primary });
+  }
   const role = holderLive ? "standby" : "primary";
   const edge = holderLive ? `${primary}-sb-${serial.slice(-4)}` : primary;
   const token = randomToken();
