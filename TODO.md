@@ -49,7 +49,22 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       provider; pull the internet; power everything off and on in random order; swap an Opal;
       swap a Pi (cloned card); two rollouts in a row. Pass times in the plan of 2026-10-31.
 
+## Shows (kids' pictures and videos)
+
+Phase 1 done 2026-11-01: lib/pbmshow.py (shows/*.pbm + shows.txt), docs/shows.html (tutorial +
+converter), proven on the bench board. Classroom boards get it with the Pico reflash.
+- [ ] **Phase 2: send a show from the website over Wi-Fi** (no cable): upload on the Bin's
+      website page (converter built in) -> Surface stores it (R2 or D1, per bin, size cap) ->
+      the Burrow's snapshot reply names it -> the Bin GETs it from its Burrow, checks the hash,
+      saves shows/NAME.pbm; plus picking/reordering the playlist from the website and the Bin's
+      own dashboard (shows.txt written by the board).
+- [ ] Try the tutorial with one team, especially the Viper IDE folder/upload steps (written
+      from memory of Viper's file panel, not re-checked click by click).
+
 ## Bench board (The Wrigglers, now bin 38)
+
+- [ ] It has a test `shows.txt` (wiggle, bar, Wormhole) and shows/wiggle.pbm + bar.pbm from
+      2026-11-01: delete shows.txt to get every show back.
 
 - [ ] **Eyeball the screen cycle** (flashed 2026-10-31 afternoon): card 2 s, name 5 s,
       marquee, name 5 s, a show (the wolverine zoom, the Maker Lab gear, then the ten
