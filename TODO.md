@@ -3,6 +3,42 @@
 Open items, newest first. Tick them off or delete them; the git log is the
 record of what got done.
 
+## Next steps (2026-11-01 evening) - start here
+
+**No Bins are in the field.** The Picos the kids soldered and tested (distance sensor + display,
+Oct 20) went back in the pile; every Pico gets flashed fresh before it is used, so nothing old is
+out there and nothing needs migrating. A Pico is set up once by cable and updated over Wi-Fi after.
+
+1. **Rotate the leaked passwords (security, first).** Found 2026-11-01 in the public repo:
+   - `router_admin` (Opal admin) is the same value as `backhaul_key` and the Pis' password, and it
+     was public in tools/routers/test_glinet.py since 89bf5e7 (now a dummy, still in history).
+     Give them three new, different values: all four Opals' admin password, the WormHole-Core key
+     (Portal wlan1 + each Tunnel's saved entry + each Pi's tunnel.json upstream), the Pi user
+     password; then .env. Claude can script it; rooms blip ~1 min each.
+   - The WormHole Wi-Fi key is public on purpose (the boards need it) but it is the same value as
+     `guess_psk` and `qtastic_psk`: change the Guess and Q-tastic networks' keys.
+   - Purging public history is optional once rotated.
+2. **Set up the Picos for the bins** (first one, then the rest): fleet flasher
+   `tools/fleet/flash.py` (MicroPython 1.29, the worm-bin code, boot.py + lib/ota.py, wifi.json,
+   bin.json with the bin number 30-79). Label the lids to match. Do ONE first: Claude checks its
+   pushes and sends it a Wi-Fi code update before the rest. Recalibrate distance once mounted.
+3. **Re-burn the spare Pi cards** from /workspace/burrow-golden.img.gz with the current
+   `sudo edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX` (it now adds the
+   enrolment secret; cards burned before 2026-11-01 14:30 lack it and cannot enrol).
+4. **Watch a real standby takeover**: a spare Pi on a room's Opal (shows up as burrowN-sb-xxxx on
+   the Devices page), then unplug the room's Pi: it should take over in ~10 min.
+5. **Try "Make your own show" with one team**, especially the Viper IDE upload steps (not yet
+   clicked through), and the website's "Shows on the screen" card.
+6. **Fault-test evening** (with Claude, a clock): pull a Pi, a Tunnel, the internet, power in
+   random order; swap an Opal; swap a Pi from a cloned card; a spare left plugged in; two rollouts
+   in a row; a Pico code update to every bin.
+7. Claude's own next builds, when asked: a Burrow restarts its Opal's 2.4 GHz WormHole when the
+   bins pile up readings (it wedged once); move a bin's hardware settings out of main.py into a
+   settings file editable from the bin's page.
+
+Where things are: private notes/runbook/detailed architecture in MakerLabKids/whs-wormhole-private
+(notes/ here); teacher overview in the lab guide (How Wormhole Works).
+
 ## Deploy (from 2026-10-31; updated 2026-11-01 morning)
 
 Done 2026-11-01: Surface deploy + schema + ENROL_SECRET + TUNNEL_TOKENS; the four ssh-burrowN
@@ -57,17 +93,11 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       (roles.py + Surface enrol; lib/ota.py + boot.py + Burrow relay + Devices panel; e2e 11/11
       against real GitHub). On all four Pis; on the bench board.
 - [x] **MicroPython 1.29.0**: the default since 2026-11-01 (firmware/, all links, fleet flasher).
-- [ ] **Reflash the classroom Picos** with the fleet flasher (`tools/fleet/flash.py`): everything
-      since picolab 0.2.1 (marquee, shows, boot sequence, buffer + backfill, fixed addresses +
-      PINs, messages over Wi-Fi/website/Bluetooth, link icon, NOT CONNECTED cards, dead-network
-      rejoin, join stagger). Bins renumbered 30-79: relabel lids first. Recalibrate distance after.
+- [x] ~~Reflash the classroom Picos~~: none are in the field (see Next steps 2).
 - [x] **mkrlbs.com/whsbt -> whs.makerlabkids.com/bluetooth** works (2026-11-01; case-insensitive,
       HTTP://MKRLBS.COM/WHSBT for a smaller QR). The NOT CONNECTED card said mrklabs.com (a typo,
       fixed in worm-bin main.py; the classroom boards get it with the reflash).
-- [ ] **`wrangler deploy` the Surface** (f411615): alerts stopped reaching the phone on 2026-11-01
-      because of our own re-send loop (burrow1's event batches timed out while the Surface
-      notified; each re-send called ntfy again). Fixed: reply first, notify after, re-sent
-      batches deduplicated. After the deploy, burrow1's queue (48 events) drains in one go.
+- [x] Surface deployed with the alert re-send fix (f411615) and everything after, 2026-11-01.
 - [ ] **Physical fault tests** (an evening, with the clock): pull a Pi; pull a Tunnel; pull the
       provider; pull the internet; power everything off and on in random order; swap an Opal;
       swap a Pi (cloned card); two rollouts in a row. Pass times in the plan of 2026-10-31.
@@ -81,16 +111,14 @@ converter), proven on the bench board. Classroom boards get it with the Pico ref
       bin"); the Burrow fetches files by sha256 and hands them over on a push; lib/showsync.py on the
       Pico fetches, checks, removes only the website's own files, writes shows.txt, reloads.
       tools/e2e/shows-e2e.sh: 15 checks, all pass. Burrows 0-2 run it; bench board runs it.
-- [ ] **To go live (yours):** in cloud/surface, `npx wrangler d1 execute wormhole --remote --file
-      schema.sql` (adds show_files/show_lists; safe to re-run), then `npx wrangler deploy`. Then try
-      it on the bench board (bin 38, The Wrigglers) from its page. Classroom boards get it with the reflash.
+- [x] Phase 2 live since the 2026-11-01 deploy; proven on the bench board.
 - [ ] Try the tutorial with one team, especially the Viper IDE folder/upload steps (written
       from memory of Viper's file panel, not re-checked click by click).
 
 ## Bench board (The Wrigglers, now bin 38)
 
-- [ ] It has a test `shows.txt` (wiggle, bar, Wormhole) and shows/wiggle.pbm + bar.pbm from
-      2026-11-01: delete shows.txt to get every show back.
+- [ ] It plays only "hello" then Wormhole (a website playlist from the 2026-11-01 test): "Play
+      everything" on its page restores all shows. It runs code 58939f0 over Wi-Fi, MicroPython 1.29.
 
 - [ ] **Eyeball the screen cycle** (flashed 2026-10-31 afternoon): card 2 s, name 5 s,
       marquee, name 5 s, a show (the wolverine zoom, the Maker Lab gear, then the ten
