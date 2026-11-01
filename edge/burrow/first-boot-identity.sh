@@ -76,7 +76,17 @@ for key, path in (("cloud_token", "/etc/burrow/cloud.token"), ("tunnel_token", "
 t = "/etc/burrow/tunnel.json"
 if os.path.exists(t):
     tc = json.load(open(t))
-    tc["host"] = "192.168.8%s.1" % (int(room) if room != "" else int(edge[-1]))
+    r = int(room) if room != "" else int(edge[-1])
+    tc["host"] = "192.168.8%s.1" % r
+    ups = tc.get("upstreams") or []
+    if r == 0:
+        # room 0 is cabled to the Portal, which IS the backhaul AP: no WormHole-Core entry
+        tc["upstreams"] = [u for u in ups if u.get("ssid") != "WormHole-Core"]
+    elif not any(u.get("ssid") == "WormHole-Core" for u in ups):
+        # the donor was burrow0 (no backhaul entry, no backhaul key on its card): this Tunnel
+        # would fall back to BYLD/Loki instead of the Portal. Image a room 1-3 Pi, or fix with
+        # render_tunnel_json.py --room N (burrow2, 2026-11-01).
+        print("WARNING: tunnel.json has no WormHole-Core upstream (cloned from burrow0?)")
     json.dump(tc, open(t, "w"), indent=2)
 PY
 hostnamectl set-hostname "$edge" 2>/dev/null || echo "$edge" > /etc/hostname

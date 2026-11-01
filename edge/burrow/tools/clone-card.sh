@@ -3,7 +3,8 @@
 # that can ssh to it, and write a new card from that image with just an
 # identity file dropped on its boot partition. No flasher, no setup script.
 #
-#   edge/burrow/tools/clone-card.sh image 0 burrow-golden.img.gz   # read burrow0's card (locked root preferred)
+#   edge/burrow/tools/clone-card.sh image 3 burrow-golden.img.gz   # read a ROOM 1-3 card: burrow0's tunnel.json
+#                                                                  # has no backhaul entry (the clone would lack it)
 #   edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX        # a new card: it enrols itself
 #   edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX 2      # ...or is told: burrow2
 #
