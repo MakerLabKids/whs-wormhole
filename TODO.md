@@ -22,8 +22,9 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
 - [ ] **Teach each Tunnel a fallback at school**: `tools/routers/teach-fallback.py
       192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN, or on the Pi). At home they know Loki
       (Tunnel 3 saved it 2026-11-01; Tunnels 1 and 2 have only the backhaul saved).
-- [ ] **New golden image** from burrow3 (room 3: its tunnel.json has the backhaul entry; all clone
-      fixes): /workspace/burrow-golden.img.gz. A clone from burrow0's card lacks the backhaul upstream.
+- [x] **Golden image** /workspace/burrow-golden.img.gz is burrow3's card (2026-11-01 08:20, build
+      0514253, room 3 so its tunnel.json has the backhaul entry). Write: `sudo
+      edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX` (about 4 min).
 - [ ] **Burrow2's buffered data** before 2026-10-29: its old card was binned (a laptop could not
       read it). Most of it had already reached the Surface.
 - [ ] **First real rollout** (the Surface deploy is live): admin page -> Devices -> paste a commit,
