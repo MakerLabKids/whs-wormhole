@@ -367,7 +367,9 @@ class WifiFallback:
         the upstream ladder (hotspot, school, home) by name. Returns what
         was joined (a bssid, or an ssid), or None."""
         seen = self.scan()
+        persist_event("wifi fallback: scan saw %d access points (%s)" % (len(seen), ", ".join(sorted({r[1] for r in seen if r[1]}))[:120]), time.time())
         bssid = choose_fallback_bssid(seen, self.cfg["ssid"], exclude_bssids, own_mac)
+        persist_event("wifi fallback: WormHole pick %s (own_mac %s)" % (bssid, own_mac), time.time())
         if bssid and self._join(self.cfg["ssid"], self.cfg["key"], bssid):
             return bssid
         visible = {s.get("ssid") for s in seen if isinstance(s, dict)} | {s[1] for s in seen if isinstance(s, (tuple, list)) and len(s) > 1}
@@ -391,6 +393,7 @@ class WifiFallback:
         else:
             self.run("connection", "add", "type", "wifi", "ifname", self.iface, "con-name", self.CON, "ssid", ssid, *common)
         rc, out = self.run("connection", "up", self.CON, timeout=60)
+        persist_event("wifi fallback: join %s %s -> rc %s %s" % (ssid, bssid or "", rc, (out or "").strip()[-120:]), time.time())
         return rc == 0
 
     def down(self):
@@ -437,6 +440,24 @@ def tell_burrow(text, now):
         pass
 
 
+EVENT_LOG = os.environ.get("TUNNEL_EVENT_LOG", "/data/burrow/watchdog-events.log")
+
+
+def persist_event(text, now):
+    """Keep the watchdog's story on the data partition: the journal and /run are in RAM and a
+    reboot (the usual cure) erases the evidence of why the cure was needed. Trimmed at ~200 KB."""
+    try:
+        if os.path.exists(EVENT_LOG) and os.path.getsize(EVENT_LOG) > 200_000:
+            with open(EVENT_LOG) as f:
+                keep = f.readlines()[-1000:]
+            with open(EVENT_LOG, "w") as f:
+                f.writelines(keep)
+        with open(EVENT_LOG, "a") as f:
+            f.write("%s %s\n" % (time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(now)), text))
+    except Exception:
+        pass
+
+
 def event(st, now, text):
     """Append to the short event log; a repeat of the last line is folded into
     it with a count, so a join every 90 s cannot push a reboot out of view."""
@@ -444,6 +465,7 @@ def event(st, now, text):
     ev = st.setdefault("events", [])
     if not (ev and ev[-1][1] == text[:160]):
         tell_burrow(text, now)
+        persist_event(text, now)
     if ev and ev[-1][1] == text[:160]:
         ev[-1] = [int(now), text[:160], ev[-1][2] + 1 if len(ev[-1]) > 2 else 2]
     else:

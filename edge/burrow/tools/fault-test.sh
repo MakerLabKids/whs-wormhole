@@ -4,6 +4,7 @@
 #
 #   edge/burrow/tools/fault-test.sh cut-eth N [minutes]   # burrowN loses its Opal for that long (default 14)
 #   edge/burrow/tools/fault-test.sh watch N [minutes]      # print every minute: where burrowN is, Surface last-heard
+#   edge/burrow/tools/fault-test.sh ok N                   # it came back: cancel the safety reboot, show the watchdog's log
 #
 # cut-eth: arms `nmcli device connect eth0` on the Pi for +minutes FIRST, then disconnects eth0.
 # Expected: within ~7 min (watchdog every 2 min + WIFI_AFTER_S 5 min) the Pi is on its own Wi-Fi,
@@ -15,11 +16,17 @@ host=$([ "$n" = 0 ] && echo 192.168.80.10 || echo "192.168.80.2$n")
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
 case "$cmd" in
   cut-eth)
+    # one transient unit does cut, wait, restore; a second, independent one reboots the Pi 4 min
+    # after the planned restore unless `fault-test.sh ok N` cancels it (a failed restore stranded
+    # burrow3 on 2026-11-01 and needed a hand on the power plug)
     ssh -o ConnectTimeout=8 -o BatchMode=yes "worm@$host" "
-      sudo systemd-run --quiet --on-active=${mins}min --unit=faulttest-undo-\$(date +%s) /usr/bin/nmcli device connect eth0 &&
-      echo \"undo armed: eth0 back in $mins min\" &&
-      sudo systemd-run --quiet --on-active=3s --unit=faulttest-cut-\$(date +%s) /usr/bin/nmcli device disconnect eth0 &&
-      echo \"eth0 cut in 3 s at \$(date +%H:%M:%S)\"" || true
+      sudo systemd-run --quiet --on-active=$((mins + 4))min --unit=faulttest-reboot /bin/systemctl reboot &&
+      echo \"safety reboot armed for +$((mins + 4)) min (cancel: fault-test.sh ok $n)\" &&
+      sudo systemd-run --quiet --unit=faulttest-cut /bin/sh -c 'sleep 3; nmcli device disconnect eth0; sleep $((mins * 60)); nmcli device connect eth0 || ip link set eth0 up' &&
+      echo \"eth0 cut in 3 s at \$(date +%H:%M:%S), back at +$mins min\"" || true
+    ;;
+  ok)
+    ssh -o ConnectTimeout=8 -o BatchMode=yes "worm@$host" "sudo systemctl stop faulttest-reboot.timer faulttest-reboot.service 2>/dev/null; echo safety reboot cancelled; tail -20 /data/burrow/watchdog-events.log 2>/dev/null"
     ;;
   watch)
     wlan=$(ssh -o ConnectTimeout=8 -o BatchMode=yes "worm@$host" cat /sys/class/net/wlan0/address 2>/dev/null || true)
