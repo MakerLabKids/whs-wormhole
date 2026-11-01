@@ -36,7 +36,8 @@ case "$cmd" in
     # Write only up to the start of the data partition (p3): boot + root are ~6.5 GB of a 32 GB
     # card, the rest is /data, which a clone wipes on first boot anyway. Then make p3 a fresh
     # empty ext4 labelled burrowdata (fstab mounts /data by that label).
-    p3_start=$(gzip -dc "$img" 2>/dev/null | head -c 512 | python3 -c "import sys,struct; d=sys.stdin.buffer.read(); print(struct.unpack('<I', d[446+32+8:446+32+12])[0])")
+    # (read by python's gzip, not a gzip | head pipe: under pipefail gzip's SIGPIPE killed the run silently)
+    p3_start=$(python3 -c "import gzip,struct,sys; d=gzip.open(sys.argv[1]).read(512); print(struct.unpack('<I', d[446+32+8:446+32+12])[0])" "$img") || p3_start=0
     [ "${p3_start:-0}" -gt 0 ] || { echo "cannot read the image's partition table"; exit 1; }
     bytes=$((p3_start * 512))
     echo "writing the first $((bytes / 1048576)) MiB (boot + root), then a fresh /data"
