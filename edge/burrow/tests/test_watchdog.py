@@ -206,7 +206,7 @@ class FakeWifi:
     def is_up(self):
         return self._up
 
-    def up(self, exclude):
+    def up(self, exclude, own_mac=None):
         self.actions.append(("up", list(exclude)))
         self._up = True
         FakeWifi.UP = True
@@ -509,3 +509,31 @@ class ElectionTest(unittest.TestCase):
         wd.backhaul_election(self.r, st, 1000, True, {"ssid": "WormHole-Core"})
         wd.backhaul_election(self.r, st, 1000 + wd.PROBATION_S + 1, True, {"ssid": "WormHole-Core"})
         self.assertFalse(FakeRouter.NEXT_BACKHAUL)
+
+
+class OwnOpalTest(unittest.TestCase):
+    def test_same_opal_and_the_fallback_skips_our_own(self):
+        self.assertTrue(wd.same_opal("94:83:C4:84:FF:37", "92:83:c4:84:ff:37"))
+        self.assertFalse(wd.same_opal("94:83:C4:85:33:A3", "92:83:c4:84:ff:37"))
+        rows = [("94:83:C4:84:FF:37", "WormHole", 100), ("94:83:C4:85:33:A3", "WormHole", 70)]
+        self.assertEqual(wd.choose_fallback_bssid(rows, "WormHole", [], own_mac="92:83:c4:84:ff:37"), "94:83:C4:85:33:A3")
+        self.assertIsNone(wd.choose_fallback_bssid(rows[:1], "WormHole", [], own_mac="92:83:c4:84:ff:37"))
+
+
+class SlowToggleTest(unittest.TestCase):
+    def test_a_timed_out_toggle_that_applied_counts(self):
+        class Slow(FakeRouter):
+            def call(self, obj, method, params=None):
+                if (obj, method) == ("wifi", "set_config"):
+                    FakeRouter.call(self, obj, method, params)
+                    raise OSError("timed out")
+                return FakeRouter.call(self, obj, method, params)
+        FakeRouter.NEXT_BACKHAUL = False
+        wd.time.sleep = lambda s: None
+        st = {}
+        r = Slow("192.168.81.1")
+        wd.backhaul_election(r, st, 1000, True, {"ssid": "BYLD"})
+        wd.backhaul_election(r, st, 1000 + wd.PROBATION_S, True, {"ssid": "BYLD"})
+        self.assertTrue(FakeRouter.NEXT_BACKHAUL)
+        self.assertEqual(st["backhaul"], "on")
+        self.assertFalse(any("failed" in e[1] for e in st.get("events", [])))

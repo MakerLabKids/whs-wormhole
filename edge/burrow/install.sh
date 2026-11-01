@@ -18,6 +18,11 @@ mkdir -p /opt/burrow/www
 rm -rf /opt/burrow/burrow
 cp -r "$HERE/burrow" /opt/burrow/burrow
 cp "$HERE/PROTOCOL.md" /opt/burrow/
+# the Pi's own Wi-Fi is the fallback path out: never disabled in firmware (older images did)
+if grep -q '^dtoverlay=disable-wifi$' /boot/firmware/config.txt 2>/dev/null; then
+  mount -o remount,rw /boot/firmware 2>/dev/null || true
+  sed -i '/^dtoverlay=disable-wifi$/d' /boot/firmware/config.txt && echo "removed dtoverlay=disable-wifi: REBOOT to get wlan0 (the Wi-Fi fallback)"
+fi
 # the build stamp (commit + date) the deploy tools put in edge/burrow/BUILD rides along
 [ -f "$HERE/BUILD" ] && cp "$HERE/BUILD" /opt/burrow/BUILD
 if [ -d "$REPO/web/dash" ]; then

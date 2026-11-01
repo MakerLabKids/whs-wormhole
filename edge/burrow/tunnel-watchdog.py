@@ -129,7 +129,25 @@ def backhaul_election(r, st, now, cloud_ok, status):
         # GL.iNet 4.x: flat {iface_name, enabled} (read from the router's rpc/wifi; the nested
         # {"ifaces": [...]} form get_config returns is a 500). Proven on Tunnel 1, 2026-11-01:
         # toggling an AP iface leaves the repeater link up.
-        r.call("wifi", "set_config", {"iface_name": BACKHAUL_IFACE, "enabled": bool(want)})
+        # applying a Wi-Fi change restarts the radio: give it a minute, and if the call
+        # itself times out, believe the router's state rather than the timeout
+        old_timeout = getattr(r, "timeout", None)
+        try:
+            r.timeout = 60
+            try:
+                r.call("wifi", "set_config", {"iface_name": BACKHAUL_IFACE, "enabled": bool(want)})
+            except Exception:
+                time.sleep(5)
+                now_on = None
+                for radio in (r.call("wifi", "get_config") or {}).get("res", []):
+                    for i in radio.get("ifaces", []):
+                        if i.get("name") == BACKHAUL_IFACE:
+                            now_on = bool(i.get("enabled"))
+                if now_on != want:
+                    raise
+        finally:
+            if old_timeout is not None:
+                r.timeout = old_timeout
         if want:
             st["backhaul"] = "on"
             event(st, now, "backhaul offered: %d min of clean internet on %s" % (PROBATION_S // 60, status.get("ssid") or "?"))
@@ -238,13 +256,28 @@ def kick_chrony_if_stale(st, now):
     return True
 
 
-def choose_fallback_bssid(scan_rows, ssid, exclude_bssids):
-    """Strongest access point for `ssid` whose BSSID is not one of ours.
+def same_opal(bssid, mac):
+    """Is `bssid` an access point of the Opal whose station MAC is `mac`?
+    GL.iNet derives them from one block: middle four octets equal, last
+    octet within 2 (station 92:83:c4:84:ff:37 -> AP 94:83:c4:84:ff:37)."""
+    if not bssid or not mac:
+        return False
+    a, b = bssid.lower().split(":"), mac.lower().split(":")
+    if len(a) != 6 or len(b) != 6 or a[1:5] != b[1:5]:
+        return False
+    try:
+        return abs(int(a[5], 16) - int(b[5], 16)) <= 2
+    except ValueError:
+        return False
+
+
+def choose_fallback_bssid(scan_rows, ssid, exclude_bssids, own_mac=None):
+    """Strongest access point for `ssid` that is not our own Opal's.
     scan_rows: [(bssid, ssid, signal_int)]."""
     ex = {b.lower() for b in exclude_bssids if b}
     best = None
     for bssid, s, sig in scan_rows:
-        if s != ssid or not bssid or bssid.lower() in ex:
+        if s != ssid or not bssid or bssid.lower() in ex or same_opal(bssid, own_mac):
             continue
         if best is None or sig > best[1]:
             best = (bssid, sig)
@@ -318,17 +351,23 @@ class WifiFallback:
 
     def scan(self):
         self.run("radio", "wifi", "on")
+        for _ in range(12):                    # the radio comes up "unavailable" for a second or two
+            rc, out = self.run("-t", "-f", "DEVICE,STATE", "device", "status")
+            st = [l.split(":")[1] for l in out.splitlines() if l.split(":")[0] == self.iface and ":" in l]
+            if rc == 0 and st and st[0] != "unavailable":
+                break
+            time.sleep(1)
         self.run("device", "wifi", "rescan", "ifname", self.iface, timeout=20)
-        time.sleep(4)
+        time.sleep(6)
         rc, out = self.run("-t", "-f", "BSSID,SSID,SIGNAL", "device", "wifi", "list", "ifname", self.iface)
         return parse_nmcli_scan(out) if rc == 0 else []
 
-    def up(self, exclude_bssids):
+    def up(self, exclude_bssids, own_mac=None):
         """Join another WormHole access point if one is in range, else walk
         the upstream ladder (hotspot, school, home) by name. Returns what
         was joined (a bssid, or an ssid), or None."""
         seen = self.scan()
-        bssid = choose_fallback_bssid(seen, self.cfg["ssid"], exclude_bssids)
+        bssid = choose_fallback_bssid(seen, self.cfg["ssid"], exclude_bssids, own_mac)
         if bssid and self._join(self.cfg["ssid"], self.cfg["key"], bssid):
             return bssid
         visible = {s.get("ssid") for s in seen if isinstance(s, dict)} | {s[1] for s in seen if isinstance(s, (tuple, list)) and len(s) > 1}
@@ -597,13 +636,15 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
 
 def _maybe_wifi(st, wifi, now, cloud_ok):
     if not wifi.available():
+        if st.get("wifi_fallback") != "unavailable":
+            event(st, now, "Pi Wi-Fi fallback UNAVAILABLE: no %s (dtoverlay=disable-wifi in config.txt? install.sh removes it; reboot)" % getattr(wifi, "iface", "wlan0"))
         st["wifi_fallback"] = "unavailable"
         return
     if wifi.is_up():
         st["wifi_fallback"] = "up"
         return
     if st.get("down_since") and now - st["down_since"] >= WIFI_AFTER_S and not cloud_ok:
-        bssid = wifi.up(st.get("own_bssids") or [])
+        bssid = wifi.up(st.get("own_bssids") or [], own_mac=st.get("own_mac"))
         if bssid:
             st["wifi_fallback"] = "up"
             event(st, now, "Wi-Fi fallback up via %s" % bssid)
