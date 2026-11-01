@@ -26,17 +26,22 @@ All I2C devices share the standard bus (SDA=GP0, SCL=GP1, 3V3, GND).
 | VL53L0X compaction | I2C `0x29` | lid-mounted, aimed down: gap to the bedding surface (settling/compaction) |
 | Big servo (MG995) | GP16 (pin 21) | own 5V supply, grounds joined, NOT VBUS |
 | Small servo (SG90) | GP17 (pin 22) | power from VBUS (pin 40) |
-| Relay module | GP15 (pin 20) | module VCC per its spec (most take VBUS 5V) |
+| Fan (or a relay module) | GP15 (pin 20) | through a 2N2222 switch, see below; never straight off the pin |
 
-**The fan** plugs in through the relay: the relay switches the fan's own power
-(a 5V fan can take VBUS through the relay's COM/NO contacts; a 12V fan needs its
-own supply). Every 15 minutes, if the inside BME280 reads over 80% humidity,
-the fan runs for 1 minute. At power-on it proves it works: during the demo
-period it flips on and off with every screen of the power-on sequence
-(`FAN_BOOT_DEMO = True`); set it to `False` and it just runs 3 seconds. All of
-it is in the config at the top of `main.py` (`FAN_HUMID_PCT`, `FAN_EVERY_MIN`,
-`FAN_RUN_S`, `FAN_BOOT_S`; `FAN = False` for a bin with no fan). The dashboard's
-relay button still switches it by hand.
+**The fan** (a 5V, 0.2 A two-wire fan) is switched by a 2N2222 transistor on GP15, the
+"relay" pin: a Pico pin gives only a few mA, so it can never run the fan itself.
+GP15 -> 470 ohm -> the 2N2222's base (middle leg); emitter -> GND; collector -> fan
+black; fan red -> VBUS (pin 40, 5V). A diode across the fan (band to red) eats the
+spike when it switches off; no diode, use a second transistor with B and C tied to
+the fan's black and E to its red. Check the transistor's label: PN2222A legs are
+E-B-C, P2N2222A are C-B-E (flat face toward you). Diagram:
+[docs/wiring/fan.svg](../../docs/wiring/fan.svg).
+Every 15 minutes, if the inside BME280 reads over 80% humidity, the fan runs for 1
+minute. At power-on it proves it works: during the demo period it flips on and off
+with every screen of the power-on sequence (`FAN_BOOT_DEMO = True`); set it to
+`False` and it just runs 3 seconds. All of it is in the config at the top of
+`main.py` (`FAN_HUMID_PCT`, `FAN_EVERY_MIN`, `FAN_RUN_S`, `FAN_BOOT_S`; `FAN = False`
+for a bin with no fan). The dashboard's relay button still switches it by hand.
 
 Free for expansion: GP26 (ADC0), GP28 (ADC2), ADS1115 A3, and the whole
 second I2C bus (I2C1).

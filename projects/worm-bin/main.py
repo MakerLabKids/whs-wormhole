@@ -9,7 +9,7 @@
 #   VL53L0X time-of-flight at 0x29 (SOIL COMPACTION: distance from the
 #     lid down to the bedding surface. As worms process and the bedding
 #     settles, that gap grows; a sudden change flags a disturbance)
-#   Big servo GP16, small servo GP17, relay GP15 (switches the fan)
+#   Big servo GP16, small servo GP17, fan switch (2N2222) on GP15
 #   OLED 0x3C: ONE screen built from whatever is reporting (pages only
 #     if that overflows)
 #
@@ -58,7 +58,8 @@ LIGHT_PIN = 28        # GL5528 photoresistor divider; native ADC pin (default GP
 SERVO_BIG_PIN = 16    # MG995; own 5V supply, grounds joined (default GP16)
 SERVO_SMALL_PIN = 17  # SG90; VBUS power is fine (default GP17)
 RELAY_PIN = 15        # relay module IN (default GP15)
-# THE FAN is plugged in through the relay above (the relay switches the fan's power).
+# THE FAN hangs off the relay pin above through a 2N2222 transistor switch (a pin gives a few
+# mA, the fan wants 200: see the README and docs/wiring/fan.svg).
 # Every FAN_EVERY_MIN minutes, if the bin's humidity (the inside BME280) is over
 # FAN_HUMID_PCT, the fan runs FAN_RUN_S seconds. At power-on it shows it works:
 # FAN_BOOT_DEMO = True toggles it on and off with every screen of the power-on

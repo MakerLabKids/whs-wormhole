@@ -662,6 +662,36 @@ projects["vibration"] = () => diagram(
     { text: "no diode = dead transistor; or use a kit module" },
   ]);
 
+projects["fan"] = () => diagram(
+  "fan wiring", "a 5V fan switched by a 2N2222 transistor (worm bin, GP15) + OLED",
+  [1, 2, 20, 38, 40], () => {
+    const x = DEV_X, y = 250, w = DEV_W, h = 96;
+    let s = deviceBox(x, y, w, h, "fan switch", "2N2222 + 470 ohm + diode", C.orange);
+    const p = { SIG: { x, y: y + 44 }, PWR: { x, y: y + 64 }, GND: { x, y: y + 84 } };
+    s += devPin(x, p.SIG.y, "B (base)") + devPin(x, p.PWR.y, "fan +5V") + devPin(x, p.GND.y, "E (emitter)");
+    s += oledI2C();
+    s += sig(20, p.SIG, W.sig);       // GP15 = pin 20 -> base via 470 ohm
+    s += sig(40, p.PWR, W.vbus);      // VBUS 5V: the fan's own power, not 3V3
+    s += tap(RAIL_GND, p.GND, W.gnd);
+    // fan glyph to the right: red to +5V, black to the collector
+    const mx = x + w + 70, my = y + 70;   // below the (tall) Connections box
+    s += `<circle cx="${mx + 18}" cy="${my + 18}" r="18" fill="#334155" stroke="#1e293b" stroke-width="1.5"/>`;
+    s += text(mx + 18, my + 24, "FAN", { size: 11, color: "#e2e8f0", anchor: "middle", bold: true });
+    s += text(mx + 18, my + 54, "5V fan, 0.2 A", { size: 10, color: C.gray, anchor: "middle" });
+    s += wire([[x + w, y + 58], [mx, my + 10]], W.vbus, 2);
+    s += wire([[x + w, y + 74], [mx, my + 26]], C.ink, 2);
+    return s;
+  },
+  [
+    { color: W.sig, text: "GP15 (pin 20) -> 470 ohm -> 2N2222 base (middle leg)" },
+    { color: W.vbus, text: "fan red -> VBUS (pin 40), 5V, NOT 3V3" },
+    { color: C.ink, text: "fan black -> 2N2222 collector" },
+    { color: W.gnd, text: "2N2222 emitter -> GND (pin 38)" },
+    { text: "diode ACROSS the fan: band to red, other end to black" },
+    { text: "no diode? a 2nd transistor: B+C tied to black, E to red" },
+    { text: "check the label: PN2222A legs E-B-C, P2N2222A legs C-B-E" },
+  ]);
+
 const names = Object.keys(projects);
 for (const name of names) {
   const svg = projects[name]();
