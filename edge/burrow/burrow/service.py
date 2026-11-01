@@ -96,6 +96,18 @@ class Service:
         self.counts[src] = self.counts.get(src, 0) + 1
         return row
 
+    def shows_for(self, uid, board_rev=None):
+        """Website shows for this Bin, when its board is behind (from the Surface, via the cloud pass)."""
+        try:
+            return self.cloud.shows_for(uid, board_rev)
+        except Exception:
+            return None
+
+    def show_file(self, sha):
+        """A cached show file's path, or None."""
+        p = self.cloud.show_path(sha)
+        return p if os.path.exists(p) else None
+
     def messages_for(self, uid):
         """Website messages waiting for this Bin (from the Surface, via the
         last snapshot reply); they ride on the /ingest reply."""

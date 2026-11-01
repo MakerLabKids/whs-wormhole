@@ -9,6 +9,7 @@
             GET  /api/signal  this Opal's upstream link right now (for the walk-around meter)
 """
 import json
+import re
 import mimetypes
 import os
 import queue
@@ -88,6 +89,21 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def _show_file(self, sha):
+        """A website show for a Bin on our LAN: the files are public pictures, named by their sha256."""
+        if not re.match(r"^[0-9a-f]{64}$", sha or ""):
+            return self._json({"error": "bad name"}, 400)
+        path = self.svc.show_file(sha)
+        if not path:
+            return self._json({"error": "not here"}, 404)
+        with open(path, "rb") as f:
+            data = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", "image/x-portable-bitmap")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     # ---- routes ---------------------------------------------------------
     def do_POST(self):
         path = urllib.parse.urlsplit(self.path).path
@@ -100,6 +116,9 @@ class Handler(BaseHTTPRequestHandler):
         self._json({"error": "not found"}, 404)
 
     def do_GET(self):
+        p = urllib.parse.urlsplit(self.path).path
+        if p.startswith("/shows/") and p.endswith(".pbm"):
+            return self._show_file(p[len("/shows/"):-len(".pbm")])
         if not self._authorized():
             return self._json({"error": "forbidden"}, 403)
         u = urllib.parse.urlsplit(self.path)
@@ -174,6 +193,9 @@ class Handler(BaseHTTPRequestHandler):
         msgs = self.svc.messages_for(row["uid"])
         if msgs:
             reply["messages"] = msgs       # set on the website; the Bin acks them in its next push
+        shows = self.svc.shows_for(row["uid"], d.get("shows_rev"))
+        if shows:
+            reply["shows"] = shows         # the Bin fetches the files from us (GET /shows/<sha>.pbm), then reports shows_rev
         self._json(reply)
 
     def _ingest_batch(self):

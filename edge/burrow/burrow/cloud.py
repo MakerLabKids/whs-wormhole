@@ -4,14 +4,19 @@ Everything here is idempotent and retried forever. 'reachable' is decided by
 GET /v1/edge/ping answering with our JSON (a captive portal answers with HTML).
 """
 import gzip
+import hashlib
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
 
 from . import clock, rollups, util
 from .util import log
+
+SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,23}$")
 
 
 class Cloud:
@@ -34,6 +39,11 @@ class Cloud:
         # that in our snapshot and stops listing them.
         self.messages = {}
         self.msg_state_fn = None        # set by the service: () -> {uid: {rev, slots, at}}
+        # Shows sent from the website, as the last snapshot reply listed them: {uid: {rev, list,
+        # files: [{name, sha256, size}]}}. The files are fetched once into shows_dir (by sha256)
+        # and handed to a Bin, whose push reports shows_rev once it has them.
+        self.shows = {}
+        self.shows_dir = os.path.join(cfg.get("data_dir", "/tmp"), "shows-cache")
 
     @staticmethod
     def _read(path):
@@ -119,7 +129,58 @@ class Cloud:
                     by_uid.setdefault(it["uid"], []).append(it)
             self.messages = by_uid
             self.state["messages"] = sum(len(v) for v in by_uid.values())
+        if isinstance(j, dict) and isinstance(j.get("shows"), list):
+            shows = {}
+            for it in j["shows"]:
+                if isinstance(it, dict) and isinstance(it.get("uid"), str) and isinstance(it.get("rev"), int):
+                    shows[it["uid"]] = {"rev": it["rev"], "list": it.get("list"),
+                                        "files": [f for f in (it.get("files") or []) if isinstance(f, dict)
+                                                  and SHA_RE.match(str(f.get("sha256", ""))) and NAME_RE.match(str(f.get("name", "")))]}
+            self.shows = shows
+            self.state["shows"] = len(shows)
+            self.fetch_shows()
         return j
+
+    # ---- shows (website -> Bin) ------------------------------------------
+    def show_path(self, sha):
+        return os.path.join(self.shows_dir, sha + ".pbm")
+
+    def fetch_shows(self, cap=20):
+        """Download the listed show files we do not have yet (each checked against its sha256)."""
+        got = 0
+        for s in self.shows.values():
+            for f in s["files"]:
+                if got >= cap or os.path.exists(self.show_path(f["sha256"])):
+                    continue
+                try:
+                    req = urllib.request.Request(self.base + "/v1/edge/shows/" + f["sha256"],
+                                                 headers={"Authorization": "Bearer " + self.token,
+                                                          "User-Agent": "burrow/" + self.cfg["edge"]})
+                    with urllib.request.urlopen(req, timeout=self.timeout) as r:
+                        data = r.read(200 * 1024 + 1)
+                    if hashlib.sha256(data).hexdigest() != f["sha256"]:
+                        raise ValueError("sha256 does not match")
+                    os.makedirs(self.shows_dir, exist_ok=True)
+                    tmp = self.show_path(f["sha256"]) + ".tmp"
+                    with open(tmp, "wb") as out:
+                        out.write(data)
+                    os.replace(tmp, self.show_path(f["sha256"]))
+                    got += 1
+                except Exception as e:
+                    self.state["shows_error"] = "%s: %s" % (f["name"], str(e)[:80])
+                    log("cloud: show %s not fetched: %s" % (f["name"], e))
+        return got
+
+    def shows_for(self, uid, board_rev=None):
+        """What to tell a Bin about its shows, or None: only when its board is behind and every
+        file is here to hand over."""
+        s = self.shows.get(uid)
+        if not s or board_rev == s["rev"]:
+            return None
+        if not all(os.path.exists(self.show_path(f["sha256"])) for f in s["files"]):
+            return None
+        return {"rev": s["rev"], "list": s["list"],
+                "files": [{"name": f["name"], "sha256": f["sha256"], "size": f.get("size")} for f in s["files"]]}
 
     def _request_update(self, upd):
         """The admin clicked Update for this Burrow: leave {build, sha256, url}
