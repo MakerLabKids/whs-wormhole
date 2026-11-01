@@ -11,12 +11,22 @@ py=/usr/bin/python3
 if [ ! -f "$F" ] && [ -f "$MARK" ]; then
   # Enrol: the room comes from the subnet our Opal hands out (192.168.8<room>.x), the name,
   # upload token and tunnel token from the Surface (POST /v1/edge/enrol with the fleet secret).
-  con=$(nmcli -t -f NAME,DEVICE connection show | awk -F: '$2=="eth0"{print $1}' | head -1)
-  [ -n "$con" ] && nmcli connection modify "$con" ipv4.method auto ipv4.addresses "" ipv4.gateway "" ipv4.dns "" && nmcli connection up "$con" || true
+  for i in $(seq 1 60); do nmcli -t general status >/dev/null 2>&1 && break; sleep 2; done
+  con=""
+  for i in $(seq 1 30); do
+    con=$(nmcli -t -f NAME,DEVICE connection show 2>/dev/null | awk -F: '$2=="eth0"{print $1}' | head -1 || true)
+    [ -n "$con" ] && break; sleep 2
+  done
+  [ -n "$con" ] || { echo "enrol: no NetworkManager connection on eth0; will try next boot"; exit 0; }
+  nmcli connection modify "$con" ipv4.method auto ipv4.addresses "" ipv4.gateway "" ipv4.dns "" || true
+  nmcli connection up "$con" >/dev/null 2>&1 || true
+  # the room must come from the Opal's DHCP, never from the donor's static .10 address: a clone
+  # that still had 192.168.80.10 would have enrolled as burrow0 and taken its tunnel
+  [ "$(nmcli -g ipv4.method connection show "$con" 2>/dev/null)" = auto ] || { echo "enrol: eth0 did not switch to DHCP; will try next boot"; exit 0; }
   room=""
   for i in $(seq 1 60); do
     ip4=$(ip -4 -o addr show eth0 | awk '{print $4}' | cut -d/ -f1 | head -1)
-    case "$ip4" in 192.168.8[0-9].*) room=$(echo "$ip4" | cut -d. -f3 | sed 's/^8//'); break ;; esac
+    case "$ip4" in 192.168.8[0-9].10) ;; 192.168.8[0-9].*) room=$(echo "$ip4" | cut -d. -f3 | sed 's/^8//'); break ;; esac
     sleep 5
   done
   [ -n "$room" ] || { echo "enrol: no 192.168.8N.x address from the Opal after 5 min; will try next boot"; exit 0; }

@@ -58,6 +58,7 @@ import glinet  # noqa: E402  (copied next to this file by install.sh)
 
 CONFIG = os.environ.get("TUNNEL_CONFIG", "/etc/burrow/tunnel.json")
 BURROW_CONFIG = os.environ.get("BURROW_CONFIG", "/etc/burrow/burrow.json")
+NEEDS_IDENTITY = os.environ.get("BURROW_NEEDS_IDENTITY", "/etc/burrow/needs-identity")  # clone-card.sh write; removed by first-boot-identity.sh
 STATE = os.environ.get("TUNNEL_STATE", "/run/tunnel-watchdog.json")
 
 HOLDOFF_S = 90            # do not re-send a join while one may still be in progress
@@ -616,6 +617,11 @@ def ensure_forwards(r, host, room):
 def main(now=None, router_factory=None, cloud_check=None, wifi_factory=None):
     cloud_check = cloud_check or cloud_reachable_cable
     now = now or time.time()
+    if os.path.exists(NEEDS_IDENTITY):
+        # a fresh clone: its tunnel.json is the donor's and points at the donor's Opal (for
+        # burrow0's card, the Portal). Hands off until enrolment has made it someone.
+        print("needs identity (fresh clone): watchdog idle")
+        return 0
     cfg = load_json(CONFIG, None)
     if cfg is None:
         print("no config at", CONFIG)

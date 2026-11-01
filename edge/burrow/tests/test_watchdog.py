@@ -414,10 +414,6 @@ class Runs(unittest.TestCase):
         self.assertEqual(self.state()["wifi_fallback"], "unavailable")   # no fallback block = none
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class AutoConnectTest(unittest.TestCase):
     """The Opal rejoins by itself: the watchdog switches "auto" on when it finds it off."""
     def setUp(self):
@@ -602,3 +598,25 @@ class ProvenFallbackTest(unittest.TestCase):
         self.assertEqual(w.up([], verify=ok), "Loki")
         w, joins, ok = self.make(scan, set())
         self.assertIsNone(w.up([], verify=ok))
+
+
+class FreshCloneTest(unittest.TestCase):
+    """A card written by clone-card.sh carries the donor's tunnel.json (burrow0's points at the
+    Portal). Until enrolment removes /etc/burrow/needs-identity the watchdog must not touch any
+    router (2026-11-01: burrow2's clone sat on the Portal's Wi-Fi with burrow0's config)."""
+
+    def test_watchdog_is_idle_on_a_fresh_clone(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile() as mark:
+            old = wd.NEEDS_IDENTITY
+            wd.NEEDS_IDENTITY = mark.name
+            try:
+                def no_router(*a, **k):
+                    raise AssertionError("a fresh clone must not talk to any router")
+                self.assertEqual(wd.main(now=1000, router_factory=no_router), 0)
+            finally:
+                wd.NEEDS_IDENTITY = old
+
+
+if __name__ == "__main__":
+    unittest.main()

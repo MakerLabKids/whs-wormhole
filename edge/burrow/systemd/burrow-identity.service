@@ -1,7 +1,10 @@
 [Unit]
 Description=Burrow first-boot identity (burrow-identity.json on the boot partition)
 Before=burrow.service tunnel-watchdog.timer cloudflared.service
-After=local-fs.target
+# NetworkManager must be up: the first step switches eth0 to DHCP (2026-11-01: it ran first,
+# "NetworkManager is not running", and the clone kept the donor's static address)
+After=local-fs.target NetworkManager.service
+Wants=NetworkManager.service
 
 [Service]
 Type=oneshot
