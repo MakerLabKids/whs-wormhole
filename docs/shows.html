@@ -58,16 +58,18 @@
 
   <h2>1. Draw it</h2>
   <div class="step"><div class="n">1</div><div class="body">
-    <h3>Open Piskel</h3>
-    <p>Go to <a class="ext" href="https://www.piskelapp.com/p/create">piskelapp.com</a> in Chrome or Edge
-       and click <b>Create Sprite</b>. Nothing to install and no account needed (you can save your
-       work to the computer as you go).</p>
+    <h3>Open our drawing tool</h3>
+    <p><a class="dl" id="openPiskel" href="piskel/index.html" target="piskel">Open Piskel</a> (it opens in a new tab;
+       keep this page open too). It's <a class="ext" href="https://www.piskelapp.com">Piskel</a>, a free pixel
+       editor, kept on our own site and already set to the bin's screen: 128 dots wide, 64 tall, 10 frames a second.
+       Nothing to install, no account.</p>
   </div></div>
   <div class="step"><div class="n">2</div><div class="body">
-    <h3>Make the canvas the size of the screen</h3>
-    <p>On the right, open <b>Resize</b> (the icon with the arrows). Untick
-       <i>Maintain aspect ratio</i>, type <b>128</b> for width and <b>64</b> for height, and click
-       <b>Resize</b>. Smaller works too (it gets centred on the screen); bigger gets shrunk to fit.</p>
+    <h3>Check the size</h3>
+    <p>The size is at the bottom of the editor. If it isn't <b>128x64</b> (Piskel remembers your last
+       drawing), open <b>Resize</b> on the right (the icon with the arrows), untick <i>Maintain aspect
+       ratio</i>, type 128 and 64, and click <b>Resize</b>. Smaller works too (it gets centred on the
+       screen); bigger gets shrunk to fit.</p>
   </div></div>
   <div class="step"><div class="n">3</div><div class="body">
     <h3>Draw with one color on the see-through background</h3>
@@ -84,21 +86,23 @@
        and it can go up to 20. A video can have up to 100 frames.</p>
   </div></div>
   <div class="step"><div class="n">5</div><div class="body">
-    <h3>Export</h3>
-    <p>On the right, open <b>Export</b>. A picture: the <b>PNG</b> tab, <b>Download</b>. A video: the
-       <b>GIF</b> tab, <b>Download</b>. You can also use a picture from anywhere (a photo, a logo):
-       the converter below shrinks it and turns it black and white; check the preview.</p>
+    <h3>Bring it over</h3>
+    <p>Come back to this page and click <b>Get my drawing from Piskel</b> below: every frame and the
+       speed come straight across. (Using a different Piskel, or a picture from somewhere else? Export
+       it as a PNG for a picture or a GIF for a video, and pick that file below instead. A photo or a
+       logo works too: the converter shrinks it and turns it black and white; check the preview.)</p>
   </div></div>
 
   <h2>2. Turn it into a show file</h2>
   <div class="tool" id="tool">
     <div class="row">
       <label>Your drawing <input type="file" id="file" accept="image/png,image/gif,image/jpeg,image/webp,image/bmp,.pbm"></label>
+      <button type="button" class="g" id="fromPiskel">Get my drawing from Piskel</button>
       <button type="button" id="sample">Or try a sample worm</button>
     </div>
     <div id="msg" class="err"></div>
     <canvas class="oled" id="oled" width="512" height="256"></canvas>
-    <div class="stat" id="stat">Pick a PNG (a picture) or a GIF (a video). The preview shows exactly what the bin will show.</div>
+    <div class="stat" id="stat">Get your drawing from Piskel, or pick a PNG (a picture) or a GIF (a video). The preview shows exactly what the bin will show.</div>
     <div class="row">
       <label>What lights up
         <select id="mode">
@@ -394,6 +398,45 @@ function sample() {
   src = frames; $("fps").value = 10; $("hold").value = 6; $("name").value = "wiggle"; $("mode").value = "auto"; $("msg").textContent = "";
   refresh();
 }
+
+// Piskel on our own site, opened from this page: read its frames directly (same origin).
+let piskelWin = null;
+$("openPiskel").addEventListener("click", (e) => {
+  e.preventDefault();
+  piskelWin = window.open("piskel/index.html", "piskel");
+});
+function findPiskel() {
+  if (piskelWin && !piskelWin.closed) return piskelWin;
+  try {                                           // this page was reloaded: find the tab by its name
+    const w = window.open("", "piskel");
+    if (w && w.pskl) return (piskelWin = w);
+    if (w && w.location.href === "about:blank") w.close();
+  } catch (e) { /* not ours */ }
+  return null;
+}
+$("fromPiskel").addEventListener("click", () => {
+  $("msg").textContent = "";
+  const w = findPiskel();
+  const pc = w && w.pskl && w.pskl.app && w.pskl.app.piskelController;
+  if (!pc) {
+    $("msg").textContent = "Piskel isn't open from this page. Click Open Piskel above, draw, then come back and click this again (or export a PNG/GIF and pick the file).";
+    return;
+  }
+  const n = pc.getFrameCount(), frames = [];
+  for (let i = 0; i < Math.min(n, MAX_FRAMES); i++) {
+    const cv = pc.renderFrameAt(i, true);
+    frames.push({ img: toImageData(cv, cv.width, cv.height), ms: 0 });
+  }
+  src = frames;
+  $("mode").value = "auto";
+  if (n > 1) { $("fps").value = Math.max(1, Math.min(20, Math.round(pc.getFPS() || 10))); $("hold").value = 6; }
+  else $("hold").value = 40;
+  if (n > MAX_FRAMES) $("msg").textContent = `Your drawing has ${n} frames; a show can have ${MAX_FRAMES}, so only the first ${MAX_FRAMES} are used.`;
+  let name = "";
+  try { name = pc.getPiskel().getDescriptor().name || ""; } catch (e) { /* older Piskel */ }
+  if (name && name !== "New Piskel") $("name").value = name;
+  refresh();
+});
 
 $("file").addEventListener("change", (e) => e.target.files[0] && load(e.target.files[0]));
 $("sample").addEventListener("click", sample);
