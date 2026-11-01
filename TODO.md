@@ -19,7 +19,8 @@ out there and nothing needs migrating. A Pico is set up once by cable and update
      password), change only if the human asks.
    - Kept on purpose (the human's call): the WormHole/Pico key, which equals guess_psk and qtastic_psk.
    - Purging public history: optional, only with the human's go-ahead.
-1b. **Fans (arrived 2026-11-01).** Code is in (1db189d): the fan goes on the relay, GP15 (pin 20). Every
+1b. **Fans (arrived 2026-11-01).** Code is in (1db189d), wiring in 8fb2120: a 2N2222 on GP15 (pin 20), 470 ohm base, diode
+   across the fan (docs/wiring/fan.svg). Bench run with the human: 2026-11-02. Every
    15 min, inside humidity over 80% runs it 1 min; at power-on it toggles with each boot screen while
    `FAN_BOOT_DEMO = True`. After the demo period: set `FAN_BOOT_DEMO = False` (3 s at power-on). Not yet
    run on a real board with a fan. The Surface is deployed (11-01: the navbar's GitHub link goes to the
