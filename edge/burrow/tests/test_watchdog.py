@@ -206,7 +206,7 @@ class FakeWifi:
     def is_up(self):
         return self._up
 
-    def up(self, exclude, own_mac=None):
+    def up(self, exclude, own_mac=None, cloud_url=None):
         self.actions.append(("up", list(exclude)))
         self._up = True
         FakeWifi.UP = True
@@ -461,8 +461,13 @@ class WifiLadderTest(unittest.TestCase):
 
 
 class ElectionTest(unittest.TestCase):
-    """The backhaul is offered after probation, withdrawn after a short failure, barred for a while."""
+    """The backhaul is offered after probation, withdrawn after a short failure, barred for a while
+    (the acting path, behind ELECTION_ACTS, off in the field since 2026-11-01)."""
+    def tearDown(self):
+        wd.ELECTION_ACTS = False
+
     def setUp(self):
+        wd.ELECTION_ACTS = True
         FakeRouter.LOG = []
         FakeRouter.NEXT_BACKHAUL = False
         self.r = FakeRouter("192.168.82.1")
@@ -530,6 +535,8 @@ class SlowToggleTest(unittest.TestCase):
                 return FakeRouter.call(self, obj, method, params)
         FakeRouter.NEXT_BACKHAUL = False
         wd.time.sleep = lambda s: None
+        wd.ELECTION_ACTS = True
+        self.addCleanup(setattr, wd, "ELECTION_ACTS", False)
         st = {}
         r = Slow("192.168.81.1")
         wd.backhaul_election(r, st, 1000, True, {"ssid": "BYLD"})
@@ -537,3 +544,55 @@ class SlowToggleTest(unittest.TestCase):
         self.assertTrue(FakeRouter.NEXT_BACKHAUL)
         self.assertEqual(st["backhaul"], "on")
         self.assertFalse(any("failed" in e[1] for e in st.get("events", [])))
+
+
+class ObserveOnlyTest(unittest.TestCase):
+    """In the field the election never switches an AP off; it switches a disabled backhaul AP on."""
+    def setUp(self):
+        FakeRouter.LOG = []
+        wd.ELECTION_ACTS = False
+
+    def test_never_switches_off_and_heals(self):
+        FakeRouter.NEXT_BACKHAUL = True
+        st = {}
+        r = FakeRouter("192.168.81.1")
+        for k in range(10):                                   # a follower, no internet for 10 min
+            wd.backhaul_election(r, st, 1000 + 60 * k, False, {"ssid": "WormHole-Core"})
+        self.assertTrue(FakeRouter.NEXT_BACKHAUL, "left on")
+        self.assertNotIn(("wifi", "set_config", {"iface_name": "default_radio1", "enabled": False}), FakeRouter.LOG)
+        FakeRouter.NEXT_BACKHAUL = False                      # found off: switched back on
+        wd.backhaul_election(r, st, 2000, True, {"ssid": "WormHole-Core"})
+        self.assertTrue(FakeRouter.NEXT_BACKHAUL)
+        self.assertTrue(any("heal" in e[1] for e in st["events"]))
+
+
+class ProvenFallbackTest(unittest.TestCase):
+    """A WormHole whose Opal has no internet is dropped and the next one tried; nothing works -> Wi-Fi off."""
+    def make(self, scan_text, good):
+        joins = []
+        def run(*args, **kw):
+            if "status" in args and "device" in args:
+                return 0, "wlan0:wifi\n" if "TYPE" in args else "wlan0:disconnected\n"
+            if "wifi" in args and "list" in args:
+                return 0, scan_text
+            if args[:3] == ("-t", "-f", "NAME") and "show" in args and "--active" not in args:
+                return 0, "burrow-wifi\n"
+            if args[:3] == ("connection", "modify", "burrow-wifi"):
+                joins.append(args[args.index("802-11-wireless.bssid") + 1] or args[args.index("802-11-wireless.ssid") + 1])
+            return 0, ""
+        w = wd.WifiFallback({"ssid": "WormHole", "key": "k"}, run=run, upstreams=[{"ssid": "Loki", "key": "l"}])
+        wd.time.sleep = lambda s: None
+        return w, joins, (lambda: joins[-1] in good)
+
+    def test_skips_a_wormhole_with_no_internet(self):
+        scan = "94\\:83\\:C4\\:85\\:33\\:A3:WormHole:100\n94\\:83\\:C4\\:84\\:D2\\:0B:WormHole:80\n"
+        w, joins, ok = self.make(scan, {"94:83:C4:84:D2:0B"})
+        self.assertEqual(w.up([], verify=ok), "94:83:C4:84:D2:0B")
+        self.assertEqual(joins, ["94:83:C4:85:33:A3", "94:83:C4:84:D2:0B"])
+
+    def test_falls_to_the_ladder_then_gives_up(self):
+        scan = "94\\:83\\:C4\\:85\\:33\\:A3:WormHole:100\naa\\:bb\\:cc\\:00\\:00\\:01:Loki:70\n"
+        w, joins, ok = self.make(scan, {"Loki"})
+        self.assertEqual(w.up([], verify=ok), "Loki")
+        w, joins, ok = self.make(scan, set())
+        self.assertIsNone(w.up([], verify=ok))

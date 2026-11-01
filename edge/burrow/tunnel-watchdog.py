@@ -75,6 +75,7 @@ PROBATION_S = 10 * 60
 DROP_AFTER_S = 2 * 60
 BAR_S = 30 * 60
 BACKHAUL_IFACE = "default_radio1"     # the 5 GHz iface that carries WormHole-Core (wifi get_config)
+ELECTION_ACTS = False                 # observe-only until a follower can safely lose its AP (see backhaul_election)
 EVENTS_KEEP = 10
 
 
@@ -113,6 +114,31 @@ def backhaul_election(r, st, now, cloud_ok, status):
         want = True
     elif st.get("bad_since") and now - st["bad_since"] >= DROP_AFTER_S:
         want = False
+    # 2026-11-01: switching a follower's own backhaul AP off left it unable to rejoin WormHole-Core
+    # (radio1 STA) after its next drop, and the Tunnels are pinned to the Portal's BSSID anyway, so a
+    # new provider could not be followed. Until both are solved the election only REPORTS who would
+    # qualify (st["backhaul_candidate"]), and switches a disabled backhaul AP back ON (heal).
+    st["backhaul_candidate"] = bool(want)
+    if not ELECTION_ACTS:
+        try:
+            cfg = r.call("wifi", "get_config") or {}
+            for radio in cfg.get("res", []):
+                for i in radio.get("ifaces", []):
+                    if i.get("name") == BACKHAUL_IFACE and not i.get("enabled"):
+                        old_timeout = getattr(r, "timeout", None)
+                        try:
+                            r.timeout = 60
+                            try:
+                                r.call("wifi", "set_config", {"iface_name": BACKHAUL_IFACE, "enabled": True})
+                            except Exception:
+                                pass
+                        finally:
+                            if old_timeout is not None:
+                                r.timeout = old_timeout
+                        event(st, now, "backhaul AP %s was off: switched back on (heal)" % BACKHAUL_IFACE)
+        except Exception as e:
+            event(st, now, "backhaul heal check failed: %s" % str(e)[:80])
+        return
     if want is None:
         return
     try:
@@ -304,6 +330,28 @@ def parse_nmcli_scan(text):
 # ---------------------------------------------------------------------------
 # Side effects, each behind a small function so tests can stub them
 # ---------------------------------------------------------------------------
+def cloud_reachable_via(url, iface, timeout=8):
+    """The Surface answers through this interface (curl --interface): judges ONE path, so the
+    Pi's Wi-Fi can neither fake nor mask the cable path, nor be trusted before it is proven."""
+    if not url:
+        return None
+    try:
+        out = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", "--interface", iface,
+                              "--max-time", str(timeout), url.rstrip("/") + "/v1/edge/ping"],
+                             capture_output=True, text=True, timeout=timeout + 4)
+        return out.stdout.strip() not in ("", "000")
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def cloud_reachable_cable(url, timeout=8):
+    """The cable path (eth0). Falls back to the default route where there is no curl."""
+    import shutil
+    if shutil.which("curl") and os.path.exists("/sys/class/net/eth0"):
+        return cloud_reachable_via(url, "eth0", timeout)
+    return cloud_reachable(url, timeout)
+
+
 def cloud_reachable(url, timeout=6):
     """Any HTTP answer from the Surface means the internet path works; the
     endpoint itself may say 401, that is fine."""
@@ -362,21 +410,41 @@ class WifiFallback:
         rc, out = self.run("-t", "-f", "BSSID,SSID,SIGNAL", "device", "wifi", "list", "ifname", self.iface)
         return parse_nmcli_scan(out) if rc == 0 else []
 
-    def up(self, exclude_bssids, own_mac=None):
-        """Join another WormHole access point if one is in range, else walk
-        the upstream ladder (hotspot, school, home) by name. Returns what
-        was joined (a bssid, or an ssid), or None."""
+    def up(self, exclude_bssids, own_mac=None, cloud_url=None, verify=None):
+        """Join a way out that really reaches the internet: other WormHole
+        access points strongest first (never our own Opal's), then the
+        upstream ladder (hotspot, school, home) by name. Each join is proven
+        over wlan0 before it is kept; a WormHole whose Opal has no internet
+        (2026-11-01: burrow1 joined Tunnel 2's, which had none, and its Wi-Fi
+        took the default route into a dead end) is dropped and the next one
+        tried. Returns what was joined (a bssid, or an ssid), or None with
+        the Wi-Fi down."""
+        verify = verify or (lambda: cloud_reachable_via(cloud_url, self.iface) if cloud_url else True)
         seen = self.scan()
         persist_event("wifi fallback: scan saw %d access points (%s)" % (len(seen), ", ".join(sorted({r[1] for r in seen if r[1]}))[:120]), time.time())
-        bssid = choose_fallback_bssid(seen, self.cfg["ssid"], exclude_bssids, own_mac)
-        persist_event("wifi fallback: WormHole pick %s (own_mac %s)" % (bssid, own_mac), time.time())
-        if bssid and self._join(self.cfg["ssid"], self.cfg["key"], bssid):
-            return bssid
-        visible = {s.get("ssid") for s in seen if isinstance(s, dict)} | {s[1] for s in seen if isinstance(s, (tuple, list)) and len(s) > 1}
+        tried = set()
+        for _ in range(4):
+            bssid = choose_fallback_bssid(seen, self.cfg["ssid"], list(exclude_bssids) + list(tried), own_mac)
+            if not bssid:
+                break
+            tried.add(bssid)
+            if self._join(self.cfg["ssid"], self.cfg["key"], bssid):
+                time.sleep(3)
+                if verify():
+                    persist_event("wifi fallback: %s reaches the internet: keeping it" % bssid, time.time())
+                    return bssid
+                persist_event("wifi fallback: %s has no internet: next" % bssid, time.time())
+        visible = {s[1] for s in seen if isinstance(s, (tuple, list)) and len(s) > 1}
         for u in self.ladder:
             if u.get("hidden") or u["ssid"] in visible:
                 if self._join(u["ssid"], u.get("key", ""), None, open_net=(u.get("encryption") == "none")):
-                    return u["ssid"]
+                    time.sleep(3)
+                    if verify():
+                        persist_event("wifi fallback: %s reaches the internet: keeping it" % u["ssid"], time.time())
+                        return u["ssid"]
+                    persist_event("wifi fallback: %s has no internet: next" % u["ssid"], time.time())
+        persist_event("wifi fallback: nothing in range reaches the internet; Wi-Fi off", time.time())
+        self.down()
         return None
 
     def _join(self, ssid, key, bssid, open_net=False):
@@ -533,7 +601,8 @@ def ensure_forwards(r, host, room):
     return added
 
 
-def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factory=None):
+def main(now=None, router_factory=None, cloud_check=None, wifi_factory=None):
+    cloud_check = cloud_check or cloud_reachable_cable
     now = now or time.time()
     cfg = load_json(CONFIG, None)
     if cfg is None:
@@ -546,6 +615,7 @@ def main(now=None, router_factory=None, cloud_check=cloud_reachable, wifi_factor
     upstreams = upstreams_of(cfg)
     wifi = (wifi_factory or WifiFallback)(cfg.get("wifi_fallback")) if wifi_factory else WifiFallback(cfg.get("wifi_fallback"), upstreams=cfg.get("upstreams"))
 
+    st["cloud_url"] = cloud_url
     cloud_ok = cloud_check(cloud_url)
     st["cloud_ok"] = cloud_ok
 
@@ -666,7 +736,7 @@ def _maybe_wifi(st, wifi, now, cloud_ok):
         st["wifi_fallback"] = "up"
         return
     if st.get("down_since") and now - st["down_since"] >= WIFI_AFTER_S and not cloud_ok:
-        bssid = wifi.up(st.get("own_bssids") or [], own_mac=st.get("own_mac"))
+        bssid = wifi.up(st.get("own_bssids") or [], own_mac=st.get("own_mac"), cloud_url=st.get("cloud_url"))
         if bssid:
             st["wifi_fallback"] = "up"
             event(st, now, "Wi-Fi fallback up via %s" % bssid)
