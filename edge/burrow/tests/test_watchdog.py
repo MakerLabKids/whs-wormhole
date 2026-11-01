@@ -618,5 +618,77 @@ class FreshCloneTest(unittest.TestCase):
                 wd.NEEDS_IDENTITY = old
 
 
+
+class PortalBackhaulWatchTest(unittest.TestCase):
+    """2026-11-01: the Portal's backhaul AP refused new Tunnels after an upstream switch."""
+
+    BCFG = {"room": 0, "peers": {"burrow1": {"url": "http://192.168.80.21:8080"},
+                                 "burrow2": {"url": "http://192.168.80.22:8080"}}}
+
+    class R:
+        def __init__(self):
+            self.calls = []
+            self.timeout = 8
+        def call(self, obj, method, params=None):
+            self.calls.append((obj, method, params))
+            return {}
+
+    def setUp(self):
+        self._sleep = wd.time.sleep
+        wd.time.sleep = lambda s: None
+        self._evlog = wd.persist_event
+        wd.persist_event = lambda *a, **k: None
+
+    def tearDown(self):
+        wd.time.sleep = self._sleep
+        wd.persist_event = self._evlog
+
+    def toggles(self, r):
+        return [p["enabled"] for o, m, p in r.calls if (o, m) == ("wifi", "set_config")]
+
+    def test_a_reachable_tunnel_resets_the_clock(self):
+        r, st = self.R(), {"backhaul_peers_seen_at": 0}
+        wd.portal_backhaul_watch(r, st, 5000, self.BCFG, reachable=lambda u: u.endswith("22:8080"))
+        self.assertEqual(st["backhaul_peers_seen_at"], 5000)
+        self.assertEqual(self.toggles(r), [])
+
+    def test_first_silent_run_only_starts_the_clock(self):
+        r, st = self.R(), {}
+        wd.portal_backhaul_watch(r, st, 5000, self.BCFG, reachable=lambda u: False)
+        self.assertEqual(st["backhaul_peers_seen_at"], 5000)
+        self.assertEqual(self.toggles(r), [])
+
+    def test_ten_silent_minutes_restart_the_ap_off_then_on(self):
+        r, st = self.R(), {"backhaul_peers_seen_at": 1000}
+        wd.portal_backhaul_watch(r, st, 1000 + 601, self.BCFG, reachable=lambda u: False)
+        self.assertEqual(self.toggles(r), [False, True])
+        self.assertEqual(st["backhaul_kicked_at"], 1601)
+
+    def test_at_most_one_kick_an_hour(self):
+        r, st = self.R(), {"backhaul_peers_seen_at": 1000, "backhaul_kicked_at": 1601}
+        wd.portal_backhaul_watch(r, st, 1601 + 1200, self.BCFG, reachable=lambda u: False)
+        self.assertEqual(self.toggles(r), [])
+        wd.portal_backhaul_watch(r, st, 1601 + 3601, self.BCFG, reachable=lambda u: False)
+        self.assertEqual(self.toggles(r), [False, True])
+
+    def test_only_the_portals_pi_does_this(self):
+        r, st = self.R(), {"backhaul_peers_seen_at": 0}
+        wd.portal_backhaul_watch(r, st, 99999, dict(self.BCFG, room=2), reachable=lambda u: False)
+        self.assertEqual(self.toggles(r), [])
+
+    def test_a_failed_off_never_leaves_the_ap_off(self):
+        class Flaky(self.R):
+            def call(self, obj, method, params=None):
+                self.calls.append((obj, method, params))
+                if (obj, method) == ("wifi", "set_config") and params["enabled"] is False:
+                    raise RuntimeError("HTTP 500")
+                if (obj, method) == ("wifi", "get_config"):
+                    return {"res": [{"ifaces": [{"name": wd.BACKHAUL_IFACE, "enabled": True}]}]}
+                return {}
+        r, st = Flaky(), {"backhaul_peers_seen_at": 0}
+        wd.portal_backhaul_watch(r, st, 5000, self.BCFG, reachable=lambda u: False)
+        self.assertEqual(self.toggles(r)[-1], True)
+
+
 if __name__ == "__main__":
     unittest.main()

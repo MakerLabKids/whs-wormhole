@@ -187,6 +187,76 @@ def backhaul_election(r, st, now, cloud_ok, status):
         event(st, now, "backhaul toggle failed: %s" % str(e)[:80])
 
 
+PORTAL_SILENT_KICK_S = 600      # no Tunnel's Pi reachable over the Portal LAN this long -> kick the backhaul AP
+PORTAL_KICK_EVERY_S = 3600      # at most one kick an hour
+
+
+def tcp_reachable(url, timeout=3):
+    """True if the host:port in an http URL accepts a TCP connection."""
+    import socket
+    from urllib.parse import urlparse
+    u = urlparse(url)
+    try:
+        with socket.create_connection((u.hostname, u.port or 80), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def set_backhaul_ap(r, enabled):
+    """Flat GL.iNet 4.x wifi set_config on the backhaul AP iface. Applying it restarts the
+    radio and the call often times out while still applying: read the state back."""
+    old_timeout = getattr(r, "timeout", None)
+    try:
+        r.timeout = 60
+        try:
+            r.call("wifi", "set_config", {"iface_name": BACKHAUL_IFACE, "enabled": bool(enabled)})
+        except Exception:
+            time.sleep(5)
+            for radio in (r.call("wifi", "get_config") or {}).get("res", []):
+                for i in radio.get("ifaces", []):
+                    if i.get("name") == BACKHAUL_IFACE and bool(i.get("enabled")) == bool(enabled):
+                        return
+            raise
+    finally:
+        if old_timeout is not None:
+            r.timeout = old_timeout
+
+
+def portal_backhaul_watch(r, st, now, bcfg, reachable=tcp_reachable):
+    """Room 0 only (this Pi is cabled to the Portal, which IS the backhaul AP). 2026-11-01:
+    after burrow0 switched the Portal's upstream (Loki -> Guess) the Portal's WormHole-Core AP
+    kept the one Tunnel already on it but refused every new association for an hour; Tunnels 1
+    and 3 fell back to Loki, Tunnel 2 sat dark after a reboot. Restarting that AP fixed it at
+    once. So: if no Tunnel's Pi has been reachable over the Portal LAN for 10 min, switch the
+    backhaul AP off and on (at most hourly). If every Tunnel has legitimately gone elsewhere,
+    nobody is on the AP and the kick costs nothing."""
+    if bcfg.get("room") != 0:
+        return
+    peers = [p.get("url") for p in (bcfg.get("peers") or {}).values() if isinstance(p, dict) and p.get("url")]
+    if not peers:
+        return
+    if any(reachable(u) for u in peers):
+        st["backhaul_peers_seen_at"] = int(now)
+        return
+    seen = st.setdefault("backhaul_peers_seen_at", int(now))     # first run after boot: start the clock
+    kicked = st.get("backhaul_kicked_at")
+    if now - seen < PORTAL_SILENT_KICK_S or (kicked and now - kicked < PORTAL_KICK_EVERY_S):
+        return
+    st["backhaul_kicked_at"] = int(now)
+    try:
+        set_backhaul_ap(r, False)
+        time.sleep(5)
+        set_backhaul_ap(r, True)
+        event(st, now, "no Tunnel reachable over the Portal for %d min: backhaul AP restarted" % ((now - seen) // 60))
+    except Exception as e:
+        try:
+            set_backhaul_ap(r, True)        # never leave it off
+        except Exception:
+            pass
+        event(st, now, "backhaul AP restart failed: %s" % str(e)[:80])
+
+
 def ensure_auto_connect(r, st, now):
     """The Opal must rejoin its saved networks by itself after a power cycle
     (repeater config "auto"); a Tunnel with it off sits flashing white until
@@ -644,6 +714,7 @@ def main(now=None, router_factory=None, cloud_check=None, wifi_factory=None):
         ensure_auto_connect(r, st, now)
         st["provider_bssid"] = (status.get("bssid") or (status.get("wpa_status") or {}).get("bssid") or "").lower() or None
         backhaul_election(r, st, now, cloud_ok, status)
+        portal_backhaul_watch(r, st, now, bcfg)
     except Exception as e:
         # The Opal's LAN itself is gone: nothing to join or reboot, just report
         # and get our own radio up so the report leaves the building.
