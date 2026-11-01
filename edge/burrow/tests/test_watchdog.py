@@ -3,6 +3,7 @@ a fake Opal / fake cloud / fake Wi-Fi (no network, no clock)."""
 import importlib.util
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -625,6 +626,23 @@ class ProvenFallbackTest(unittest.TestCase):
         self.assertEqual(w.up([], verify=ok), "Loki")
         w, joins, ok = self.make(scan, set())
         self.assertIsNone(w.up([], verify=ok))
+
+
+class StandbyTest(unittest.TestCase):
+    def test_a_standby_never_touches_the_opal(self):
+        tmp = tempfile.mkdtemp()
+        old = (wd.BURROW_CONFIG, wd.NEEDS_IDENTITY)
+        try:
+            wd.BURROW_CONFIG = os.path.join(tmp, "burrow.json")
+            wd.NEEDS_IDENTITY = os.path.join(tmp, "nope")
+            with open(wd.BURROW_CONFIG, "w") as f:
+                json.dump({"edge": "burrow2-sb-00b2", "room": 2, "role": "standby"}, f)
+            def no_router(*a, **k):
+                raise AssertionError("a standby must not talk to the Opal")
+            self.assertEqual(wd.main(now=1000, router_factory=no_router, cloud_check=lambda u: True), 0)
+        finally:
+            wd.BURROW_CONFIG, wd.NEEDS_IDENTITY = old
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 class FreshCloneTest(unittest.TestCase):

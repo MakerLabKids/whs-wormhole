@@ -759,6 +759,11 @@ def main(now=None, router_factory=None, cloud_check=None, wifi_factory=None):
         # burrow0's card, the Portal). Hands off until enrolment has made it someone.
         print("needs identity (fresh clone): watchdog idle")
         return 0
+    if (load_json(BURROW_CONFIG, {}) or {}).get("role") == "standby":
+        # an extra Pi in the room (roles.py): the room's own Pi steers this Opal; two
+        # watchdogs joining and rebooting the same Opal would fight
+        print("standby: the room's Pi runs the watchdog; idle")
+        return 0
     cfg = load_json(CONFIG, None)
     if cfg is None:
         print("no config at", CONFIG)

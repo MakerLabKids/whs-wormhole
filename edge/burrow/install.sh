@@ -45,7 +45,10 @@ install -m 644 "$HERE/systemd/burrow-identity.service" /etc/systemd/system/burro
 systemctl enable burrow-identity.service >/dev/null 2>&1 || true
 install -m 644 "$HERE/systemd/burrow.service" /etc/systemd/system/burrow.service
 install -m 644 "$HERE/systemd/tunnel-watchdog.service" "$HERE/systemd/tunnel-watchdog.timer" /etc/systemd/system/
+install -m 755 "$HERE/roles.py" /opt/burrow/roles.py
+install -m 644 "$HERE/systemd/burrow-role.service" "$HERE/systemd/burrow-role.timer" /etc/systemd/system/
 systemctl daemon-reload
+systemctl enable --now burrow-role.timer >/dev/null 2>&1 || true   # standby takeover, guest on another Opal, step-down
 if [ -f /etc/burrow/tunnel.json ]; then
   systemctl enable --now tunnel-watchdog.timer >/dev/null
 else

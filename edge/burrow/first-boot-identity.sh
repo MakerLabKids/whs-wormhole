@@ -43,7 +43,7 @@ if [ ! -f "$F" ] && [ -f "$MARK" ]; then
   done
   [ -n "$reply" ] || { echo "enrol: the Surface did not answer; will try next boot"; exit 0; }
   F=/run/burrow-identity.json
-  $py -c "import json,sys; r=json.loads(sys.argv[1]); json.dump({'edge': r['edge'], 'room': r['room'], 'cloud_token': r['token'], 'tunnel_token': r.get('tunnel_token')}, open(sys.argv[2], 'w'))" "$reply" "$F"
+  $py -c "import json,sys; r=json.loads(sys.argv[1]); json.dump({'edge': r['edge'], 'room': r['room'], 'role': r.get('role') or 'primary', 'cloud_token': r['token'], 'tunnel_token': r.get('tunnel_token')}, open(sys.argv[2], 'w'))" "$reply" "$F"
   echo "enrolled as $($py -c "import json; print(json.load(open('$F'))['edge'])") (room $room, serial $serial)"
 fi
 [ -f "$F" ] || exit 0
@@ -52,51 +52,10 @@ room=$($py -c "import json; print(json.load(open('$F')).get('room', ''))")
 n="${edge#burrow}"
 echo "first boot as $edge (room $room)"
 mount -o remount,rw /boot/firmware 2>/dev/null || true
-$py - "$F" "$edge" "$room" <<'PY'
-import json, os, sys
-f, edge, room = sys.argv[1], sys.argv[2], sys.argv[3]
-ident = json.load(open(f))
-p = "/etc/burrow/burrow.json"
-cfg = json.load(open(p)) if os.path.exists(p) else {}
-cfg["edge"] = edge
-if room != "": cfg["room"] = int(room)
-# peers: every other Burrow by its Tunnel's Portal-side forward; the local one is .10
-peers = {}
-for k in range(4):
-    other = "burrow%d" % k
-    if other != edge:
-        peers[other] = {"url": "http://192.168.80.%d:8080" % (10 if k == 0 else 20 + k)}
-cfg["peers"] = peers
-json.dump(cfg, open(p, "w"), indent=2)
-for key, path in (("cloud_token", "/etc/burrow/cloud.token"), ("tunnel_token", "/etc/cloudflared/token")):
-    if ident.get(key):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as out: out.write(ident[key])
-        os.chmod(path, 0o600)
-t = "/etc/burrow/tunnel.json"
-if os.path.exists(t):
-    tc = json.load(open(t))
-    r = int(room) if room != "" else int(edge[-1])
-    tc["host"] = "192.168.8%s.1" % r
-    ups = tc.get("upstreams") or []
-    if r == 0:
-        # room 0 is cabled to the Portal, which IS the backhaul AP: no WormHole-Core entry
-        tc["upstreams"] = [u for u in ups if u.get("ssid") != "WormHole-Core"]
-    elif not any(u.get("ssid") == "WormHole-Core" for u in ups):
-        # the donor was burrow0 (no backhaul entry, no backhaul key on its card): this Tunnel
-        # would fall back to BYLD/Loki instead of the Portal. Image a room 1-3 Pi, or fix with
-        # render_tunnel_json.py --room N (burrow2, 2026-11-01).
-        print("WARNING: tunnel.json has no WormHole-Core upstream (cloned from burrow0?)")
-    json.dump(tc, open(t, "w"), indent=2)
-PY
-hostnamectl set-hostname "$edge" 2>/dev/null || echo "$edge" > /etc/hostname
-# the donor's name in /etc/hosts makes every sudo complain "unable to resolve host"
-if grep -q '^127\.0\.1\.1' /etc/hosts; then sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t$edge/" /etc/hosts; else printf '127.0.1.1\t%s\n' "$edge" >> /etc/hosts; fi
-# the cable address: .10 on this room's Opal
-con=$(nmcli -t -f NAME,DEVICE connection show | awk -F: '$2=="eth0"{print $1}' | head -1)
-if [ -n "$con" ] && [ -n "$room" ]; then
-  nmcli connection modify "$con" ipv4.method manual ipv4.addresses "192.168.8$room.10/24" ipv4.gateway "192.168.8$room.1" ipv4.dns "192.168.8$room.1" || true
-fi
+# burrow.json, tokens (a standby gets no tunnel: the donor's token is removed), tunnel.json, hostname,
+# /etc/hosts, and the cable address (a room's Pi: static .10; a standby: DHCP) - roles.py, shared with
+# the takeover/step-down path, which never wipes anything
+$py /opt/burrow/roles.py apply "$F"
 # a clone carries the donor's data: start clean
 rm -rf /data/burrow/* 2>/dev/null || true
 # clone-card.sh makes /data a fresh root-owned ext4: the service (User=burrow) cannot create its

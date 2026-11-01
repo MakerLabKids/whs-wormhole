@@ -1,0 +1,9 @@
+[Unit]
+Description=Burrow role check: a standby takes over a silent room, a Pi on another room's Opal stays itself, a replaced Pi steps down (roles.py)
+After=network-online.target burrow.service
+ConditionPathExists=!/etc/burrow/needs-identity
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/burrow/roles.py tick
+TimeoutStartSec=180
