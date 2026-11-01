@@ -509,7 +509,10 @@
           ['surface', isNum(d.surface_mm) ? Math.round(d.surface_mm) : null, ' mm'], ['light', d.light_pct, '%'], ['parts', (function () { var p = partsOk(d); return p.total ? p.ok + '/' + p.total : null; })(), ''], ['buffered', isNum(d.buffered) && d.buffered > 0 ? d.buffered : null, ' rows']]
           .filter(function (x) { return x[1] != null && x[1] !== ''; })
           .map(function (x) { return '<div class="rd"><span class="k">' + x[0] + '</span><span class="v">' + (typeof x[1] === 'number' ? f1(x[1]) : esc(x[1])) + '<small>' + x[2] + '</small></span></div>'; }).join('') +
-        '</div>' + '<div class="spacer"></div><a class="btn ghost sm" href="/">← wall</a>';
+        '</div>' + '<div class="spacer"></div>' +
+        (S.local ? '<a class="btn ghost sm" href="/api/undated?uid=' + encodeURIComponent(uid) + '&csv=1" title="Readings this bin buffered while it had no clock: kept, in buffer order (boot, seconds since boot)">undated readings (CSV)</a> '
+                 : (isNum(room) ? '<a class="btn ghost sm" href="/api/edge/' + room + '/undated?uid=' + encodeURIComponent(uid) + '&csv=1" title="Readings this bin buffered while it had no clock: kept, in buffer order (boot, seconds since boot), from its room\'s Burrow">undated readings (CSV)</a> ' : '')) +
+        '<a class="btn ghost sm" href="/">← wall</a>';
     }
     /* messages for the bin's screen (Surface only, signed in; msg.js is the same widget the board's
        own page uses, here with a transport that posts to /api/messages and keeps the PIN per bin).

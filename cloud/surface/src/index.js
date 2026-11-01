@@ -69,13 +69,20 @@ async function handleApi(request, env, ctx, path) {
 // /signal twice a second; the Devices page may read status/events live.
 async function handleEdgeProxy(request, env, ctx, path) {
   if (request.method !== "GET") return err(405, "method not allowed");
-  const m = path.match(/^\/api\/edge\/([0-3])\/(signal|status|events)$/);
+  const m = path.match(/^\/api\/edge\/([0-3])\/(signal|status|events|undated)$/);
   if (!m) return err(404, "not found");
   const session = await getSession(request, env, ctx);
   if (!session) return err(401, "login required");
-  const upstream = env.LIVE_BASE
+  // undated readings (rows a Burrow kept but could not date), in buffer order: ?uid=&csv=1
+  let qs = "";
+  if (m[2] === "undated") {
+    const q = new URL(request.url).searchParams, uid = q.get("uid") || "";
+    if (!/^[0-9a-f]{6,32}$/.test(uid)) return err(400, "uid required");
+    qs = "?uid=" + uid + (q.get("csv") ? "&csv=1" : "");
+  }
+  const upstream = (env.LIVE_BASE
     ? `${env.LIVE_BASE.replace(/\/$/, "")}/burrow${m[1]}/api/${m[2]}`
-    : `https://burrow${m[1]}.${env.TUNNEL_DOMAIN}/api/${m[2]}`;
+    : `https://burrow${m[1]}.${env.TUNNEL_DOMAIN}/api/${m[2]}`) + qs;
   let up;
   try {
     up = await fetch(upstream, { headers: { "x-burrow-key": env.LIVE_KEY || "", accept: "application/json" }, signal: AbortSignal.timeout(6000) });
@@ -83,7 +90,10 @@ async function handleEdgeProxy(request, env, ctx, path) {
     return err(503, "edge offline");
   }
   if (!up.ok) return err(503, "edge offline", { status: up.status });
-  return new Response(up.body, { status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+  const ctype = up.headers.get("content-type") || "application/json; charset=utf-8";
+  const h = { "content-type": ctype, "cache-control": "no-store" };
+  if (ctype.startsWith("text/csv")) h["content-disposition"] = up.headers.get("content-disposition") || "attachment; filename=undated.csv";
+  return new Response(up.body, { status: 200, headers: h });
 }
 
 // GET /live/<room>[?watch=<uid,...>]: the Burrow's SSE stream, through its
