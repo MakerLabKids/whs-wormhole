@@ -6,3 +6,6 @@ ConditionPathExists=/etc/burrow/tunnel.json
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/python3 /opt/burrow/tunnel-watchdog.py
+# a run that hangs (DNS during an outage, a stuck nmcli) must not stop the timer for good:
+# the timer only fires again after the previous run ends
+TimeoutStartSec=240
