@@ -1,9 +1,17 @@
 // Enrolment: a Burrow is cattle. A Pi booted from a cloned card asks to be told who it is.
-//   POST /v1/enrol {secret, serial, room, eth_mac, wlan_mac}
-// secret: the fleet enrolment secret (ENROL_SECRET); room: 0-3, from the subnet its Opal gave it
-// (192.168.8<room>.x). Reply: {edge, room, token, tunnel_token?}. The token is new on every
-// enrolment; only its sha256 is stored, and the previous Pi's token for that room stops working.
+//   POST /v1/enrol {secret, serial, room, eth_mac, wlan_mac, promote?}
+// secret: the fleet enrolment secret (ENROL_SECRET); room: 0-9, from the subnet its Opal gave it
+// (192.168.8<room>.x). Reply: {edge, room, token, role, tunnel_token?}.
+//
+// An extra Pi must never break a room (2026-11-01). The room's identity (burrow<room>, its .10
+// address, its tunnel) goes to the asking Pi only when the room has no live Pi: none enrolled, the
+// same Pi again, or the holder has not reported for LIVE_S. Otherwise the asker becomes a STANDBY
+// (burrow<room>-sb-<serial tail>, role "standby": its own token, no tunnel, DHCP, no Opal watchdog).
+// A standby asks again with promote: true when it sees the room's Pi gone; the same rule decides.
+// A Pi whose token was refused (someone took over) asks again and is told it is a standby now.
 import { err, json, now, readJson, sha256Hex, timingSafeEqual } from "./util.js";
+
+export const LIVE_S = 10 * 60;          // a room's Pi that reported this recently keeps its identity
 
 function randomToken() {
   const b = new Uint8Array(24);
@@ -19,12 +27,16 @@ export async function enrol(request, env) {
   const serial = typeof body.serial === "string" && /^[0-9a-fA-F]{8,32}$/.test(body.serial) ? body.serial.toLowerCase() : null;
   const room = Number.isInteger(body.room) && body.room >= 0 && body.room <= 9 ? body.room : null;
   if (!serial || room === null) return err(400, "serial (hex) and room (0-9) required");
-  const edge = "burrow" + room;
-  const token = randomToken();
-  const prev = await env.DB.prepare("SELECT serial FROM enrolled WHERE edge = ?1").bind(edge).first();
-  const replaced = prev && prev.serial !== serial ? prev.serial : null;
-  const mac = (v) => (typeof v === "string" && /^[0-9a-fA-F:]{17}$/.test(v) ? v.toLowerCase() : null);
+  const primary = "burrow" + room;
   const t = now();
+  const prev = await env.DB.prepare("SELECT serial FROM enrolled WHERE edge = ?1").bind(primary).first();
+  const seen = await env.DB.prepare("SELECT updated_at FROM edges WHERE edge_id = ?1").bind(primary).first();
+  const holderLive = !!(prev && prev.serial !== serial && seen && seen.updated_at && t - seen.updated_at < LIVE_S);
+  const role = holderLive ? "standby" : "primary";
+  const edge = holderLive ? `${primary}-sb-${serial.slice(-4)}` : primary;
+  const token = randomToken();
+  const replaced = !holderLive && prev && prev.serial !== serial ? prev.serial : null;
+  const mac = (v) => (typeof v === "string" && /^[0-9a-fA-F:]{17}$/.test(v) ? v.toLowerCase() : null);
   await env.DB.prepare(
     `INSERT INTO enrolled (edge, token_hash, serial, room, eth_mac, wlan_mac, ip, enrolled_at, replaced)
      VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
@@ -35,12 +47,14 @@ export async function enrol(request, env) {
     request.headers.get("cf-connecting-ip") || null, t, replaced).run();
   try {
     await env.DB.prepare("INSERT INTO events (ts, edge, kind, level, text, data, received_at) VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?1)")
-      .bind(t, edge, "burrow.enrolled", replaced ? "warn" : "info",
-        replaced ? `a new Pi (${serial}) took over ${edge}, replacing ${replaced}` : `Pi ${serial} enrolled as ${edge}`).run();
+      .bind(t, edge, "burrow.enrolled", replaced || holderLive ? "warn" : "info",
+        holderLive ? `Pi ${serial} joined room ${room} as a standby (${edge}): ${primary} is alive, so it keeps the room`
+          : replaced ? `${body.promote ? "the standby" : "a new Pi"} ${serial} took over ${edge}, replacing ${replaced}` : `Pi ${serial} enrolled as ${edge}`).run();
   } catch (e) { /* the enrolment stands either way */ }
   const tunnels = (() => { try { return JSON.parse(env.TUNNEL_TOKENS || "{}"); } catch (e) { return {}; } })();
-  const out = { ok: true, edge, room, token };
-  if (typeof tunnels[edge] === "string" && tunnels[edge]) out.tunnel_token = tunnels[edge];
+  const out = { ok: true, edge, room, token, role };
+  if (holderLive) out.primary = primary;
+  else if (typeof tunnels[edge] === "string" && tunnels[edge]) out.tunnel_token = tunnels[edge];
   return json(out);
 }
 

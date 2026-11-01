@@ -261,7 +261,7 @@ async function notifyEvents(env, edge, rows) {
 // Is this Burrow's Cloudflare tunnel answering? (The Live page, the signal meter and the
 // 1 Hz view all ride on it; snapshots do not, so a dead tunnel is otherwise invisible.)
 export async function probeTunnel(env, edgeId) {
-  const room = (edgeId.match(/(\d)$/) || [])[1];
+  const room = (edgeId.match(/^burrow(\d)$/) || [])[1];      // a standby (burrow1-sb-ab12) has no tunnel
   if (room === undefined || !env.TUNNEL_DOMAIN || env.TUNNEL_PROBE === "0") return null;
   try {
     const r = await fetch(`https://burrow${room}.${env.TUNNEL_DOMAIN}/health`,

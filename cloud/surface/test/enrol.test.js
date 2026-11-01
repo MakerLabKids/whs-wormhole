@@ -47,3 +47,52 @@ describe("enrolment: a fresh Pi is told who it is", () => {
     expect((await ping("tok1")).status).toBe(200);
   });
 });
+
+describe("an extra Pi never breaks a room (standby, takeover, step-down)", () => {
+  beforeAll(async () => {
+    await applySchema();
+    await env.DB.prepare("DELETE FROM enrolled WHERE edge LIKE 'burrow2%'").run();     // the tests above used room 2
+    await env.DB.prepare("DELETE FROM edges WHERE edge_id LIKE 'burrow2%'").run();
+  });
+  const SECRET = "local-enrol-secret";
+  const snap = (token, edge, room) => SELF.fetch("https://example.com/v1/edge/snapshot", { method: "POST",
+    headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+    body: JSON.stringify({ edge, room, ts: Math.floor(Date.now() / 1000), bins: {}, status: {} }) });
+  const age = (edge, s) => env.DB.prepare("UPDATE edges SET updated_at = ?1 WHERE edge_id = ?2").bind(Math.floor(Date.now() / 1000) - s, edge).run();
+
+  it("a second Pi in a room whose Pi is alive becomes a standby; the room's Pi keeps everything", async () => {
+    const a = await (await enrol({ secret: SECRET, serial: "aaaa0000000000a1", room: 2 })).json();
+    expect(a).toMatchObject({ edge: "burrow2", role: "primary", tunnel_token: "tunnel-token-2" });
+    expect((await snap(a.token, "burrow2", 2)).status).toBe(200);              // it reports: alive
+    const b = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2 })).json();
+    expect(b).toMatchObject({ edge: "burrow2-sb-00b2", role: "standby", primary: "burrow2", room: 2 });
+    expect(b.tunnel_token).toBeUndefined();                                    // never the room's tunnel
+    expect((await ping(a.token)).status).toBe(200);                            // the room's Pi is untouched
+    expect((await ping(b.token)).status).toBe(200);
+    expect((await snap(b.token, "burrow2-sb-00b2", 2)).status).toBe(200);       // the standby reports as itself
+    expect((await snap(b.token, "burrow2", 2)).status).toBe(403);
+    const ev = await env.DB.prepare("SELECT text FROM events WHERE kind = 'burrow.enrolled' ORDER BY id DESC").first();
+    expect(ev.text).toMatch(/standby/);
+  });
+
+  it("the standby takes over only once the room's Pi has gone quiet; the old Pi's token stops", async () => {
+    let r = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2, promote: true })).json();
+    expect(r.role).toBe("standby");                                            // burrow2 reported moments ago
+    await age("burrow2", 11 * 60);                                             // quiet for 11 minutes
+    r = await (await enrol({ secret: SECRET, serial: "bbbb0000000000b2", room: 2, promote: true })).json();
+    expect(r).toMatchObject({ edge: "burrow2", role: "primary", tunnel_token: "tunnel-token-2" });
+    const old = await env.DB.prepare("SELECT replaced FROM enrolled WHERE edge = 'burrow2'").first();
+    expect(old.replaced).toBe("aaaa0000000000a1");
+    expect((await snap(r.token, "burrow2", 2)).status).toBe(200);
+  });
+
+  it("the old Pi, back again, is told it is a standby now (it steps down instead of fighting)", async () => {
+    const back = await (await enrol({ secret: SECRET, serial: "aaaa0000000000a1", room: 2 })).json();
+    expect(back).toMatchObject({ edge: "burrow2-sb-00a1", role: "standby", primary: "burrow2" });
+  });
+
+  it("a standby's name has no tunnel to probe", async () => {
+    const { probeTunnel } = await import("../src/alerts.js");
+    expect(await probeTunnel({ TUNNEL_DOMAIN: "x.example" }, "burrow2-sb-00a1")).toBe(null);
+  });
+});
