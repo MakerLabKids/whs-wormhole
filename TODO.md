@@ -42,10 +42,15 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       Update burrow0, watch it report the build; then the others one by one. (The Pi side was
       exercised tonight against GitHub directly: codeload stalled a 24 MB download, hence the
       bucket.)
-- [ ] **MicroPython 1.29.0** (2026-08-24; we ship 1.28.0): the bench board runs it since 2026-11-01
-      13:00 with no errors (joins, pushes, shows at exact speed, readings). Switch firmware/ and the
-      Start Here link to 1.29 for the reflash? (Viper IDE itself is current: v0.6.5, last commit
-      2026-10-05; all 15 install manifests resolve, 147 files; its installer handles our fs: entries.)
+- [ ] **Deploy the Surface** (`npx wrangler d1 execute wormhole --remote --file schema.sql`, then
+      `npx wrangler deploy`): standby enrolment (7c69e0c), Pico code releases (5b8067e). Then a live
+      code update on the bench board (bin 38) from the Devices page. Golden image is 7c69e0c
+      (standby-aware, 2026-11-01 13:56); burn spares from it. Older images
+      burrow-golden-0514253 / -73219d5 can be deleted.
+- [x] **Extra Pis never break a room** and **Pico code over Wi-Fi**: built and tested 2026-11-01
+      (roles.py + Surface enrol; lib/ota.py + boot.py + Burrow relay + Devices panel; e2e 11/11
+      against real GitHub). On all four Pis; on the bench board.
+- [x] **MicroPython 1.29.0**: the default since 2026-11-01 (firmware/, all links, fleet flasher).
 - [ ] **Reflash the classroom Picos** with the fleet flasher (`tools/fleet/flash.py`): everything
       since picolab 0.2.1 (marquee, shows, boot sequence, buffer + backfill, fixed addresses +
       PINs, messages over Wi-Fi/website/Bluetooth, link icon, NOT CONNECTED cards, dead-network

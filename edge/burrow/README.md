@@ -233,3 +233,19 @@ tokens if given, wipes the cloned data, reboots. No flasher, no setup script.
 
 **Readings are never thrown away.** See `/api/undated` above: rows the Burrow
 cannot date are stored in buffer order, not dropped.
+
+## Extra Pis never break a room (roles.py, 2026-11-01)
+
+- **A second Pi in a room whose Pi is alive** becomes a **standby** (`burrowN-sb-xxxx`): the
+  Surface hands the room's identity (burrowN, its .10, its tunnel) only to a Pi when the room has
+  no live Pi (none, the same Pi again, or silent 10 min). A standby has its own token, a DHCP
+  address, no tunnel (a clone's donor token is removed) and no Opal watchdog. It takes over by
+  itself only when the room's .10 has been silent 6 min AND the Surface agrees (10 min without a
+  report); it then becomes burrowN and reboots. Nothing is wiped.
+- **A Pi on another room's Opal** (its .10 does not fit: gateway silent 5 min with the cable in,
+  ping or web page) takes DHCP and stays itself, uploading as before; back on its own network it
+  goes back to .10. It never touches the host room's Opal.
+- **A replaced Pi** (its token refused 10 min) asks again and steps down to standby.
+- Cards from before standbys (golden image older than 7c69e0c) are turned away (409) from a room
+  with a live Pi: they stay on DHCP, harmless.
+- `burrow-role.timer` runs `roles.py tick` every 2 min (log: /data/burrow/role-events.log).

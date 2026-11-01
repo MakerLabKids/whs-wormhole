@@ -256,3 +256,14 @@ Or use the one-click install link in the repo README.
 ---
 
 Fresh board? Flash the [tested MicroPython build](https://github.com/MakerLabKids/whs-wormhole/raw/main/firmware/RPI_PICO2_W-20260824-v1.29.0.uf2) first: hold BOOTSEL while plugging in, drop the file on the drive that appears, done. Details in [firmware/](../../firmware).
+
+## Code updates over Wi-Fi (lib/ota.py, boot.py)
+
+An admin makes a release from a commit on the website's Devices page ("Update the Bins' code"),
+sends it to one bin, then to every bin. The bin fetches the code files from its Burrow (checked
+against their sha256), and keeps everything that is not code: its name and bin settings, shows
+and shows.txt, messages, calibration, Wi-Fi, buffered readings. The settings in **its own
+main.py** carry over too: every `NAME = value` line of the config section, and every part
+commented out of `PARTS`. `boot.py` switches the files over and gives the new code 5 minutes to
+prove itself (main.py confirms after a minute); if it crashes or hangs, the old files come back
+and that version is never tried again. `boot.py` itself only changes with a reflash.
