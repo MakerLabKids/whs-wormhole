@@ -37,7 +37,7 @@ export async function handleEdge(request, env, ctx, path) {
 
   if (path === "/v1/edge/ping" && m === "GET") return json({ ok: true, ts: now() });
   if (path === "/v1/edge/snapshot" && m === "POST") return snapshot(request, env, edge);
-  if (path === "/v1/edge/events" && m === "POST") return postEvents(request, env, edge);
+  if (path === "/v1/edge/events" && m === "POST") return postEvents(request, env, edge, ctx);
   if (path === "/v1/edge/rollups" && m === "POST") return rollups(request, env);
   if (path === "/v1/edge/verify" && m === "POST") return verify(request, env);
   if (path.startsWith("/v1/edge/rollout/") && m === "GET") return rolloutTarball(env, path.slice("/v1/edge/rollout/".length));

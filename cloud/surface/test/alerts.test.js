@@ -5,6 +5,16 @@ import { BUFFER_ALERT_ROWS, SILENT_S, sameOpal, watchEdges } from "../src/alerts
 
 const T = Math.floor(Date.now() / 1000);
 
+// notifications now run after the reply (ctx.waitUntil): poll for their effect
+async function until(cond, ms = 3000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (await cond()) return;
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  throw new Error("condition not met in " + ms + " ms");
+}
+
 describe("events from Burrows", () => {
   beforeAll(applySchema);
 
@@ -14,7 +24,7 @@ describe("events from Burrows", () => {
       { ts: T - 1, kind: "burrow.start", level: "info", text: "burrow1 v0.1.0 started" },
     ] }) });
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ ok: true, n: 2, notified: 0 });
+    expect(await r.json()).toEqual({ ok: true, n: 2, new: 2, dup: 0 });
     const rows = (await env.DB.prepare("SELECT edge, kind, level, text, data FROM events ORDER BY id").all()).results;
     expect(rows.length).toBe(2);
     expect(rows[0]).toMatchObject({ edge: "burrow1", kind: "bin.quiet", level: "warn" });
@@ -29,12 +39,14 @@ describe("events from Burrows", () => {
     let r = await edgeFetch("burrow1", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow1", events: [
       { ts: T, kind: "opal", level: "alert", text: "down 15 min: rebooted the Opal (#1)" }] }) });
     expect((await r.json()).ok).toBe(true);
+    await until(async () => (await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE closed_at IS NULL").first("n")) === 1);
     let open = (await env.DB.prepare("SELECT key, edge, text, closed_at, notify_error FROM alerts WHERE closed_at IS NULL").all()).results;
     expect(open.length).toBe(1);
     expect(open[0]).toMatchObject({ key: "event:burrow1:opal", edge: "burrow1", notify_error: "no ALERT_URL" });
     // same alert again within 15 min: no second row
     await edgeFetch("burrow1", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow1", events: [
       { ts: T + 60, kind: "opal", level: "alert", text: "down 16 min: rebooted the Opal (#2)" }] }) });
+    await new Promise((res) => setTimeout(res, 200));     // let the background notification run
     expect((await env.DB.prepare("SELECT COUNT(*) n FROM alerts").first("n"))).toBe(1);
   });
 
@@ -67,7 +79,7 @@ describe("a neighbour reports a dead Burrow", () => {
     expect(open).toEqual([{ key: "edge:burrow2", edge: "burrow2" }]);
     await edgeFetch("burrow3", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow3", events: [
       { ts: T + 90, kind: "peer.back", level: "info", text: "burrow2 reachable again after 1 min", data: { peer: "burrow2" } }] }) });
-    expect(await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE closed_at IS NULL AND key = 'edge:burrow2'").first("n")).toBe(0);
+    await until(async () => (await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE closed_at IS NULL AND key = 'edge:burrow2'").first("n")) === 0);
   });
 
   it("a bare host in ALERT_URL gets https:// in front", async () => {
@@ -243,5 +255,56 @@ describe("sameOpal: a follower's provider BSSID against an Opal's station MAC", 
     expect(sameOpal("94:83:C4:84:D2:0C", "92:83:c4:84:d2:0b")).toBe(true);
     expect(sameOpal("94:83:c4:85:33:a4", "92:83:c4:84:d2:0b")).toBe(false);
     expect(sameOpal(null, "92:83:c4:84:d2:0b")).toBe(false);
+  });
+});
+
+describe("re-sent batches and slow notifiers (2026-11-01)", () => {
+  beforeAll(async () => { await applySchema(); await env.DB.prepare("UPDATE alerts SET closed_at = 1 WHERE closed_at IS NULL").run(); });
+
+  it("a re-sent batch is stored and alerted once (burrow1 re-sent one ~50 times on 2026-11-01)", async () => {
+    const batch = { edge: "burrow3", events: [
+      { ts: T - 50, kind: "peer.down", level: "alert", text: "burrow9 unreachable for 30 s (timed out)", data: { peer: "burrow9" } },
+      { ts: T - 40, kind: "peer.back", level: "info", text: "burrow9 reachable again after 1 min", data: { peer: "burrow9" } },
+      { ts: T - 30, kind: "opal", level: "alert", text: "cable healthy again: Wi-Fi fallback dropped" }] };
+    const count = async () => [await env.DB.prepare("SELECT COUNT(*) n FROM events WHERE edge = 'burrow3'").first("n"),
+                               await env.DB.prepare("SELECT COUNT(*) n FROM alerts WHERE edge IN ('burrow3', 'burrow9')").first("n")];
+    let r = await edgeFetch("burrow3", "/v1/edge/events", { method: "POST", body: JSON.stringify(batch) });
+    expect(await r.json()).toEqual({ ok: true, n: 3, new: 3, dup: 0 });
+    await until(async () => (await count())[1] === 2);       // edge:burrow9 (opened, closed) + event:burrow3:opal
+    const after = await count();
+    for (let i = 0; i < 3; i++) {
+      r = await edgeFetch("burrow3", "/v1/edge/events", { method: "POST", body: JSON.stringify(batch) });
+      expect(await r.json()).toEqual({ ok: true, n: 3, new: 0, dup: 3 });
+    }
+    await new Promise((res) => setTimeout(res, 200));
+    expect(await count()).toEqual(after);
+    // a repeat inside one batch counts once too
+    r = await edgeFetch("burrow3", "/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow3", events: [
+      { ts: T - 20, kind: "note", text: "x" }, { ts: T - 20, kind: "note", text: "x" }] }) });
+    expect(await r.json()).toEqual({ ok: true, n: 2, new: 1, dup: 1 });
+  });
+
+  it("replies before the notifier answers (a slow notifier made the Burrow time out)", async () => {
+    const { postEvents } = await import("../src/alerts.js");
+    const real = globalThis.fetch;
+    let release, calls = 0;
+    const gate = new Promise((res) => { release = res; });
+    globalThis.fetch = async () => { calls++; await gate; return new Response("ok"); };
+    const pending = [];
+    const ctx = { waitUntil: (p) => pending.push(p) };
+    try {
+      const req = new Request("https://x/v1/edge/events", { method: "POST", body: JSON.stringify({ edge: "burrow2", events: [
+        { ts: T - 7, kind: "opal", level: "alert", text: "slow notifier test" }] }) });
+      const r = await postEvents(req, { ...env, ALERT_URL: "https://ntfy.example/t" }, "burrow2", ctx);
+      expect(await r.json()).toEqual({ ok: true, n: 1, new: 1, dup: 0 });   // answered while the notifier still hangs
+      expect(pending.length).toBe(1);
+      await until(async () => calls === 1);
+      release();
+      await Promise.all(pending);
+    } finally {
+      globalThis.fetch = real;
+    }
+    const row = await env.DB.prepare("SELECT last_notified FROM alerts WHERE key = 'event:burrow2:opal'").first();
+    expect(row.last_notified).toBeTruthy();
   });
 });

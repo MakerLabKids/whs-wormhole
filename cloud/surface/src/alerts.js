@@ -173,7 +173,15 @@ export async function closeAlert(env, key, title, text, t = now()) {
 }
 
 // POST /v1/edge/events {edge, events: [{ts, kind, level, text, data?}]}
-export async function postEvents(request, env, edge) {
+// Replies as soon as the events are stored; the notifications run after the reply
+// (ctx.waitUntil). And a batch the Burrow sends again is recognised (same edge, ts, kind,
+// text) and neither stored nor notified twice.
+// 2026-11-01: this used to notify every alert in the batch, one ntfy call after another,
+// BEFORE replying. With a slow notifier a 48-event batch took longer than the Burrow's 20 s
+// timeout, so burrow1 saw a failure and re-sent the same batch every 20-30 s: 8 events
+// stored ~50 times each in 20 minutes, each copy opening/closing alerts and calling ntfy,
+// hundreds of sends an hour, until ntfy refused them all.
+export async function postEvents(request, env, edge, ctx = null) {
   const body = await readJson(request, 512 << 10);
   if (body.edge !== edge) return err(403, "edge does not match token");
   if (!Array.isArray(body.events)) return err(400, "events[] required");
@@ -188,14 +196,43 @@ export async function postEvents(request, env, edge) {
       data: e.data && typeof e.data === "object" ? JSON.stringify(e.data).slice(0, 2000) : null,
     });
   }
+  const fresh = await newEventsOnly(env, edge, rows);
   const stmts = [];
-  for (const part of chunks(rows, 12)) {
+  for (const part of chunks(fresh, 12)) {
     const sql = "INSERT INTO events (ts, edge, kind, level, text, data, received_at) VALUES " + part.map(() => "(?, ?, ?, ?, ?, ?, ?)").join(", ");
     const params = [];
     for (const r of part) params.push(r.ts, edge, r.kind, r.level, r.text, r.data, t);
     stmts.push(env.DB.prepare(sql).bind(...params));
   }
   if (stmts.length) await env.DB.batch(stmts);
+  const work = notifyEvents(env, edge, fresh).catch((e) => console.error("notifyEvents", e?.stack || e));
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(work);
+  else await work;
+  return json({ ok: true, n: rows.length, new: fresh.length, dup: rows.length - fresh.length });
+}
+
+const eventKey = (r) => `${r.ts}|${r.kind}|${r.text}`;
+
+// The rows of this batch not already stored (a re-sent batch, or a repeat inside one).
+export async function newEventsOnly(env, edge, rows) {
+  const seen = new Set();
+  const tss = [...new Set(rows.map((r) => r.ts))];
+  for (const part of chunks(tss, 90)) {
+    const q = `SELECT ts, kind, text FROM events WHERE edge = ? AND ts IN (${part.map(() => "?").join(", ")})`;
+    const { results } = await env.DB.prepare(q).bind(edge, ...part).all();
+    for (const r of results) seen.add(eventKey(r));
+  }
+  const out = [];
+  for (const r of rows) {
+    const k = eventKey(r);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out;
+}
+
+async function notifyEvents(env, edge, rows) {
   let notified = 0;
   for (const r of rows) {
     const data = r.data ? safeParse(r.data, {}) : {};
@@ -218,7 +255,7 @@ export async function postEvents(request, env, edge) {
       await closeAlert(env, `event:${edge}:${r.kind.replace(".back", r.kind === "bin.back" ? ".quiet" : ".down")}`, `${edge}: back`, r.text);
     }
   }
-  return json({ ok: true, n: rows.length, notified });
+  return notified;
 }
 
 // Is this Burrow's Cloudflare tunnel answering? (The Live page, the signal meter and the
