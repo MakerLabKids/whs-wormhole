@@ -19,8 +19,12 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       Portal moved to Loki with remember; saved: Guess, Loki). The backhaul AP did NOT wedge
       this time (Tunnel 1 rejoined it in 6 s at 10:14), but hostapd logs "Failed to set beacon
       parameters" every 6 s since that switch: watch for it after the next upstream switch.
-- [ ] **Deploy watchdog 7223efa to burrow0, 2, 3** (one at a time): hold-before-switch +
-      return-home. On burrow1 since 10:28 2026-11-01, return-home proven there.
+- [x] **Watchdog hold-before-switch + return-home** on all four Pis (2026-11-01 11:05: burrow1
+      7223efa, the rest 9c5ba9c, same code). Repeat rejoin trials 10:16-10:57: 60 s outage ->
+      back in 18-19 s, 5 min -> 42 s; an Opal returns to the network it was last told to join.
+- [ ] **Portal hostapd "Failed to set beacon parameters"** every 6 s since its 08:59 switch to
+      Loki (2.4 GHz AP dragged to ch 11). Harmless so far; if a Bin in room 0 can't join the
+      Portal's WormHole, `wifi up radio0` on the Portal (or reboot it) is the first thing to try.
 - [ ] **Teach each Tunnel a fallback at school**: `tools/routers/teach-fallback.py
       192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN, or on the Pi). At home they know Loki
       (Tunnel 3 saved it 2026-11-01; Tunnels 1 and 2 have only the backhaul saved).
