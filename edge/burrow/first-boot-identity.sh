@@ -80,6 +80,8 @@ if os.path.exists(t):
     json.dump(tc, open(t, "w"), indent=2)
 PY
 hostnamectl set-hostname "$edge" 2>/dev/null || echo "$edge" > /etc/hostname
+# the donor's name in /etc/hosts makes every sudo complain "unable to resolve host"
+if grep -q '^127\.0\.1\.1' /etc/hosts; then sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t$edge/" /etc/hosts; else printf '127.0.1.1\t%s\n' "$edge" >> /etc/hosts; fi
 # the cable address: .10 on this room's Opal
 con=$(nmcli -t -f NAME,DEVICE connection show | awk -F: '$2=="eth0"{print $1}' | head -1)
 if [ -n "$con" ] && [ -n "$room" ]; then
@@ -87,6 +89,9 @@ if [ -n "$con" ] && [ -n "$room" ]; then
 fi
 # a clone carries the donor's data: start clean
 rm -rf /data/burrow/* 2>/dev/null || true
+# clone-card.sh makes /data a fresh root-owned ext4: the service (User=burrow) cannot create its
+# own folder there (burrow2, 2026-11-01: PermissionError on /data/burrow, restart loop)
+install -d -m 755 -o burrow -g burrow /data/burrow 2>/dev/null || install -d -m 755 /data/burrow
 rm -f "$F" "$MARK"
 sync
 echo "identity applied; rebooting into it"
