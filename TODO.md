@@ -3,33 +3,33 @@
 Open items, newest first. Tick them off or delete them; the git log is the
 record of what got done.
 
-## Deploy (from 2026-10-31)
+## Deploy (from 2026-10-31; updated 2026-11-01 morning)
 
-- [ ] **Teach each Tunnel a fallback at school** (now that joins remember, it actually saves): `tools/routers/teach-fallback.py
-      192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN). At home they know Loki.
-- [ ] **Save the backhaul on Tunnels 1 and 2** (`remember`, found 2026-11-01: every Opal's saved
-      list was empty, so auto-connect had nothing to rejoin). Tunnel 3 done 2026-11-01. One rejoin
-      each: `tools/routers/join-backhaul.py N` from the Tunnel's LAN, about 20 s offline. Then the
-      Portal: it is on Loki with nothing saved.
-- [ ] **Prove auto-connect with a saved hidden backhaul**: with the backhaul saved on a Tunnel,
-      switch the Portal's 5 GHz off for 60 s and on again; the Tunnel must be back on WormHole-Core
-      within 2 min with its Pi's watchdog paused. (Replaces the "unhide the backhaul" question:
-      hidden was not the cause.)
-- [ ] **Secrets for the Surface** (the deploy + schema are live as of 2026-11-01; the enrol
-      endpoint answers "not configured" until these exist). From cloud/surface:
-      `../../tools/surface-secret.sh ENROL_SECRET | npx wrangler secret put ENROL_SECRET` and
-      `../../tools/surface-secret.sh TUNNEL_TOKENS | npx wrangler secret put TUNNEL_TOKENS`.
-      The .env names are `enrol_secret` (already on the Pis) and `TUNNEL_TOKENS` (JSON of the four
-      cloudflared tokens, collected from the Pis on 2026-11-01). `ENROLL_SECRET` in .env is unused.
-- [ ] **Cloudflare: SSH hostnames** (not done yet: none of them resolve on 2026-11-01). Four entries, one
-      per tunnel, exact fields in edge/burrow/README "Reaching a Pi from anywhere".
-      Then `tools/ssh-burrow.sh N` from anywhere (needs cloudflared on the laptop).
-- [ ] **First real rollout**: after the Surface deploy, admin page -> Devices -> paste a commit,
+Done 2026-11-01: Surface deploy + schema + ENROL_SECRET + TUNNEL_TOKENS; the four ssh-burrowN
+hostnames (SSH through Cloudflare works on all four); burrow2 rebuilt from a cloned card and
+enrolled; all four Pis on the same build; every Tunnel has WormHole-Core saved (`remember`) and
+is on the backhaul; the Portal's backhaul AP watch on burrow0.
+
+- [ ] **Decide: unhide the backhaul?** Back on the table. 2026-11-01 08:01-08:07: Tunnel 2, with
+      WormHole-Core SAVED, auto-connect on and its Pi's watchdog paused, did NOT rejoin the
+      (freshly restarted, working) backhaul by itself in 6 min; one explicit join from its Pi got
+      it in 20 s. Tunnel 3's auto-connect DID fall back to Loki (visible, saved). Not conclusive:
+      Tunnel 2 had just failed several joins against the broken AP and GL backs off to 5-min
+      retries. Clean retest: Portal 5 GHz off 60 s / on, Tunnel watchdogs paused, watch 15 min.
+      Today the Pis' watchdogs do the rejoin, so this only matters for a Tunnel whose Pi is down.
+- [ ] **Save the Portal's own upstreams** (it is on Guess with only Guess saved): its Pi's
+      watchdog now joins with remember, so this fills in as it switches; or rejoin Loki once.
+- [ ] **Teach each Tunnel a fallback at school**: `tools/routers/teach-fallback.py
+      192.168.80.2N BYLD` for N = 1..3 (from the Portal's LAN, or on the Pi). At home they know Loki
+      (Tunnel 3 saved it 2026-11-01; Tunnels 1 and 2 have only the backhaul saved).
+- [ ] **New golden image** from burrow3 (room 3: its tunnel.json has the backhaul entry; all clone
+      fixes): /workspace/burrow-golden.img.gz. A clone from burrow0's card lacks the backhaul upstream.
+- [ ] **Burrow2's buffered data** before 2026-10-29: its old card was binned (a laptop could not
+      read it). Most of it had already reached the Surface.
+- [ ] **First real rollout** (the Surface deploy is live): admin page -> Devices -> paste a commit,
       Update burrow0, watch it report the build; then the others one by one. (The Pi side was
       exercised tonight against GitHub directly: codeload stalled a 24 MB download, hence the
       bucket.)
-- [ ] **burrow2**: `clone-card.sh image 0 golden.img.gz`, `clone-card.sh write ... /dev/sdX 2`, boot
-      it on Opal 2. Then Tunnel 2 is nursed by it.
 - [ ] **Reflash the classroom Picos** with the fleet flasher (`tools/fleet/flash.py`): everything
       since picolab 0.2.1 (marquee, shows, boot sequence, buffer + backfill, fixed addresses +
       PINs, messages over Wi-Fi/website/Bluetooth, link icon, NOT CONNECTED cards, dead-network

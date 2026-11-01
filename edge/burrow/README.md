@@ -155,16 +155,33 @@ followed anyway. It switches a disabled backhaul AP back on. A real handover
 needs followers that join WormHole-Core by name (not BSSID) and a test that
 a provider can drop its AP safely; `ELECTION_ACTS` turns the acting path on.
 
-**Power cycles.** Every Opal rejoins its SAVED networks by itself (the
-watchdog keeps "auto" on). GL.iNet saves a network only when the join call
-says `remember: true`; until 2026-11-01 none of ours did, so every Opal's
-saved list was empty and auto-connect had nothing to go back to (Tunnel 2
-sat idle the evening of 2026-10-31; it was blamed on the hidden backhaul,
-wrongly: the firmware keeps a directed-scan flag per saved hidden network).
-Every join now remembers, and the watchdog reports `saved_networks`.
-`tools/routers/teach-fallback.py HOST SSID [key_env]` saves a second
-network (Loki at home, BYLD at school) so a Tunnel also has somewhere to go
-when the Portal itself is gone. Picos stagger their first join by up to ten seconds.
+**Power cycles.** An Opal's own auto-connect only walks its SAVED list, and
+GL.iNet saves a network only when the join says `remember: true`; until
+2026-11-01 none of ours did, so every saved list was empty. Every join now
+remembers, and the watchdog reports `saved_networks`. Whether an Opal rejoins
+a saved HIDDEN network by itself is still open: on 2026-11-01 Tunnel 2 (backhaul
+saved, its Pi's watchdog paused) did not rejoin in 6 min, while Tunnel 3 did fall
+back to the visible, saved Loki. Today the Pis' watchdogs do the rejoin either way.
+`tools/routers/teach-fallback.py HOST SSID [key_env]` saves a second network
+(Loki at home, BYLD at school) for when the Portal itself is gone.
+
+**The Portal's backhaul AP stops taking new Tunnels.** 2026-11-01: after burrow0
+moved the Portal's upstream (Loki -> Guess), WormHole-Core kept the Tunnel already
+on it but refused every new association for an hour (Tunnels 1 and 3 fell back
+to Loki; a rebooted Tunnel 2 stayed dark). Restarting that AP fixed it at once.
+burrow0's watchdog now does that by itself: no Tunnel's Pi reachable over the
+Portal LAN for 10 min -> backhaul AP off and on, at most hourly.
+
+**A Tunnel's 2.4 GHz WormHole can wedge too.** Tunnel 2's refused every client
+(right key, WPA2, enabled) until the Opal was rebooted. Not yet detected
+automatically; a Pi can probe it with its own Wi-Fi.
+
+**Cloning (proven 2026-11-01 on burrow2, with fixes).** Image a room 1-3 Pi
+(`clone-card.sh image 3 ...`; burrow0's tunnel.json has no backhaul entry), write
+with `clone-card.sh write IMG /dev/sdX` (boot + root only, about 4 min), boot it
+on the room's Opal: it takes DHCP, reads its room from 192.168.8N.x, enrols with
+the Surface (name, upload token, tunnel token), reboots as burrowN on .10. Its
+watchdog stays idle until then (the donor's settings point at the donor's Opal).
 
 **Proven live (2026-11-01).** Cutting a Pi's cable (`tools/fault-test.sh`):
 its own Wi-Fi took over and its uploads continued (burrow3, through Tunnel 2,
