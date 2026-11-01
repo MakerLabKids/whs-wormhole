@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Make your own show</title>
+<link rel="stylesheet" href="guide.css">
+<style>
+  .step { display: flex; gap: 16px; align-items: flex-start; margin: 18px 0; }
+  .step .n { flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--green);
+             color: #FFF; font-weight: bold; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+  .step .body { flex: 1; min-width: 0; }
+  .step h3 { margin: 4px 0 6px 0; }
+  .note { background: var(--light); border-left: 5px solid var(--blue); border-radius: 8px; padding: 10px 14px; font-size: 14px; margin: 10px 0; }
+  .warn { border-left-color: var(--orange); }
+  .tool { background: var(--light); border-radius: 12px; padding: 16px; margin: 18px 0; box-shadow: 0 2px 8px rgba(27,58,92,0.10); }
+  .tool .row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 10px 0; }
+  .tool label { font-size: 14px; font-weight: 600; color: var(--navy); }
+  .tool input[type=text] { font-size: 16px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; width: 12em; }
+  .tool input[type=range] { vertical-align: middle; width: 140px; }
+  .tool select { font-size: 14px; padding: 4px; }
+  .oled { width: 100%; max-width: 512px; aspect-ratio: 2 / 1; background: #05070B; border-radius: 10px;
+          border: 6px solid #1E293B; image-rendering: pixelated; display: block; }
+  .stat { font-size: 14px; color: var(--gray); }
+  .stat b { color: var(--ink); }
+  .err { color: var(--red); font-weight: 600; font-size: 14px; }
+  button, .dl { font-size: 15px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 0; cursor: pointer;
+                background: var(--blue); color: #FFF; text-decoration: none; display: inline-block; }
+  button.g, .dl { background: var(--green); }
+  button:disabled, .dl.off { background: #B8C2CC; pointer-events: none; }
+  code.f { background: #EEF2F6; padding: 1px 5px; border-radius: 4px; }
+  table.names { border-collapse: collapse; font-size: 14px; }
+  table.names td { padding: 3px 12px 3px 0; }
+  pre.list { background: #1E293B; color: #E2E8F0; padding: 10px 14px; border-radius: 8px; font-size: 14px; overflow-x: auto; }
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+  <a class="brand" href="index.html">&#129714; Wormhole</a>
+  <div class="links">
+    <a class="nl" href="index.html">Home</a><a class="nl" href="start.html">Start Here</a>
+    <a class="nl" href="sessions.html">Sessions</a><a class="nl" href="stations.html">Sensors</a>
+    <a class="nl" href="research.html">Ideas</a><a class="nl" href="demos/mission-control.html">Demos</a>
+    <a class="nl" href="glossary.html">Glossary</a><a class="nl" href="cheatsheet.html">Code</a>
+    <a class="nl" href="reset.html">Fix a Board</a><a class="nl" href="tools.html">Board Tools</a>
+  </div>
+</div></nav>
+<div class="wrap">
+  <h1>Make your own show</h1>
+  <p class="lead">Your bin's screen plays little shows between its name and its readings: the
+     <a href="splash.html">ten worm screens</a>, and anything your team makes. A <b>picture</b> is one
+     drawing; a <b>video</b> is a stack of drawings played fast, like a flip book. You draw it, this
+     page turns it into a <b>show file</b>, and you put that file on the bin.</p>
+
+  <div class="note"><b>The screen is tiny and only black and white.</b> It is 128 dots wide and 64
+     tall, and every dot is either lit or dark. No colors, no grey. Bold shapes and thick lines
+     look best; one-dot details can vanish. Plan for that and your show will look great.</div>
+
+  <h2>1. Draw it</h2>
+  <div class="step"><div class="n">1</div><div class="body">
+    <h3>Open Piskel</h3>
+    <p>Go to <a class="ext" href="https://www.piskelapp.com/p/create">piskelapp.com</a> in Chrome or Edge
+       and click <b>Create Sprite</b>. Nothing to install and no account needed (you can save your
+       work to the computer as you go).</p>
+  </div></div>
+  <div class="step"><div class="n">2</div><div class="body">
+    <h3>Make the canvas the size of the screen</h3>
+    <p>On the right, open <b>Resize</b> (the icon with the arrows). Untick
+       <i>Maintain aspect ratio</i>, type <b>128</b> for width and <b>64</b> for height, and click
+       <b>Resize</b>. Smaller works too (it gets centred on the screen); bigger gets shrunk to fit.</p>
+  </div></div>
+  <div class="step"><div class="n">3</div><div class="body">
+    <h3>Draw with one color on the see-through background</h3>
+    <p>Whatever you draw lights up; whatever you leave see-through stays dark. Use the pen, the
+       line and rectangle tools, and a pen size of 2 or more for anything that should stand out.
+       Text: the screen's own letters are 8 dots tall, so any letters smaller than that will be
+       hard to read.</p>
+  </div></div>
+  <div class="step"><div class="n">4</div><div class="body">
+    <h3>A video? Add frames</h3>
+    <p>The <b>frames</b> are down the left side. Click <b>Add new frame</b> (or the copy icon on a frame
+       to start from the one before) and change your drawing a little each time. The <b>FPS</b>
+       slider at the top right is how many frames play each second: 5 to 10 looks good on the bin,
+       and it can go up to 20. A video can have up to 100 frames.</p>
+  </div></div>
+  <div class="step"><div class="n">5</div><div class="body">
+    <h3>Export</h3>
+    <p>On the right, open <b>Export</b>. A picture: the <b>PNG</b> tab, <b>Download</b>. A video: the
+       <b>GIF</b> tab, <b>Download</b>. You can also use a picture from anywhere (a photo, a logo):
+       the converter below shrinks it and turns it black and white; check the preview.</p>
+  </div></div>
+
+  <h2>2. Turn it into a show file</h2>
+  <div class="tool" id="tool">
+    <div class="row">
+      <label>Your drawing <input type="file" id="file" accept="image/png,image/gif,image/jpeg,image/webp,image/bmp,.pbm"></label>
+      <button type="button" id="sample">Or try a sample worm</button>
+    </div>
+    <div id="msg" class="err"></div>
+    <canvas class="oled" id="oled" width="512" height="256"></canvas>
+    <div class="stat" id="stat">Pick a PNG (a picture) or a GIF (a video). The preview shows exactly what the bin will show.</div>
+    <div class="row">
+      <label>What lights up
+        <select id="mode">
+          <option value="auto">Automatic</option>
+          <option value="drawn">What I drew (see-through stays dark)</option>
+          <option value="bright">Bright parts</option>
+          <option value="dark">Dark parts</option>
+        </select></label>
+      <label>Cut-off <input type="range" id="cut" min="1" max="254" value="128"></label>
+      <label><input type="checkbox" id="dither"> Dots for grey (good for photos)</label>
+    </div>
+    <div class="row">
+      <label>Speed <input type="range" id="fps" min="1" max="20" value="10"> <span id="fpsv">10</span> frames a second</label>
+      <label>Last frame stays <input type="range" id="hold" min="0" max="300" value="40"> <span id="holdv">4.0</span> s</label>
+    </div>
+    <div class="row">
+      <label>Show name <input type="text" id="name" value="my-show" maxlength="24" spellcheck="false"></label>
+      <a class="dl off" id="dl" download="my-show.pbm">Download my-show.pbm</a>
+    </div>
+    <div class="stat">The name is what you write in <code class="f">shows.txt</code>. Letters, numbers and dashes only.</div>
+  </div>
+
+  <h2>3. Put it on your bin</h2>
+  <div class="step"><div class="n">1</div><div class="body">
+    <h3>Plug the bin's Pico into the computer and open Viper IDE</h3>
+    <p>Same as when you load code: <a class="ext" href="https://viper-ide.org">viper-ide.org</a>, then <b>Connect</b>.</p>
+  </div></div>
+  <div class="step"><div class="n">2</div><div class="body">
+    <h3>Make a folder called <code class="f">shows</code> (once per bin)</h3>
+    <p>In the file list on the left, make a new folder at the top level of the board and name it
+       exactly <code class="f">shows</code>, all lowercase.</p>
+  </div></div>
+  <div class="step"><div class="n">3</div><div class="body">
+    <h3>Upload your <code class="f">.pbm</code> file into that folder</h3>
+    <p>Use the file list's upload button and pick the file you downloaded above, so it ends up as
+       <code class="f">shows/my-show.pbm</code>.</p>
+  </div></div>
+  <div class="step"><div class="n">4</div><div class="body">
+    <h3>Restart the bin</h3>
+    <p>Press <b>Ctrl+D</b> in Viper's terminal, or unplug it and plug it back in. The bin looks for
+       shows when it starts. If a file is broken, the terminal says which one and why, and the bin
+       just skips it.</p>
+  </div></div>
+
+  <h2>4. Pick which shows play</h2>
+  <p>With no list, the bin plays the ten worm screens and then every file in <code class="f">shows</code>,
+     A to Z. To choose, make a file called <code class="f">shows.txt</code> at the top level of the board
+     (next to <code class="f">main.py</code>, not inside the folder) with one show per line, in the order you
+     want. Lines starting with <code class="f">#</code> are notes for people; the bin ignores them.</p>
+  <pre class="list"># our team's shows
+my-show
+Wormhole
+dancing-worm
+Worm Party</pre>
+  <p>That plays your show, then the Wormhole worm screen, then your dancing worm, then Worm Party,
+     and round again. Upper or lower case and spaces don't matter, and <code class="f">.pbm</code> on the end is
+     optional. A name the bin can't find is skipped (and named in the terminal). To show only your
+     own, list only your own. The worm screens are called:</p>
+  <table class="names"><tr><td>Big Worm</td><td>Worm Party</td><td>Wormhole</td><td>Underground</td><td>Worm Pulse</td></tr>
+                       <tr><td>Compost</td><td>Hello Worm</td><td>Worm Lab</td><td>Conga</td><td>Worm Radar</td></tr></table>
+  <p>Restart the bin after changing <code class="f">shows.txt</code>.</p>
+
+  <h2>Inside a show file</h2>
+  <p>A show file is a <b>PBM</b> ("portable bitmap"), one of the oldest and simplest picture formats
+     there is, so you could even make one with code. One frame is a few words of text and then the
+     dots, 8 to a byte, left to right, top row first, 1 for lit:</p>
+  <pre class="list">P4
+# fps 10      &lt;- optional, first frame only: video speed (1 to 20)
+# hold 4000   &lt;- optional, first frame only: how long the last frame stays (ms)
+128 64        &lt;- width and height, at most 128 and 64
+...1024 bytes of dots...</pre>
+  <p>A video is just frames one after another in the same file, each starting with <code class="f">P4</code>
+     and its size. Without notes, a video plays 10 frames a second and a picture stays up 4 seconds.
+     Each full-screen frame is 1 KB, so a 100-frame video is 100 KB; keep a team's whole
+     <code class="f">shows</code> folder under about 500 KB so the bin keeps room for its readings.</p>
+  <div class="note warn"><b>Coming next:</b> sending a show to your bin from the class website over
+     Wi-Fi, with no cable. Until then, it's the USB cable and Viper IDE.</div>
+</div>
+
+<script>
+// The converter: everything happens in this page; nothing is uploaded anywhere.
+const W = 128, H = 64, MAX_FRAMES = 100;
+const $ = (id) => document.getElementById(id);
+let src = [];          // [{img: ImageData at the output size, ms}] decoded frames
+let out = [];          // [Uint8Array] packed 1-bit frames, rows padded to bytes
+let ow = 0, oh = 0;    // output size
+let timer = null;
+
+function fitSize(w, h) {
+  if (w <= W && h <= H) return [w, h];                      // small pixel art: dot for dot
+  const s = Math.min(W / w, H / h);
+  return [Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))];
+}
+
+function toImageData(drawable, w, h) {
+  const [tw, th] = fitSize(w, h);
+  const c = document.createElement("canvas");
+  c.width = tw; c.height = th;
+  const g = c.getContext("2d");
+  g.imageSmoothingEnabled = tw < w;                          // smooth when shrinking only
+  g.drawImage(drawable, 0, 0, tw, th);
+  return g.getImageData(0, 0, tw, th);
+}
+
+async function decodeFile(file) {
+  if (file.name.toLowerCase().endsWith(".pbm")) return decodePbm(new Uint8Array(await file.arrayBuffer()));
+  if ("ImageDecoder" in window && /gif|webp|png/.test(file.type)) {
+    try {
+      const dec = new ImageDecoder({ data: await file.arrayBuffer(), type: file.type });
+      await dec.tracks.ready;
+      const n = dec.tracks.selectedTrack ? dec.tracks.selectedTrack.frameCount : 1;
+      const frames = [];
+      for (let i = 0; i < Math.min(n, MAX_FRAMES + 1); i++) {
+        const { image } = await dec.decode({ frameIndex: i });
+        frames.push({ img: toImageData(image, image.displayWidth, image.displayHeight), ms: (image.duration || 0) / 1000 });
+        image.close();
+      }
+      return { frames, total: n };
+    } catch (e) { /* fall through to a still */ }
+  }
+  const bmp = await createImageBitmap(file);
+  return { frames: [{ img: toImageData(bmp, bmp.width, bmp.height), ms: 0 }], total: 1,
+           note: file.type === "image/gif" ? "This browser could only read the GIF's first frame: use Chrome or Edge for videos." : "" };
+}
+
+function decodePbm(b) {
+  // read a .pbm back in (to preview one you already have)
+  let i = 0; const frames = []; let fps = null, hold = null;
+  const tok = () => {
+    let t = "";
+    while (i < b.length) {
+      const c = String.fromCharCode(b[i]);
+      if (c === "#") {
+        let line = ""; i++;
+        while (i < b.length && b[i] !== 10) line += String.fromCharCode(b[i++]);
+        const m = line.trim().split(/\s+/);
+        if (m[0] === "fps" && fps === null) fps = +m[1];
+        if (m[0] === "hold" && hold === null) hold = +m[1];
+        if (t) return t;
+        continue;
+      }
+      i++;
+      if (/\s/.test(c)) { if (t) return t; continue; }
+      t += c;
+    }
+    return t || null;
+  };
+  while (i < b.length) {
+    const m = tok(); if (!m) break;
+    if (m !== "P4") throw new Error("not a show file (P4 PBM)");
+    const w = +tok(), h = +tok(), rb = Math.ceil(w / 8);
+    const img = new ImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const on = (b[i + y * rb + (x >> 3)] >> (7 - (x & 7))) & 1, p = (y * w + x) * 4;
+      img.data[p] = img.data[p + 1] = img.data[p + 2] = on ? 255 : 0; img.data[p + 3] = 255;
+    }
+    i += rb * h;
+    frames.push({ img, ms: 0 });
+  }
+  if (!frames.length) throw new Error("empty file");
+  if (fps) $("fps").value = fps;
+  if (hold !== null) $("hold").value = Math.round(hold / 100);
+  $("mode").value = "bright";
+  return { frames, total: frames.length, keepTiming: true };
+}
+
+function hasSeeThrough(frames) {
+  for (const f of frames) { const d = f.img.data; for (let p = 3; p < d.length; p += 4) if (d[p] < 128) return true; }
+  return false;
+}
+
+function pack() {
+  out = []; if (!src.length) return;
+  let mode = $("mode").value;
+  if (mode === "auto") mode = hasSeeThrough(src) ? "drawn" : "bright";
+  const cut = +$("cut").value, dither = $("dither").checked && mode !== "drawn";
+  ow = src[0].img.width; oh = src[0].img.height;
+  const rb = Math.ceil(ow / 8);
+  for (const f of src) {
+    const d = f.img.data, bytes = new Uint8Array(rb * oh);
+    const v = new Float32Array(ow * oh);
+    for (let k = 0; k < ow * oh; k++) {
+      const a = d[k * 4 + 3], lum = 0.299 * d[k * 4] + 0.587 * d[k * 4 + 1] + 0.114 * d[k * 4 + 2];
+      if (mode === "drawn") v[k] = a >= 128 ? 255 : 0;
+      else { const l = a < 128 ? 0 : lum; v[k] = mode === "bright" ? l : 255 - l; }   // see-through counts as dark
+    }
+    for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++) {
+      const k = y * ow + x, on = v[k] >= cut;
+      if (on) bytes[y * rb + (x >> 3)] |= 0x80 >> (x & 7);
+      if (dither) {                                            // Floyd-Steinberg: spread the rounding error
+        const e = v[k] - (on ? 255 : 0);
+        if (x + 1 < ow) v[k + 1] += e * 7 / 16;
+        if (y + 1 < oh) { if (x > 0) v[k + ow - 1] += e * 3 / 16; v[k + ow] += e * 5 / 16; if (x + 1 < ow) v[k + ow + 1] += e / 16; }
+      }
+    }
+    out.push(bytes);
+  }
+}
+
+function fileBytes() {
+  const enc = new TextEncoder(), parts = [];
+  out.forEach((bytes, i) => {
+    let head = "P4\n";
+    if (i === 0) head += `# fps ${$("fps").value}\n# hold ${+$("hold").value * 100}\n`;
+    parts.push(enc.encode(head + `${ow} ${oh}\n`), bytes);
+  });
+  return new Blob(parts, { type: "image/x-portable-bitmap" });
+}
+
+function cleanName() {
+  const n = $("name").value.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "my-show";
+  return n;
+}
+
+function refresh() {
+  pack();
+  $("fpsv").textContent = $("fps").value;
+  $("holdv").textContent = (+$("hold").value / 10).toFixed(1);
+  const dl = $("dl"), name = cleanName();
+  if (!out.length) { dl.classList.add("off"); return; }
+  const blob = fileBytes();
+  if (dl.href) URL.revokeObjectURL(dl.href);
+  dl.href = URL.createObjectURL(blob);
+  dl.download = name + ".pbm";
+  dl.textContent = "Download " + name + ".pbm";
+  dl.classList.remove("off");
+  $("stat").innerHTML = `<b>${out.length === 1 ? "A picture" : out.length + " frames"}</b>, ${ow} &times; ${oh} dots` +
+    (out.length > 1 ? `, ${(out.length / +$("fps").value).toFixed(1)} s a play` : "") +
+    `, file ${(blob.size / 1024).toFixed(1)} KB.`;
+  play();
+}
+
+function play() {
+  clearTimeout(timer);
+  const c = $("oled"), g = c.getContext("2d"), s = c.width / W, x0 = Math.floor((W - ow) / 2), y0 = Math.floor((H - oh) / 2);
+  const rb = Math.ceil(ow / 8);
+  let t = 0;
+  const step = () => {
+    g.fillStyle = "#05070B"; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = "#BFE6FF";
+    const bytes = out[t];
+    for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++)
+      if (bytes[y * rb + (x >> 3)] & (0x80 >> (x & 7))) g.fillRect((x0 + x) * s, (y0 + y) * s, s - 0.5, s - 0.5);
+    const last = t === out.length - 1;
+    const wait = last ? Math.max(300, +$("hold").value * 100) : 1000 / +$("fps").value;
+    t = last ? 0 : t + 1;
+    if (out.length > 1 || t !== 0) timer = setTimeout(step, wait);
+  };
+  step();
+}
+
+async function load(file) {
+  $("msg").textContent = "";
+  try {
+    const r = await decodeFile(file);
+    let frames = r.frames;
+    if (frames.length > MAX_FRAMES) {
+      $("msg").textContent = `That has ${r.total} frames; a show can have ${MAX_FRAMES}, so only the first ${MAX_FRAMES} are used.`;
+      frames = frames.slice(0, MAX_FRAMES);
+    } else if (r.note) $("msg").textContent = r.note;
+    const sizes = new Set(frames.map((f) => f.img.width + "x" + f.img.height));
+    if (sizes.size > 1) throw new Error("the frames are different sizes");
+    src = frames;
+    if (!r.keepTiming) {
+      const ms = frames.map((f) => f.ms).filter((m) => m > 0);
+      if (frames.length > 1) {
+        $("fps").value = ms.length ? Math.max(1, Math.min(20, Math.round(1000 / (ms.reduce((a, b) => a + b, 0) / ms.length)))) : 10;
+        $("hold").value = 6;
+      } else $("hold").value = 40;
+    }
+    $("name").value = file.name.replace(/\.[^.]*$/, "");
+    refresh();
+  } catch (e) {
+    $("msg").textContent = "Could not read that file: " + (e.message || e);
+  }
+}
+
+function sample() {
+  // a worm wiggling across the screen, drawn here so there is something to try right away
+  const frames = [];
+  for (let t = 0; t < 24; t++) {
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d"); g.fillStyle = "#000";
+    const head = -20 + t * 7;
+    for (let i = 11; i >= 0; i--) {
+      const x = head - i * 7, y = 34 + 9 * Math.sin(t * 0.7 - i * 0.8);
+      g.beginPath(); g.arc(x, y, i === 0 ? 7 : 6, 0, 7); g.fill();
+    }
+    g.clearRect(head + 2, 34 + 9 * Math.sin(t * 0.7) - 3, 2, 2);
+    g.font = "bold 12px monospace"; g.fillText("WIGGLE!", 38, 12);
+    frames.push({ img: g.getImageData(0, 0, W, H), ms: 100 });
+  }
+  src = frames; $("fps").value = 10; $("hold").value = 6; $("name").value = "wiggle"; $("mode").value = "auto"; $("msg").textContent = "";
+  refresh();
+}
+
+$("file").addEventListener("change", (e) => e.target.files[0] && load(e.target.files[0]));
+$("sample").addEventListener("click", sample);
+for (const id of ["mode", "cut", "dither", "fps", "hold", "name"]) $(id).addEventListener("input", refresh);
+</script>
+</body>
+</html>
