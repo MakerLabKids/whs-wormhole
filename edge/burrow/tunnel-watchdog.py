@@ -66,7 +66,7 @@ REBOOT_HOURLY_N = 3       # then once an hour, this many times...
 REBOOT_DAILY_S = 86400    # ...then once a day, forever
 REBOOT_MIN_GAP_S = 3600   # never two reboots within an hour
 REBOOT_SETTLE_S = 240     # after a reboot, give the Opal this long before judging it
-WIFI_AFTER_S = 5 * 60     # bring the Pi's own Wi-Fi up after this long down
+WIFI_AFTER_S = 90         # bring the Pi's own Wi-Fi up after this long down (the next 2-min run after the first miss: 2-4 min after the outage)
 # Election, decentralised: an Opal offers the backhaul (its hidden WormHole-Core)
 # only after PROBATION_S of clean internet on its own upstream, drops the offer
 # after DROP_AFTER_S without internet, and may not offer again for BAR_S.

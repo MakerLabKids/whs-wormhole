@@ -7,7 +7,7 @@
 #   edge/burrow/tools/fault-test.sh ok N                   # it came back: cancel the safety reboot, show the watchdog's log
 #
 # cut-eth: arms `nmcli device connect eth0` on the Pi for +minutes FIRST, then disconnects eth0.
-# Expected: within ~7 min (watchdog every 2 min + WIFI_AFTER_S 5 min) the Pi is on its own Wi-Fi,
+# Expected: within ~4 min (watchdog every 2 min + WIFI_AFTER_S 90 s: on Wi-Fi 2-4 min after the cut) the Pi is on its own Wi-Fi,
 # shows up as a client on some other Opal, and keeps reaching the Surface; when eth0 returns the
 # watchdog drops the Wi-Fi again ("cable healthy again").
 set -euo pipefail

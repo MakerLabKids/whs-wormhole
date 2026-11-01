@@ -122,8 +122,8 @@ ways out.
 that WormHole, avoid that access point for half an hour, and join another.
 The other Pis, the Opals and the Surface are untouched. The Surface alerts.
 
-**A Tunnel Opal dies.** Its Pi brings up its own Wi-Fi after five minutes
-with no cable path: another WormHole access point first, else the same
+**A Tunnel Opal dies.** Its Pi brings up its own Wi-Fi two to four minutes
+after the cable path dies: another WormHole access point first, else the same
 ladder the Opal uses (phone hotspot, school net, home nets), keeps
 uploading, stays reachable by SSH through its tunnel, and the Surface alerts
 "on its own Wi-Fi". It also nurses the Opal: reboots it over the admin API,
