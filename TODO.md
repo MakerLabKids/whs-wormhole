@@ -31,15 +31,21 @@ is on the backhaul; the Portal's backhaul AP watch on burrow0.
       disguise=0; no key, it is open), so no school visit is needed. Every Tunnel: WormHole-Core
       selected (the one it returns to), Loki and BYLD as fallbacks. GL's daemon may load the new
       entry only at its next restart; the move to school power-cycles them anyway.
-- [x] **Golden image** /workspace/burrow-golden.img.gz is burrow3's card (2026-11-01 08:20, build
-      0514253, room 3 so its tunnel.json has the backhaul entry). Write: `sudo
-      edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX` (about 4 min).
+- [x] **Golden image** /workspace/burrow-golden.img.gz is burrow3's card at 73219d5 (2026-11-01 12:54,
+      951 MB, boot + root only; the previous one is burrow-golden-0514253.img.gz, delete once the new
+      one has made a card). Write: `sudo edge/burrow/tools/clone-card.sh write burrow-golden.img.gz
+      /dev/sdX` (about 4 min). A spare Pi: never booted, swap means unplug the old one first (the new
+      one enrols as that room's Burrow and the old one's token stops); keep the old card (its data).
 - [ ] **Burrow2's buffered data** before 2026-10-29: its old card was binned (a laptop could not
       read it). Most of it had already reached the Surface.
 - [ ] **First real rollout** (the Surface deploy is live): admin page -> Devices -> paste a commit,
       Update burrow0, watch it report the build; then the others one by one. (The Pi side was
       exercised tonight against GitHub directly: codeload stalled a 24 MB download, hence the
       bucket.)
+- [ ] **MicroPython 1.29.0** (2026-08-24; we ship 1.28.0): the bench board runs it since 2026-11-01
+      13:00 with no errors (joins, pushes, shows at exact speed, readings). Switch firmware/ and the
+      Start Here link to 1.29 for the reflash? (Viper IDE itself is current: v0.6.5, last commit
+      2026-10-05; all 15 install manifests resolve, 147 files; its installer handles our fs: entries.)
 - [ ] **Reflash the classroom Picos** with the fleet flasher (`tools/fleet/flash.py`): everything
       since picolab 0.2.1 (marquee, shows, boot sequence, buffer + backfill, fixed addresses +
       PINs, messages over Wi-Fi/website/Bluetooth, link icon, NOT CONNECTED cards, dead-network
