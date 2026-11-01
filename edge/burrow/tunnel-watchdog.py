@@ -204,7 +204,12 @@ def ensure_auto_connect(r, st, now):
 
 
 def connect_params(up):
+    # remember: GL.iNet only adds a network to its saved list (the one its own auto-connect
+    # walks when the uplink drops) when the join says so. Without it every Opal's saved list
+    # was empty (checked 2026-11-01 on the Portal and Tunnel 3), so "auto-connect" had nothing
+    # to reconnect to, hidden or not. A saved hidden network keeps its directed-scan flag.
     params = {k: up[k] for k in ("ssid", "key", "bssid", "device", "band", "encryption") if up.get(k)}
+    params["remember"] = True
     if up.get("encryption") == "none":
         params.pop("key", None)
     return params
@@ -574,6 +579,13 @@ def opal_facts(r):
         rc = r.call("repeater", "get_config") or {}
         if isinstance(rc, dict) and rc.get("macaddr"):
             facts["own_mac"] = str(rc["macaddr"]).lower()
+    except Exception:
+        pass
+    try:
+        # what the Opal's own auto-connect can fall back to with no Pi involved
+        sv = r.call("repeater", "get_saved_ap_list") or {}
+        lst = sv.get("res") if isinstance(sv, dict) else sv
+        facts["saved_networks"] = [n.get("ssid") for n in (lst or []) if isinstance(n, dict)]
     except Exception:
         pass
     return facts

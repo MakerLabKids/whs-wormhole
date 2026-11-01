@@ -5,7 +5,7 @@
 
 What a Tunnel is (the template is Tunnel 2, captured 2026-10-28):
   firmware 4.8.3; 2.4 GHz WormHole (WPA2, room channel 1/6/11, width auto) for the Bins;
-  5 GHz radio repeating the Portal's hidden WPA3 WormHole-Core (auto-switch OFF, smart
+  5 GHz radio repeating the Portal's hidden WPA3 WormHole-Core (auto-switch ON, smart
   reconnect on); TCP 8080, 22 and 5201 forwarded to the room's Burrow at 192.168.8N.10
   (dashboard, ssh and iperf3 reachable from the Portal LAN at 192.168.80.2N, so no cable
   turn is needed to maintain a Pi and Burrows can measure each other); LAN 192.168.8N.1.
@@ -38,8 +38,8 @@ def desired(room, wormhole_key, backhaul_key):
                    "key": wormhole_key, "encryption": "psk2", "hidden": False, "hwmode": "11g/n",
                    "htmode": "auto", "channel": ROOM_CHANNEL[room], "txpower": "Max",
                    "random_bssid": False},
-        "repeater_cfg": {"auto": False, "smart_reconnect": True},
-        "backhaul": {"ssid": "WormHole-Core", "key": backhaul_key, "bssid": PORTAL_CORE_BSSID,
+        "repeater_cfg": {"auto": True, "smart_reconnect": True},   # auto=False stranded the Tunnels (2026-10-31)
+        "backhaul": {"ssid": "WormHole-Core", "key": backhaul_key, "bssid": PORTAL_CORE_BSSID, "remember": True,
                      "device": "radio1", "band": "5g", "encryption": "sae"},
         "forwards": [{"name": "Burrow", "proto": "tcp", "src": "wan", "src_dport": "8080",
                       "dest": "lan", "dest_ip": "192.168.8%d.10" % room, "dest_port": "8080",
@@ -76,7 +76,7 @@ def plan(state, want):
             and iface.get("enabled", True) and _int((r0 or {}).get("channel")) == w["channel"]):
         steps.append(("wifi", w))
     rc = state.get("repeater_cfg") or {}
-    if rc.get("auto") is not False or rc.get("smart_reconnect") is not True:
+    if rc.get("auto") is not True or rc.get("smart_reconnect") is not True:
         steps.append(("repeater_cfg", want["repeater_cfg"]))
     rs = state.get("repeater_status") or {}
     if not (rs.get("state_s") == "connected" and rs.get("ssid") == want["backhaul"]["ssid"]):

@@ -21,7 +21,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
-BACKHAUL = {"ssid": "WormHole-Core", "bssid": "94:83:c4:84:d2:0c", "device": "radio1", "band": "5g", "encryption": "sae"}
+BACKHAUL = {"ssid": "WormHole-Core", "bssid": "94:83:c4:84:d2:0c", "device": "radio1", "band": "5g", "encryption": "sae",
+            "remember": True}   # without it GL.iNet saves nothing and auto-connect has nothing to rejoin
 
 
 def env_value(key):
@@ -62,7 +63,7 @@ def main():
         print("no backhaul_key in .env")
         return 1
     call(host, "repeater", "set_config", {"auto": True})
-    params = {"ssid": ssid}
+    params = {"ssid": ssid, "remember": True}
     if key:
         params["key"] = key
     call(host, "repeater", "connect", params)

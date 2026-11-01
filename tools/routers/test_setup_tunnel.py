@@ -8,7 +8,7 @@ def complete():
     return {"fw": "4.8.3", "lan_ip": "192.168.81.1",
             "wifi": {"res": [{"device": "radio0", "channel": 1,
                               "ifaces": [{"iface_name": "default_radio0", "ssid": "WormHole", "encryption": "psk2", "enabled": True}]}]},
-            "repeater_cfg": {"auto": False, "smart_reconnect": True},
+            "repeater_cfg": {"auto": True, "smart_reconnect": True},
             "repeater_status": {"state_s": "connected", "ssid": "WormHole-Core"},
             "forwards": [{"src_dport": "8080", "dest_ip": "192.168.81.10", "proto": "tcp"},
                          {"src_dport": "22", "dest_ip": "192.168.81.10", "proto": "tcp"},

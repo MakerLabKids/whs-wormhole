@@ -79,6 +79,12 @@ class Upstreams(unittest.TestCase):
     def test_hidden_flag_is_not_sent_to_the_router(self):
         self.assertNotIn("hidden", wd.connect_params({"ssid": "Loki", "key": "k", "hidden": True}))
 
+    def test_every_join_is_remembered(self):
+        # GL.iNet saves a network only when the join says remember; without it the Opal's own
+        # auto-connect had an empty list (Portal and Tunnel 3, 2026-11-01)
+        for up in self.UPS:
+            self.assertIs(wd.connect_params(up).get("remember"), True)
+
     def test_open_network_sends_no_key(self):
         self.assertNotIn("key", wd.connect_params(self.UPS[0]))
         self.assertIn("key", wd.connect_params(self.UPS[1]))
