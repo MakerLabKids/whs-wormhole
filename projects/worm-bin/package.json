@@ -52,6 +52,10 @@
       "github:MakerLabKids/whs-wormhole/lib/pbmshow.py"
     ],
     [
+      "fs:lib/showsync.py",
+      "github:MakerLabKids/whs-wormhole/lib/showsync.py"
+    ],
+    [
       "fs:lib/logos.py",
       "github:MakerLabKids/whs-wormhole/lib/logos.py"
     ],

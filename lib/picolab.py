@@ -1895,6 +1895,7 @@ class WebApp:
     self.routes = None            # the gated routes poll() was given (Bluetooth uses them too)
     self.on_reply = None          # hook: called with each accepted /ingest reply (messages ride on it)
     self.push_extra = None        # hook: dict merged into every push (acks, say)
+    self.edge_addr = None         # (host, port) of the Burrow that took the last push
     self._push_due = 0
     self.push = True
     self.history = None
@@ -2331,6 +2332,7 @@ class WebApp:
         self.edge = target
         self.edge_ok = True
         self.edge_name = reply.get("edge")
+        self.edge_addr = (host, int(port or 8080))   # where this reply came from (showsync fetches files there)
         self.edge_cloud = reply.get("cloud")
         self.last_push = up
         if reply.get("ts"):

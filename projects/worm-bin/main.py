@@ -556,6 +556,23 @@ messages = picolab.Messages(app, teacher_pin=(app.bin or {}).get("teacher_pin") 
 display.CARD_MS = MESSAGE_S * 1000
 app.on_reply = messages.on_reply   # messages set on the website ride down on the Burrow's reply...
 app.push_extra = messages.push_fields   # ...and the acks ride back up with the next push
+if WORM_SHOWS:
+  try:
+    import showsync                  # shows sent from the website ride the same way (lib/showsync.py)
+    shows_sync = showsync.ShowSync(display, wormshow.SHOWS, app)
+
+    def _on_reply(reply):
+      messages.on_reply(reply)
+      shows_sync.on_reply(reply)
+
+    def _push_extra():
+      d = messages.push_fields()
+      d.update(shows_sync.push_fields())
+      return d
+
+    app.on_reply, app.push_extra = _on_reply, _push_extra
+  except Exception as e:
+    picolab.log("website shows skipped:", e)
 link_was = None                    # the link state the screen last reflected
 
 
