@@ -5,6 +5,14 @@ record of what got done.
 
 ## Deploy (from 2026-10-31)
 
+- [ ] **A bin must leave a network whose Burrows all fail** (2026-10-31 night: the bench
+      board joined Tunnel 2's WormHole, burrow2's Pi was dead, and it sat offline for two
+      hours; a reset put it on Tunnel 3 and it was pushing in 14 s). All Tunnels broadcast
+      the same WormHole; the board takes the strongest and never reconsiders. Fix: after N
+      minutes with no Burrow accepting (own .10, burrow0 at the Portal, the Tunnels' forwards
+      all failing), drop the network and rejoin, preferring a different BSSID; keep going
+      round. burrow0 at 192.168.80.10 is in every bin's fallback list since 4df0cf4.
+
 - [ ] **Burrow code to the four classroom Pis** (burrow0-3): `edge/burrow` now has
       `POST /ingest/batch` (backfill after an outage) and the dash shows a Bin's
       `buffered` count. Until the Pis have it, a Bin that comes back from an outage
