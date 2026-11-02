@@ -15,15 +15,26 @@
   .tile { background: var(--light); border-radius: 10px; padding: 12px 14px; }
   .tile h3 { margin: 0 0 6px; }
   .tile p { margin: 0; font-size: 15px; }
-  @page { size: letter landscape; margin: 12mm; }
+  @page { size: letter portrait; margin: 12mm; }
   @media print {
     .topnav, footer, .printhint { display: none !important; }
     body { background: #fff; }
     .wrap { max-width: none; padding: 0; }
-    h2 { break-before: page; }
-    h2.first { break-before: auto; }
+    h1 { margin-top: 0; }
+    h2 { break-after: avoid; margin-top: 18px; }
+    .cap { break-after: avoid; }
     .fig, .tile, tr { break-inside: avoid; }
-    .fig svg { max-height: 150mm; width: auto; max-width: 100%; margin: 0 auto; }
+    .fig svg { width: 100%; height: auto; }
+    .two { grid-template-columns: 1fr 1fr; }
+    .lead { font-size: 13px; margin: 4px 0 6px; }
+    h2 { font-size: 17px; margin: 10px 0 4px; }
+    h2.page { break-before: page; margin-top: 0; }
+    .fig { margin: 6px 0; padding: 6px; }
+    .cap { font-size: 12px; margin-top: 4px; }
+    .two { gap: 8px; }
+    .tile { padding: 8px 11px; }
+    .tile h3 { font-size: 14px; margin-bottom: 3px; }
+    .tile p { font-size: 12.5px; line-height: 1.4; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
@@ -43,7 +54,7 @@
   <h1>How Wormhole works</h1>
   <p class="lead">For teachers: what the boxes in the room are, how the readings get from a worm bin to the website,
      and what happens when something breaks. No networking knowledge needed.</p>
-  <p class="printhint" style="font-size:13px;color:var(--gray)">Prints on letter landscape, one picture per page.</p>
+  <p class="printhint" style="font-size:13px;color:var(--gray)">Prints on letter portrait.</p>
 
   <h2 class="first">1. The pieces in the building</h2>
   <div class="fig">
@@ -131,7 +142,7 @@
      back right to left and reach the bin within a few minutes.</p>
   </div>
 
-  <h2>3. When something breaks</h2>
+  <h2 class="page">3. When something breaks</h2>
   <p>Every box is built to keep going on its own and catch up later. Nothing a student made is lost.</p>
   <div class="two">
     <div class="tile"><h3>The internet is down</h3><p>Bins and Burrows keep working. Each Burrow stores its room's readings and sends them all
