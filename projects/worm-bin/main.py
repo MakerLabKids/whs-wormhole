@@ -23,7 +23,7 @@
 # long blink = trouble, dark = code not running. Comment out the line of
 # any part your bin does not have and its slot disappears.
 #
-# On the board: main.py, index.html, and from lib/: picolab.py,
+# On the board: main.py, index.html, and from lib/: picolab.py, settings.py,
 # ssd1306.py, bme280.py, ads1115.py, vl53l0x.py, bh1750.py.
 #
 # Project page (docs, wiring, install link): https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/worm-bin
@@ -36,7 +36,10 @@ from machine import ADC, PWM, Pin
 import picolab
 
 # ===== CONFIG: the knobs worth turning ================================
-# Change a value, save, restart. Everything below the line is machinery.
+# These are the DEFAULTS. Change a bin's own settings on its page (Settings card,
+# behind the board's PIN; kept in settings.json, see lib/settings.py), so a code
+# update never touches them. Editing a value here still works too.
+# Everything below the line is machinery.
 
 # Soil moisture calibration, in VOLTS (the ADS1115 reads volts, not
 # Pico counts). To calibrate YOURS: watch moist1_v on the dashboard
@@ -125,7 +128,46 @@ TEACHER_PIN = ""
 # characters fit a line, longer splits at a slash).
 HELP_URL = "mkrlbs.com/whsbt"     # -> whs.makerlabkids.com/bluetooth (case-insensitive; 16 chars, one line)
 NOT_CONNECTED_S = 20
+# Parts this bin does not have, by the name the page shows (e.g. "BME280 out (0x77)"):
+# they leave the parts list, the truth light and the screen.
+NOT_FITTED = []
 # ===== end of config ==================================================
+
+import settings   # noqa: E402  settings.json on the board, over the defaults above
+
+SETTINGS = settings.Settings(globals(), [
+    # (NAME, kind, group, what it is[, lowest, highest])
+    ("FAN", "bool", "Fan", "a fan on the fan/relay pin"),
+    ("FAN_HUMID_PCT", "int", "Fan", "run it when the bin's humidity is over this %", 30, 100),
+    ("FAN_EVERY_MIN", "int", "Fan", "check the humidity every this many minutes", 1, 240),
+    ("FAN_RUN_S", "int", "Fan", "then run it this many seconds", 5, 3600),
+    ("FAN_BOOT_DEMO", "bool", "Fan", "power-on: flip it with every screen (off: a short run)"),
+    ("FAN_BOOT_S", "int", "Fan", "power-on run when the demo is off, seconds", 0, 30),
+    ("MOIST_DRY_V", "num", "Soil moisture", "probe dry in air, volts", 0, 3.3),
+    ("MOIST_WET_V", "num", "Soil moisture", "probe in water, volts", 0, 3.3),
+    ("NOT_FITTED", "parts", "Parts", "parts this bin does not have"),
+    ("PROBE_PIN", "pin", "Pins", "soil temperature probes (DS18B20) data"),
+    ("MOIST_PIN", "adc", "Pins", "a moisture probe straight on a Pico ADC pin"),
+    ("MIC_PIN", "adc", "Pins", "microphone out"),
+    ("LIGHT_PIN", "adc", "Pins", "photoresistor junction"),
+    ("SERVO_BIG_PIN", "pin", "Pins", "big servo signal"),
+    ("SERVO_SMALL_PIN", "pin", "Pins", "small servo signal"),
+    ("RELAY_PIN", "pin", "Pins", "fan switch (or relay) signal"),
+    ("SERVO_DPS", "int", "Servos", "servo speed, degrees per second", 10, 2000),
+    ("ELEVATION_M", "int", "Air", "height above sea level, metres (0 = no correction)", -500, 5000),
+    ("MARQUEE", "text", "Screen", "the line that scrolls past (empty = none)", 0, 120),
+    ("WORM_SHOWS", "bool", "Screen", "play the shows"),
+    ("MESSAGE_S", "int", "Screen", "seconds each message stays up", 1, 60),
+    ("PAGE_SEC_SENSOR", "int", "Screen", "seconds per page of readings", 1, 60),
+    ("PAGE_SEC_LIGHT", "int", "Screen", "seconds per page with a light sensor", 1, 60),
+    ("BOOT_CARD_MS", "int", "Screen", "power-on: school card, ms", 0, 20000),
+    ("BOOT_AND_MS", "int", "Screen", "power-on: AND..., ms", 0, 20000),
+    ("BOOT_MLK_MS", "int", "Screen", "power-on: MAKER LAB KIDS, ms", 0, 20000),
+    ("NOT_CONNECTED_S", "int", "Screen", "NOT CONNECTED cards, seconds in all", 0, 120),
+    ("HELP_URL", "text", "Screen", "the help address on the NOT CONNECTED card", 0, 32),
+    ("READ_EVERY_MS", "int", "Board", "read the sensors every this many ms", 100, 10000),
+    ("BLUETOOTH", "bool", "Board", "the Bluetooth link to the website"),
+])
 
 
 def sea_level(station_hpa):
@@ -376,6 +418,9 @@ PARTS = [p for p in (
     compaction(),
     lux_meter(),
 ) if p is not None]
+SETTINGS.parts = [p.name for p in PARTS]
+for _p in [p for p in PARTS if p.name in NOT_FITTED]:   # the Settings card's "Parts" switches
+  PARTS.remove(_p)                                      # (no line here may start with PARTS: lib/ota.py)
 DS = probe_bus()   # dynamic slots, always last
 
 
@@ -674,7 +719,8 @@ def next_card():
 
 
 display.cards = next_card
-ROUTES = [("/set", set_handler), ("/cal", cal.handle), ("/msg", messages.handle)]
+ROUTES = [("/set", set_handler), ("/cal", cal.handle), ("/msg", messages.handle), ("/settings", SETTINGS.handle)]
+SETTINGS.app = app
 app.routes = ROUTES
 ble = None
 if BLUETOOTH:
@@ -708,8 +754,12 @@ app.announce("Worm Bin Command Center Active!")
 # run. (A hard reset or brownout skips the finally, but that frees the port
 # by itself.) This is what stops the "address already in use" headache.
 _loop_t0 = time.ticks_ms()
+_settings_ok = False
 try:
   while True:
+    if not _settings_ok and time.ticks_diff(time.ticks_ms(), _loop_t0) > 60000:
+      SETTINGS.started()                # a minute of running: these settings are fine
+      _settings_ok = True
     if code_ota and time.ticks_diff(time.ticks_ms(), _loop_t0) > 60000:
       code_ota.confirm()                # a minute of running: a fresh code update is a keeper
       code_ota = None

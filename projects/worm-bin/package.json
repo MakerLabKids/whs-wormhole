@@ -16,6 +16,10 @@
       "github:MakerLabKids/whs-wormhole/lib/picolab.py"
     ],
     [
+      "fs:lib/settings.py",
+      "github:MakerLabKids/whs-wormhole/lib/settings.py"
+    ],
+    [
       "fs:lib/ssd1306.py",
       "github:MakerLabKids/whs-wormhole/lib/ssd1306.py"
     ],

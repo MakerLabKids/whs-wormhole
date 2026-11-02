@@ -42,6 +42,13 @@
   #drawer button.sm { padding: 5px 10px; font-size: 12px; }
   #calmsg { font-size: 12px; color: #86efac; min-height: 14px; }
   table.pins { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  #setlist h4 { margin: 14px 0 4px; color: #94a3b8; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  .setrow { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid #1e293b; }
+  .setrow .what { flex: 1 1 220px; font-size: 13px; }
+  .setrow .what small { display: block; color: #94a3b8; }
+  .setrow input[type=number], .setrow input[type=text], .setrow select { width: 150px; }
+  .setrow .err { flex-basis: 100%; color: #f87171; font-size: 12px; }
+  .setrow label.part { display: block; font-size: 13px; }
   table.pins th { color: #94a3b8; text-align: left; padding: 4px 4px; border-bottom: 1px solid #334155; }
   table.pins td { padding: 4px 4px; border-bottom: 1px solid #1e293b; vertical-align: top; }
   table.pins .pin { color: #a3e635; font-weight: 700; }
@@ -141,6 +148,14 @@
       <div id="hist" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px"></div></div>
   </div>
 
+  <div class="grid">
+    <div class="card wide" id="setcard"><h3>SETTINGS <button id="setopen" style="float:right">Open</button></h3>
+      <div class="sub">This bin's own settings. Kept on the board (settings.json); code updates never change them.
+        Most take effect after a restart.</div>
+      <div id="setbar" class="sub"></div>
+      <div id="setlist" hidden></div></div>
+  </div>
+
   <div id="status">connecting...</div>
 <script src="/cal.js"></script>
 <script src="/msg.js"></script>
@@ -211,7 +226,8 @@ function withPin(url, cb) {
   fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'pin=' + encodeURIComponent(pin), { cache: 'no-store' })
     .then(function (r) {
       if (r.status === 403) { try { localStorage.removeItem(k); } catch (e) {} r.json().then(function (j) { alert(j.locked ? 'Too many wrong PINs: wait a minute.' : 'Wrong PIN.'); }).catch(function () {}); }
-      cb && cb(r.ok);
+      if (!r.ok) { cb && cb(false); return; }
+      r.json().then(function (j) { cb && cb(true, j); }).catch(function () { cb && cb(true, null); });   // cb(ok, reply)
     }).catch(function () { cb && cb(false); });
 }
 function send(q) {
@@ -224,6 +240,60 @@ $('renamebtn').onclick = function () {
   withPin('/name?name=' + encodeURIComponent(n), function (ok) {
     $('renamemsg').textContent = ok ? 'Renamed. The board restarts now: join Wi-Fi "' + n + '" and browse again.' : 'Not renamed.';
   });
+};
+// ---- SETTINGS (lib/settings.py on the board): one row per setting, saved one at a time ----
+function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function shown(v) { return v === null ? 'none' : v === true ? 'on' : v === false ? 'off' : Array.isArray(v) ? (v.join(', ') || 'none') : String(v); }
+function setInput(it) {
+  var id = 'set-' + it.name, v = it.value;
+  if (it.kind === 'bool') return '<select id="' + id + '"><option value="1"' + (v ? ' selected' : '') + '>on</option><option value="0"' + (v ? '' : ' selected') + '>off</option></select>';
+  if (it.kind === 'adc') return '<select id="' + id + '">' + ['none', 26, 27, 28].map(function (p) { return '<option value="' + p + '"' + (String(v === null ? 'none' : v) === String(p) ? ' selected' : '') + '>' + (p === 'none' ? 'none' : 'GP' + p) + '</option>'; }).join('') + '</select>';
+  if (it.kind === 'parts') return '<div id="' + id + '">' + (it.choices || []).map(function (c) { return '<label class="part"><input type="checkbox" value="' + esc(c) + '"' + ((v || []).indexOf(c) < 0 ? ' checked' : '') + '> ' + esc(c) + '</label>'; }).join('') + '<small style="color:#94a3b8">ticked = fitted on this bin</small></div>';
+  if (it.kind === 'text') return '<input type="text" id="' + id + '" value="' + esc(v) + '" maxlength="' + (it.hi || 80) + '">';
+  return '<input type="number" id="' + id + '" value="' + esc(v) + '"' + (it.kind === 'num' ? ' step="0.01"' : ' step="1"') + (it.lo !== undefined ? ' min="' + it.lo + '"' : '') + (it.hi !== undefined ? ' max="' + it.hi + '"' : '') + '>';
+}
+function setValue(it) {
+  var el = $('set-' + it.name);
+  if (it.kind === 'parts') return Array.prototype.filter.call(el.querySelectorAll('input'), function (b) { return !b.checked; }).map(function (b) { return b.value; }).join('|');
+  return el.value;
+}
+var setItems = [];
+function setPaint(j) {
+  if (!j || !j.settings) return;
+  setItems = j.settings;
+  var html = '', group = '';
+  j.settings.forEach(function (it, i) {
+    if (it.group !== group) { group = it.group; html += '<h4>' + esc(group) + '</h4>'; }
+    var hint = it.kind === 'pin' || it.kind === 'adc' ? 'GP number (not the physical pin)' : (it.lo !== undefined && it.kind !== 'text' ? it.lo + ' to ' + it.hi : '');
+    html += '<div class="setrow"><div class="what"><b>' + esc(it.help) + '</b><small>' + esc(it.name) + ' &middot; default ' + esc(shown(it['default']))
+      + (hint ? ' &middot; ' + esc(hint) : '') + (it.changed ? ' &middot; <b style="color:#a3e635">changed</b>' : '') + '</small></div>'
+      + setInput(it) + '<button data-save="' + i + '">Save</button>' + (it.changed ? '<button data-def="' + i + '">Default</button>' : '')
+      + '<div class="err" id="seterr-' + i + '"></div></div>';
+  });
+  $('setlist').innerHTML = html;
+  $('setbar').innerHTML = (j.pending ? '<b style="color:#fbbf24">Saved changes wait for a restart.</b> <button id="setrestart">Restart to apply</button> ' : '')
+    + (j.parked ? '<b style="color:#f87171">The board would not start with its settings 3 times, so they were set aside.</b> <button id="setrestore">Put them back</button>' : '');
+  if ($('setrestart')) $('setrestart').onclick = function () {
+    withPin('/settings?restart=1', function (ok) { $('setbar').textContent = ok ? 'Restarting: this page comes back in about 20 s.' : 'Could not restart.'; });
+  };
+  if ($('setrestore')) $('setrestore').onclick = function () { withPin('/settings?restore=1', function (ok, r) { setPaint(r); }); };
+}
+function setSend(q, i) {
+  withPin('/settings?' + q, function (ok, r) {
+    if (r && r.error) { $('seterr-' + i).textContent = r.error; return; }
+    if (ok) setPaint(r);
+  });
+}
+$('setlist').onclick = function (e) {
+  var b = e.target, i;
+  if (b.getAttribute('data-save') !== null) { i = +b.getAttribute('data-save'); setSend('k=' + setItems[i].name + '&v=' + encodeURIComponent(setValue(setItems[i])), i); }
+  else if (b.getAttribute('data-def') !== null) { i = +b.getAttribute('data-def'); setSend('k=' + setItems[i].name + '&reset=1', i); }
+};
+$('setopen').onclick = function () {
+  var open = $('setlist').hidden;
+  if (!open) { $('setlist').hidden = true; this.textContent = 'Open'; return; }
+  var btn = this;
+  withPin('/settings', function (ok, r) { if (!ok) return; setPaint(r); $('setlist').hidden = false; btn.textContent = 'Close'; });
 };
 $('big').oninput = function () { $('bigv').textContent = this.value; };
 $('small').oninput = function () { $('smallv').textContent = this.value; };

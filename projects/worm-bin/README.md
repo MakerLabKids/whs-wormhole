@@ -46,6 +46,19 @@ for a bin with no fan). The dashboard's relay button still switches it by hand.
 Free for expansion: GP26 (ADC0), GP28 (ADC2), ADS1115 A3, and the whole
 second I2C bus (I2C1).
 
+## Settings (on the bin's page)
+
+Each bin keeps its own settings in `settings.json` on the board, changed from the
+**Settings** card on its page (behind the board's PIN, like every change): the fan,
+moisture calibration voltages, which parts are fitted, the pins, servo speed,
+elevation, the screen's timings and scrolling line, Bluetooth. Save one at a time,
+then **Restart to apply**. Every value is checked when saved (ranges, real and free
+pins: GP0/1 are I2C, GP23-25 the Wi-Fi chip, the mic/light/moisture probe need
+GP26-28, no pin used twice). The config section at the top of `main.py` holds the
+defaults. Code updates over Wi-Fi never touch `settings.json`. If the board fails to
+start three times in a row with its settings, it sets them aside and runs on the
+defaults; the card offers to put them back.
+
 ## The truth light
 
 POST codes: one blink per part, in the order of the `PARTS` list in

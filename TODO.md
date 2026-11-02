@@ -39,9 +39,12 @@ out there and nothing needs migrating. A Pico is set up once by cable and update
 6. **Fault-test evening** (with Claude, a clock): pull a Pi, a Tunnel, the internet, power in
    random order; swap an Opal; swap a Pi from a cloned card; a spare left plugged in; two rollouts
    in a row; a Pico code update to every bin.
-7. Claude's own next builds, when asked: a Burrow restarts its Opal's 2.4 GHz WormHole when the
-   bins pile up readings (it wedged once); move a bin's hardware settings out of main.py into a
-   settings file editable from the bin's page.
+7. **Built 2026-11-01 evening, not yet on hardware:** (a) the watchdog restarts a room's 2.4 GHz
+   WormHole when every Bin heard in the last 2 h has been silent 10 min (hourly at most), then reboots
+   the Opal if still silent 10 min later (6-hourly at most) (ed3887d): on burrow0/1/2; **burrow3 was
+   offline (silent since 18:54) and still needs `update-burrow.sh 3`**. (b) Bin settings in
+   settings.json, edited on the bin's page (Settings card; lib/settings.py): checked off-board and in a
+   browser against the real module, not yet on a board; try it on the bench board with the fan.
 
 Where things are: private notes/runbook/detailed architecture in MakerLabKids/whs-wormhole-private
 (notes/ here); teacher overview in the lab guide (How Wormhole Works).
