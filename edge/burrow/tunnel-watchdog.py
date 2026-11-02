@@ -207,24 +207,42 @@ def tcp_reachable(url, timeout=3):
         return False
 
 
-def set_backhaul_ap(r, enabled):
-    """Flat GL.iNet 4.x wifi set_config on the backhaul AP iface. Applying it restarts the
+def set_ap(r, iface, enabled):
+    """Flat GL.iNet 4.x wifi set_config on one AP iface. Applying it restarts the
     radio and the call often times out while still applying: read the state back."""
     old_timeout = getattr(r, "timeout", None)
     try:
         r.timeout = 60
         try:
-            r.call("wifi", "set_config", {"iface_name": BACKHAUL_IFACE, "enabled": bool(enabled)})
+            r.call("wifi", "set_config", {"iface_name": iface, "enabled": bool(enabled)})
         except Exception:
             time.sleep(5)
             for radio in (r.call("wifi", "get_config") or {}).get("res", []):
                 for i in radio.get("ifaces", []):
-                    if i.get("name") == BACKHAUL_IFACE and bool(i.get("enabled")) == bool(enabled):
+                    if i.get("name") == iface and bool(i.get("enabled")) == bool(enabled):
                         return
             raise
     finally:
         if old_timeout is not None:
             r.timeout = old_timeout
+
+
+def set_backhaul_ap(r, enabled):
+    set_ap(r, BACKHAUL_IFACE, enabled)
+
+
+def restart_ap(r, iface):
+    """Off, 5 s, on; whatever happens, never leave it off."""
+    try:
+        set_ap(r, iface, False)
+        time.sleep(5)
+        set_ap(r, iface, True)
+    except Exception:
+        try:
+            set_ap(r, iface, True)
+        except Exception:
+            pass
+        raise
 
 
 def portal_backhaul_watch(r, st, now, bcfg, reachable=tcp_reachable):
@@ -251,16 +269,75 @@ def portal_backhaul_watch(r, st, now, bcfg, reachable=tcp_reachable):
         return
     st["backhaul_kicked_at"] = int(now)
     try:
-        set_backhaul_ap(r, False)
-        time.sleep(5)
-        set_backhaul_ap(r, True)
+        restart_ap(r, BACKHAUL_IFACE)       # never leaves it off
         event(st, now, "no Tunnel reachable over the Portal for %d min: backhaul AP restarted" % ((now - seen) // 60))
     except Exception as e:
-        try:
-            set_backhaul_ap(r, True)        # never leave it off
-        except Exception:
-            pass
         event(st, now, "backhaul AP restart failed: %s" % str(e)[:80])
+
+
+WORMHOLE_IFACE = "default_radio0"   # the 2.4 GHz WormHole the room's Bins join (Portal and Tunnels alike)
+BINS_RECENT_S = 2 * 3600        # Bins heard from this recently are the room's working Bins
+BINS_SILENT_KICK_S = 600        # none of them has reached this Burrow this long -> restart the WormHole AP
+BINS_KICK_EVERY_S = 3600        # at most one AP restart an hour
+BINS_REBOOT_AFTER_S = 600       # still nothing this long after a restart -> reboot the Opal
+BINS_REBOOT_EVERY_S = 6 * 3600  # at most one such reboot every 6 h
+
+
+def fetch_bins(bcfg, timeout=5):
+    """This Burrow's /api/now bins (uid -> entry), or None if it does not answer."""
+    import urllib.request
+    url = "http://127.0.0.1:%d/api/now" % int(bcfg.get("port") or 8080)
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as f:
+            return (json.loads(f.read()) or {}).get("bins") or {}
+    except Exception:
+        return None
+
+
+def bin_ap_watch(r, st, now, bcfg, fetch=None):
+    """Every room (2026-11-01): Tunnel 2's 2.4 GHz WormHole once refused every client while the
+    Opal, its Pi and the backhaul all looked fine; the Bins buffered their readings and only a
+    reboot of the Opal fixed it. So: when Bins have been reaching this Burrow (any in the last
+    2 h) and NONE has for 10 min, restart the Opal's WormHole AP (at most hourly); if they are
+    still silent 10 min after a restart, reboot the Opal (at most every 6 h). Bins that are simply
+    switched off stop counting after 2 h, so an empty room costs at most two restarts. On the
+    Portal (and a Tunnel on a 2.4 GHz fallback) the uplink shares the radio: a few seconds' blip."""
+    bins = (fetch or fetch_bins)(bcfg)
+    if not bins:
+        return                      # Burrow down, or no Bins ever: nothing to judge by
+    edge = bcfg.get("edge")
+    via_me = [e.get("ts") or 0 for e in bins.values()
+              if e.get("src") != "live" and e.get("edge") == edge and now - (e.get("ts") or 0) < BINS_RECENT_S]
+    if not via_me:
+        return
+    last = max(via_me)
+    st["bins_last_seen_at"] = int(last)
+    silent = now - last
+    if silent < BINS_SILENT_KICK_S:
+        return
+    kicked = st.get("bins_kicked_at")
+    if kicked and kicked < last:
+        kicked = None               # that restart was for an earlier silence, which ended
+    if not kicked or now - kicked >= BINS_KICK_EVERY_S:
+        st["bins_kicked_at"] = int(now)
+        try:
+            restart_ap(r, WORMHOLE_IFACE)
+            event(st, now, "no Bin reached this Burrow for %d min (%d heard in the last 2 h): restarted the Opal's 2.4 GHz WormHole"
+                  % (silent // 60, len(via_me)))
+        except Exception as e:
+            event(st, now, "WormHole AP restart failed: %s" % str(e)[:80])
+        return
+    rebooted = st.get("bins_rebooted_at")
+    if now - kicked >= BINS_REBOOT_AFTER_S and (not rebooted or now - rebooted >= BINS_REBOOT_EVERY_S):
+        st["bins_rebooted_at"] = int(now)
+        st["last_join_at"] = int(now)   # a fresh boot needs its 90 s before anyone joins again
+        try:
+            r.timeout = 20
+            r.call("system", "reboot")
+            event(st, now, "Bins still silent %d min after the WormHole restart: rebooted the Opal" % ((now - kicked) // 60))
+            return "rebooted"
+        except Exception as e:
+            event(st, now, "reboot for silent Bins failed: %s" % str(e)[:80])
 
 
 def ensure_auto_connect(r, st, now):
@@ -787,6 +864,11 @@ def main(now=None, router_factory=None, cloud_check=None, wifi_factory=None):
         st["provider_bssid"] = (status.get("bssid") or (status.get("wpa_status") or {}).get("bssid") or "").lower() or None
         backhaul_election(r, st, now, cloud_ok, status)
         portal_backhaul_watch(r, st, now, bcfg)
+        bins_did = None
+        try:
+            bins_did = bin_ap_watch(r, st, now, bcfg)
+        except Exception as e:
+            print("bin AP watch: %s" % e)
     except Exception as e:
         # The Opal's LAN itself is gone: nothing to join or reboot, just report
         # and get our own radio up so the report leaves the building.
@@ -799,6 +881,11 @@ def main(now=None, router_factory=None, cloud_check=None, wifi_factory=None):
         save_state(st)
         return 0
 
+    if bins_did == "rebooted":
+        st["opal_reachable"] = True
+        st["state"] = "opal-rebooting"      # judged again next run, after its boot
+        save_state(st)
+        return 0
     st["opal_reachable"] = True
     st["repeater"] = {k: status.get(k) for k in ("state_s", "ssid", "signal", "band") if k in status}
     ip4 = status.get("ipv4") or {}

@@ -17,6 +17,7 @@ os.environ["TUNNEL_STATE"] = os.path.join(TMP, "state.json")
 spec = importlib.util.spec_from_file_location("tunnel_watchdog", os.path.join(HERE, "..", "tunnel-watchdog.py"))
 wd = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(wd)
+wd.fetch_bins = lambda *a, **k: None   # main() never asks a real Burrow from the tests
 
 H = 3600
 
@@ -817,3 +818,80 @@ class ReturnHomeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BinApWatch(unittest.TestCase):
+    """The room's 2.4 GHz WormHole: restart it when every recently heard Bin went silent."""
+    BCFG = {"edge": "burrow2", "room": 2, "port": 8080}
+
+    class R:
+        def __init__(self):
+            self.calls = []
+            self.timeout = 8
+        def call(self, obj, method, params=None):
+            self.calls.append((obj, method, params))
+            return {}
+
+    def setUp(self):
+        self._sleep = wd.time.sleep
+        wd.time.sleep = lambda s: None
+        self._evlog = wd.persist_event
+        wd.persist_event = lambda *a, **k: None
+
+    def tearDown(self):
+        wd.time.sleep = self._sleep
+        wd.persist_event = self._evlog
+
+    def bins(self, *ages, edge="burrow2", now=100000):
+        return lambda b: {"b%d" % i: {"ts": now - a, "edge": edge, "src": "push"} for i, a in enumerate(ages)}
+
+    def acts(self, r):
+        return [("ap", p["iface_name"], p["enabled"]) if m == "set_config" else (o, m) for o, m, p in r.calls]
+
+    def test_a_bin_still_reporting_means_the_ap_works(self):
+        r, st = self.R(), {}
+        wd.bin_ap_watch(r, st, 100000, self.BCFG, fetch=self.bins(30, 900))
+        self.assertEqual(r.calls, [])
+
+    def test_all_silent_ten_minutes_restarts_the_wormhole_ap(self):
+        r, st = self.R(), {}
+        wd.bin_ap_watch(r, st, 100000, self.BCFG, fetch=self.bins(601, 900))
+        self.assertEqual(self.acts(r), [("ap", "default_radio0", False), ("ap", "default_radio0", True)])
+        self.assertEqual(st["bins_kicked_at"], 100000)
+
+    def test_then_a_reboot_if_still_silent_ten_minutes_later_and_only_once(self):
+        r, st = self.R(), {"bins_kicked_at": 100000}
+        self.assertIsNone(wd.bin_ap_watch(r, st, 100300, self.BCFG, fetch=self.bins(901, now=100300)))
+        self.assertEqual(r.calls, [], "5 min after the restart: wait")
+        self.assertEqual(wd.bin_ap_watch(r, st, 100601, self.BCFG, fetch=self.bins(1202, now=100601)), "rebooted")
+        self.assertEqual(self.acts(r), [("system", "reboot")])
+        r2 = self.R()
+        wd.bin_ap_watch(r2, st, 101000, self.BCFG, fetch=self.bins(1600, now=101000))
+        self.assertEqual(r2.calls, [], "no second reboot within 6 h, no second restart within the hour")
+        r3 = self.R()
+        wd.bin_ap_watch(r3, st, 100000 + 3601, self.BCFG, fetch=self.bins(3700, now=103601))
+        self.assertEqual(self.acts(r3)[0], ("ap", "default_radio0", False), "an hour on: restart again")
+
+    def test_a_new_silence_after_recovery_starts_with_a_restart_again(self):
+        r, st = self.R(), {"bins_kicked_at": 100000, "bins_rebooted_at": 100601}
+        # the Bins came back at 101000 and went silent again
+        wd.bin_ap_watch(r, st, 101700, self.BCFG, fetch=lambda b: {"x": {"ts": 101000, "edge": "burrow2", "src": "push"}})
+        self.assertEqual(self.acts(r), [("ap", "default_radio0", False), ("ap", "default_radio0", True)])
+
+    def test_bins_off_for_hours_stop_counting(self):
+        r, st = self.R(), {}
+        wd.bin_ap_watch(r, st, 100000, self.BCFG, fetch=self.bins(7201, 9000))
+        self.assertEqual(r.calls, [])
+
+    def test_other_rooms_bins_and_live_rows_do_not_count(self):
+        r, st = self.R(), {}
+        wd.bin_ap_watch(r, st, 100000, self.BCFG, fetch=self.bins(900, edge="burrow1"))
+        f = lambda b: {"x": {"ts": 100000 - 900, "edge": "burrow2", "src": "live"}}
+        wd.bin_ap_watch(r, st, 100000, self.BCFG, fetch=f)
+        self.assertEqual(r.calls, [])
+
+    def test_no_burrow_answer_or_no_bins_does_nothing(self):
+        r, st = self.R(), {}
+        wd.bin_ap_watch(r, st, 100000, self.BCFG, fetch=lambda b: None)
+        wd.bin_ap_watch(r, st, 100000, self.BCFG, fetch=lambda b: {})
+        self.assertEqual(r.calls, [])
