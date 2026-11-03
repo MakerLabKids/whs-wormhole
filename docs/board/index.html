@@ -31,6 +31,14 @@
   .page { width: 8.5in; height: 11in; margin: 18px auto; background: var(--paper); position: relative; overflow: hidden;
           padding: 0.42in 0.5in 0.62in; box-shadow: 0 6px 24px rgba(20, 30, 50, .18); display: flex; flex-direction: column; }
   @page { size: letter portrait; margin: 0; }
+  @page land { size: letter landscape; margin: 0; }
+  .page.land { width: 11in; height: 8.5in; page: land; }
+  .superbin svg { width: 100%; height: auto; display: block; }
+  #pS .superbin svg { height: 7.45in; width: auto; margin: 0 auto; } #pL .superbin svg { height: 4.82in; width: auto; margin: 0 auto; }
+  .sb-key { text-align: center; font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .sb-key span { display: inline-block; font-weight: 900; font-size: 10px; letter-spacing: .08em; border-radius: 99px; padding: 1px 8px; margin-right: 4px; }
+  .sb-key .k-now { background: #2f7d3a; color: #fff; }
+  .sb-key .k-add { color: #e8762c; border: 1.5px dashed #e8762c; }
   @media print {
     body { background: none; }
     .bar { display: none; }
@@ -39,7 +47,7 @@
   }
   @media screen and (max-width: 860px) {
     /* phones: scale the sheets down so a whole page fits the width */
-    .page { zoom: calc(100vw / 8.9in); }
+    .page { zoom: calc(100vw / 8.9in); } .page.land { zoom: calc(100vw / 11.4in); }
   }
 
   /* ---- the two lockups on every page ---- */
@@ -160,9 +168,9 @@
   /* ---- meet the bin ---- */
   .build { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; margin-top: 4px; }
   .build .shot { border-radius: 14px; background: #ddd; }
-  .build .tall img { height: 6.15in; object-fit: cover; }
+  .build .tall img { height: 5.6in; object-fit: cover; }
   .build-side { display: grid; grid-template-rows: 1fr 1fr; gap: 12px; }
-  .build-side .shot img { height: 3.01in; object-fit: cover; }
+  .build-side .shot img { height: 2.74in; object-fit: cover; }
   .build-notes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
   .build-notes div { background: var(--cream); border: 1.5px solid #f1dcc0; border-radius: 12px; padding: 9px 11px; font-size: 12px;
                      line-height: 1.35; color: #3a4352; }
@@ -198,7 +206,7 @@
 <body>
 
 <div class="bar">
-  <span><b>Display board</b> · 11 letter pages. Print with <b>margins: none</b> and <b>background graphics</b> on.</span>
+  <span><b>Display board</b> · 13 letter pages (one landscape). Print with <b>margins: none</b> and <b>background graphics</b> on.</span>
   <span><button type="button" onclick="window.print()">Print all 11</button> &nbsp;<a href="../index.html">Lab Guide</a></span>
 </div>
 
@@ -524,6 +532,314 @@
     <div><b style="color:#1b2f5e">Screen case</b>Printed to fit, so the readings face the room.</div>
     <div><b style="color:#e8762c">A fan</b>Moves air when it gets too damp inside.</div>
   </div>
+
+  <div class="quote" style="margin-top:12px;font-size:17px">See the red lid? That was an earlier try. Every build shows us what works, what doesn't, and what fails
+    spectacularly. Design it, build it, break it, fix it: that's when the learning sticks.</div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ super bin (portrait) -->
+<section class="page" id="pS">
+  <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+  </header>
+
+  <div class="kicker">Everything we could plug in</div>
+  <h2>The <em>super</em> bin</h2>
+  <p class="lede">The sensors in our bins today, plus the add-ons on our list. No two teams have to build the same bin.</p>
+
+  <div class="superbin">
+<svg viewBox="0 0 760 800" role="img" aria-label="The super bin: a clear worm-viewer cylinder with every sensor we have or could add, each one labeled" font-family="Nunito Sans, Arial">
+<defs>
+  <linearGradient id="sb-soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset=".5" stop-color="#5b3a29"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
+  <linearGradient id="sb-glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#cfe6f7" stop-opacity=".55"/><stop offset=".5" stop-color="#eef7fd" stop-opacity=".2"/><stop offset="1" stop-color="#cfe6f7" stop-opacity=".55"/></linearGradient>
+  <radialGradient id="sb-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff3b5c" stop-opacity=".85"/><stop offset="1" stop-color="#ff3b5c" stop-opacity="0"/></radialGradient>
+  <linearGradient id="sb-tote" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2f36"/><stop offset="1" stop-color="#15181d"/></linearGradient>
+</defs>
+<rect x="120" y="748" width="520" height="6" rx="3" fill="#d9cdb8"/><ellipse cx="380" cy="746" rx="122" ry="8" fill="#000" opacity=".10"/>
+<path d="M280 334 L280 728 A100 17 0 0 0 480 728 L480 334 Z" fill="url(#sb-soil)"/><ellipse cx="380" cy="334" rx="100" ry="14" fill="#9a6a48"/>
+<g fill="#b38358" opacity=".55"><circle cx="348" cy="406" r="2.5"/><circle cx="301" cy="549" r="2.0"/><circle cx="299" cy="539" r="1.6"/><circle cx="368" cy="376" r="1.6"/><circle cx="366" cy="658" r="1.7"/><circle cx="329" cy="583" r="2.9"/><circle cx="394" cy="498" r="3.0"/><circle cx="297" cy="669" r="1.9"/><circle cx="315" cy="394" r="2.0"/><circle cx="438" cy="417" r="2.4"/><circle cx="406" cy="489" r="2.3"/><circle cx="300" cy="372" r="1.8"/><circle cx="413" cy="509" r="2.0"/><circle cx="396" cy="519" r="1.9"/><circle cx="434" cy="610" r="1.9"/><circle cx="394" cy="545" r="2.8"/><circle cx="422" cy="457" r="3.0"/><circle cx="310" cy="506" r="2.6"/><circle cx="316" cy="532" r="1.6"/><circle cx="411" cy="634" r="2.4"/><circle cx="449" cy="467" r="2.5"/><circle cx="397" cy="566" r="2.2"/><circle cx="443" cy="701" r="2.2"/><circle cx="410" cy="373" r="2.6"/><circle cx="407" cy="719" r="2.7"/><circle cx="340" cy="494" r="2.5"/><circle cx="292" cy="522" r="1.8"/><circle cx="310" cy="372" r="2.7"/><circle cx="312" cy="442" r="2.1"/><circle cx="448" cy="380" r="2.2"/><circle cx="389" cy="679" r="2.7"/><circle cx="447" cy="454" r="2.1"/><circle cx="354" cy="679" r="2.9"/><circle cx="316" cy="416" r="1.8"/><circle cx="331" cy="530" r="2.4"/><circle cx="336" cy="352" r="2.1"/><circle cx="356" cy="561" r="2.9"/><circle cx="415" cy="542" r="2.4"/><circle cx="412" cy="370" r="2.8"/><circle cx="432" cy="675" r="2.7"/></g>
+<path d="M320 332 q12 -12 26 0 q-13 6 -26 0z" fill="#6fbf3f"/><path d="M410 334 q9 -10 22 -2 q-10 8 -22 2z" fill="#f08a2c"/>
+<path d="M290 390 q14 -12 28 0 t28 0" fill="none" stroke="#e8879b" stroke-width="7" stroke-linecap="round"/>
+<path d="M398 470 q12 10 24 0 t24 0" fill="none" stroke="#d96d84" stroke-width="7" stroke-linecap="round"/>
+<path d="M296 640 q12 -10 24 0 t24 2" fill="none" stroke="#e8879b" stroke-width="7" stroke-linecap="round"/>
+<path d="M410 690 q10 8 20 0 t20 -4" fill="none" stroke="#d96d84" stroke-width="6" stroke-linecap="round"/>
+<path d="M340 520 q10 -8 20 0 t20 0" fill="none" stroke="#e8879b" stroke-width="6" stroke-linecap="round"/>
+<path d="M326 204 L326 414" stroke="#20252d" stroke-width="3.5"/><rect x="321" y="412" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<path d="M376 204 L376 534" stroke="#20252d" stroke-width="3.5"/><rect x="371" y="532" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<path d="M420 204 L420 654" stroke="#20252d" stroke-width="3.5"/><rect x="415" y="652" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<rect x="445" y="300" width="18" height="120" rx="3" fill="#1d2430"/><rect x="448" y="308" width="12" height="42.0" rx="2" fill="#2f3a4c"/><path d="M448 416 L454 426 L460 416" fill="#1d2430"/>
+<path d="M296 204 L296 600" stroke="#20252d" stroke-width="2.5"/><circle cx="296" cy="610" r="10" fill="#9aa4b2" stroke="#5b6475" stroke-width="2"/><circle cx="296" cy="610" r="3" fill="#5b6475"/><g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"><path d="M280 603 q-5 7 0 14"/><path d="M274 599 q-7 11 0 22"/><path d="M312 603 q5 7 0 14"/><path d="M318 599 q7 11 0 22"/></g>
+<path d="M272 198 L272 728 A108 20 0 0 0 488 728 L488 198" fill="url(#sb-glass)" stroke="#9cc3e0" stroke-width="3"/>
+<rect x="284" y="234" width="9" height="444" rx="4.5" fill="#fff" opacity=".5"/><rect x="300" y="244" width="4" height="404" rx="2" fill="#fff" opacity=".4"/>
+<path d="M301 204 L301 232" stroke="#20252d" stroke-width="2"/><rect x="288" y="232" width="26" height="11" rx="3" fill="#111"/><line x1="301" y1="243" x2="301" y2="330" stroke="#ff2d55" stroke-width="3" stroke-dasharray="6 5"/><circle cx="301" cy="332" r="11" fill="url(#sb-glow)"/><path d="M354 204 L354 234" stroke="#20252d" stroke-width="2"/><circle cx="354" cy="242" r="8" fill="#f2b705" stroke="#b8860b" stroke-width="1.5"/><path d="M349 240 q2.5 -4 5 0 t5 0" fill="none" stroke="#7a5038" stroke-width="1.6"/><path d="M349 244 q2.5 -4 5 0 t5 0" fill="none" stroke="#7a5038" stroke-width="1.6"/><path d="M436 204 L436 234" stroke="#20252d" stroke-width="2"/><rect x="424" y="234" width="26" height="18" rx="2.5" fill="#5b3fa8"/><circle cx="437.0" cy="243.0" r="3.2" fill="#d9d2ef"/>
+<g transform="translate(462 282)"><rect x="-20" y="-20" width="40" height="40" rx="7" fill="#2f3540"/><circle r="16.0" fill="#3e4652"/><g fill="#9aa4b2"><path d="M0 0 q-4 -15 6 -15 q4 8 -6 15z"/><path d="M0 0 q15 -4 15 6 q-8 4 -15 -6z"/><path d="M0 0 q4 15 -6 15 q-4 -8 6 -15z"/><path d="M0 0 q-15 4 -15 -6 q8 -4 15 6z"/></g><circle r="4" fill="#20252d"/></g>
+<path d="M494 200 C 518 244, 514 300, 510 318" fill="none" stroke="#20252d" stroke-width="2"/><rect x="496" y="318" width="28" height="20" rx="2.5" fill="#5b3fa8"/><circle cx="510.0" cy="328.0" r="3.2" fill="#d9d2ef"/>
+<rect x="504" y="509" width="36" height="22" rx="3" fill="#2a6fd8"/><rect x="498" y="517" width="48" height="5" rx="2" fill="#2a6fd8"/><circle cx="514" cy="509" r="5" fill="#fff"/><path d="M514 509 L492 498" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M514 509 L492 498" stroke="#d6dde8" stroke-width="2.5" stroke-linecap="round"/>
+<rect x="217" y="728" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="217" y="728" width="18" height="6" rx="3" fill="#1b6fa0"/><path d="M223 748 L226 757 L229 748" fill="#5b6475"/>
+<rect x="245" y="742" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="245" y="742" width="18" height="6" rx="3" fill="#1b6fa0"/><path d="M251 762 L254 771 L257 762" fill="#5b6475"/>
+<rect x="497" y="742" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="497" y="742" width="18" height="6" rx="3" fill="#1b6fa0"/><path d="M503 762 L506 771 L509 762" fill="#5b6475"/>
+<rect x="525" y="728" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="525" y="728" width="18" height="6" rx="3" fill="#1b6fa0"/><path d="M531 748 L534 757 L537 748" fill="#5b6475"/>
+<path d="M262 184 L262 202 A118 25 0 0 0 498 202 L498 184 Z" fill="#d9ab00"/><ellipse cx="380" cy="184" rx="118" ry="25" fill="#f2c400"/>
+<g fill="#c99a00"><circle cx="316" cy="170" r="2.4"/><circle cx="324" cy="170" r="2.4"/><circle cx="332" cy="170" r="2.4"/><circle cx="340" cy="170" r="2.4"/><circle cx="348" cy="170" r="2.4"/><circle cx="356" cy="170" r="2.4"/><circle cx="444" cy="170" r="2.4"/><circle cx="288" cy="177" r="2.4"/><circle cx="296" cy="177" r="2.4"/><circle cx="304" cy="177" r="2.4"/><circle cx="312" cy="177" r="2.4"/><circle cx="320" cy="177" r="2.4"/><circle cx="328" cy="177" r="2.4"/><circle cx="336" cy="177" r="2.4"/><circle cx="344" cy="177" r="2.4"/><circle cx="352" cy="177" r="2.4"/><circle cx="360" cy="177" r="2.4"/><circle cx="440" cy="177" r="2.4"/><circle cx="448" cy="177" r="2.4"/><circle cx="456" cy="177" r="2.4"/><circle cx="464" cy="177" r="2.4"/><circle cx="472" cy="177" r="2.4"/><circle cx="284" cy="184" r="2.4"/><circle cx="292" cy="184" r="2.4"/><circle cx="300" cy="184" r="2.4"/><circle cx="308" cy="184" r="2.4"/><circle cx="316" cy="184" r="2.4"/><circle cx="324" cy="184" r="2.4"/><circle cx="332" cy="184" r="2.4"/><circle cx="340" cy="184" r="2.4"/><circle cx="348" cy="184" r="2.4"/><circle cx="356" cy="184" r="2.4"/><circle cx="444" cy="184" r="2.4"/><circle cx="452" cy="184" r="2.4"/><circle cx="460" cy="184" r="2.4"/><circle cx="468" cy="184" r="2.4"/><circle cx="476" cy="184" r="2.4"/><circle cx="288" cy="191" r="2.4"/><circle cx="296" cy="191" r="2.4"/><circle cx="304" cy="191" r="2.4"/><circle cx="312" cy="191" r="2.4"/><circle cx="320" cy="191" r="2.4"/><circle cx="328" cy="191" r="2.4"/><circle cx="336" cy="191" r="2.4"/><circle cx="344" cy="191" r="2.4"/><circle cx="352" cy="191" r="2.4"/><circle cx="360" cy="191" r="2.4"/><circle cx="440" cy="191" r="2.4"/><circle cx="448" cy="191" r="2.4"/><circle cx="456" cy="191" r="2.4"/><circle cx="464" cy="191" r="2.4"/><circle cx="472" cy="191" r="2.4"/></g>
+<rect x="316" y="160" width="58" height="16" rx="2" fill="#2e8b3e"/><rect x="339.0" y="163" width="12" height="10" fill="#20252d"/><circle cx="320" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="320" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="325" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="325" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="330" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="330" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="335" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="335" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="340" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="340" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="345" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="345" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="350" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="350" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="355" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="355" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="360" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="360" cy="173.5" r="1.1" fill="#e9d48a"/><circle cx="365" cy="162.5" r="1.1" fill="#e9d48a"/><circle cx="365" cy="173.5" r="1.1" fill="#e9d48a"/>
+<rect x="382" y="80" width="92" height="78" rx="9" fill="#1d2430"/><rect x="390" y="88" width="76" height="46.8" rx="3" fill="#0b1220"/><g font-family="monospace" font-size="8.6" fill="#e6f3ff" font-weight="700"><text x="395" y="101">The Wrigglers</text><text x="395" y="114">AIR 24.4C 39%</text><text x="395" y="126" fill="#a6e07f">MOIST  62%</text></g><circle cx="416.0" cy="146" r="5" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="2.5 2"/><circle cx="440.0" cy="146" r="5" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="2.5 2"/>
+<rect x="378" y="156" width="100" height="10" rx="4" fill="#111"/>
+<rect x="289" y="142" width="26" height="14" rx="2.5" fill="#5b3fa8"/><circle cx="302" cy="138" r="8" fill="#20252d"/><circle cx="302" cy="138" r="4.5" fill="#5b6475"/>
+<rect x="450" y="184" width="16" height="12" rx="2" fill="#c8102e"/><rect x="455" y="187" width="6" height="6" fill="#20252d"/>
+<g transform="translate(428 64) scale(0.5)" fill="none" stroke="#2a9fd8" stroke-width="9" stroke-linecap="round"><path d="M-26 0 a40 40 0 0 1 52 0"/><path d="M-40 -16 a62 62 0 0 1 80 0" opacity=".7"/><path d="M-54 -32 a84 84 0 0 1 108 0" opacity=".45"/></g>
+<rect x="12.75" y="15.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="37.0" y="26" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="68" y="27" font-size="15" font-weight="800" fill="#5b3fa8" text-anchor="start">MICROPHONE</text>
+<text x="12" y="45" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">how loud the room gets.</text>
+<text x="12" y="60" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">Do worms notice?</text>
+<path d="M12 64 L234 64 L302 142" fill="none" stroke="#5b3fa8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="302" cy="142" r="4" fill="#5b3fa8"/>
+<rect x="12" y="85" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="29.0" y="96" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="52" y="97" font-size="15" font-weight="800" fill="#b8860b" text-anchor="start">3D-PRINTED LID</text>
+<text x="12" y="115" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">designed and printed by us;</text>
+<text x="12" y="130" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">a honeycomb of air holes</text>
+<path d="M12 134 L234 134 L268 190" fill="none" stroke="#b8860b" stroke-width="1.8"/>
+<circle cx="268" cy="190" r="4" fill="#b8860b"/>
+<rect x="12" y="155" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="29.0" y="166" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="52" y="167" font-size="15" font-weight="800" fill="#c8102e" text-anchor="start">LASER RANGER</text>
+<text x="12" y="185" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">times a flash of infrared light</text>
+<text x="12" y="200" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">off the bedding, to the mm</text>
+<path d="M12 204 L234 204 L288 238" fill="none" stroke="#c8102e" stroke-width="1.8"/>
+<circle cx="288" cy="238" r="4" fill="#c8102e"/>
+<rect x="12.75" y="225.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="37.0" y="236" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="68" y="237" font-size="15" font-weight="800" fill="#b8860b" text-anchor="start">LIGHT SENSOR</text>
+<text x="12" y="255" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">how bright it gets</text>
+<text x="12" y="270" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">inside the glass</text>
+<path d="M12 274 L234 274 L354 242" fill="none" stroke="#b8860b" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="354" cy="242" r="4" fill="#b8860b"/>
+<rect x="12" y="319" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="29.0" y="330" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="52" y="331" font-size="15" font-weight="800" fill="#7a5038" text-anchor="start">SOIL TEMPERATURE</text>
+<text x="12" y="349" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">waterproof probes; many share</text>
+<text x="12" y="364" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">one wire, so try three depths</text>
+<path d="M12 368 L234 368 L326 426" fill="none" stroke="#7a5038" stroke-width="1.8"/>
+<circle cx="326" cy="426" r="4" fill="#7a5038"/>
+<path d="M12 368 L234 368 L376 546" fill="none" stroke="#7a5038" stroke-width="1.8"/>
+<circle cx="376" cy="546" r="4" fill="#7a5038"/>
+<path d="M12 368 L234 368 L420 666" fill="none" stroke="#7a5038" stroke-width="1.8"/>
+<circle cx="420" cy="666" r="4" fill="#7a5038"/>
+<rect x="12.75" y="489.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="37.0" y="500" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="68" y="501" font-size="15" font-weight="800" fill="#5b6475" text-anchor="start">VIBRATION MOTOR</text>
+<text x="12" y="519" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">buried in the bedding, a buzz</text>
+<text x="12" y="534" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">now and then. Do they move?</text>
+<path d="M12 538 L234 538 L286 610" fill="none" stroke="#5b6475" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="286" cy="610" r="4" fill="#5b6475"/>
+<rect x="12.75" y="629.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="37.0" y="640" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="68" y="641" font-size="15" font-weight="800" fill="#2a9fd8" text-anchor="start">GEOPHONES x4</text>
+<text x="12" y="659" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">super-sensitive vibration</text>
+<text x="12" y="674" font-size="13" font-weight="600" fill="#5b6475" text-anchor="start">sensors. Can we hear worms?</text>
+<path d="M12 678 L234 678 L226 732" fill="none" stroke="#2a9fd8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="226" cy="732" r="4" fill="#2a9fd8"/>
+<path d="M12 678 L234 678 L254 746" fill="none" stroke="#2a9fd8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="254" cy="746" r="4" fill="#2a9fd8"/>
+<rect x="714" y="15" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="731.0" y="26" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="708" y="27" font-size="15" font-weight="800" fill="#2a9fd8" text-anchor="end">0.96" SCREEN</text>
+<text x="748" y="45" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">128 x 64 pixels. We program it;</text>
+<text x="748" y="60" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">add buttons to flip or pause</text>
+<path d="M748 64 L526 64 L474 104" fill="none" stroke="#2a9fd8" stroke-width="1.8"/>
+<circle cx="474" cy="104" r="4" fill="#2a9fd8"/>
+<rect x="714" y="101" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="731.0" y="112" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="708" y="113" font-size="15" font-weight="800" fill="#2f7d3a" text-anchor="end">PICO 2 W</text>
+<text x="748" y="131" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">the brain, on Wi-Fi:</text>
+<text x="748" y="146" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">a reading every minute</text>
+<path d="M748 150 L526 150 L374 168" fill="none" stroke="#2f7d3a" stroke-width="1.8"/>
+<circle cx="374" cy="168" r="4" fill="#2f7d3a"/>
+<rect x="698.75" y="179.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="723.0" y="190" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="692" y="191" font-size="15" font-weight="800" fill="#c8102e" text-anchor="end">ACCELEROMETER</text>
+<text x="748" y="209" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">knows when the lid moves</text>
+<text x="748" y="224" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">(the laser can tell, too)</text>
+<path d="M748 228 L526 228 L466 190" fill="none" stroke="#c8102e" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="466" cy="190" r="4" fill="#c8102e"/>
+<rect x="714" y="251" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="731.0" y="262" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="708" y="263" font-size="15" font-weight="800" fill="#5b3fa8" text-anchor="end">AIR SENSOR</text>
+<text x="748" y="281" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">temperature, humidity and</text>
+<text x="748" y="296" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">air pressure in the bin</text>
+<path d="M748 300 L526 300 L450 244" fill="none" stroke="#5b3fa8" stroke-width="1.8"/>
+<circle cx="450" cy="244" r="4" fill="#5b3fa8"/>
+<rect x="714" y="321" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="731.0" y="332" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="708" y="333" font-size="15" font-weight="800" fill="#e8762c" text-anchor="end">FAN</text>
+<text x="748" y="351" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">on by humidity, soil</text>
+<text x="748" y="366" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">moisture or temperature</text>
+<path d="M748 370 L526 370 L482 282" fill="none" stroke="#e8762c" stroke-width="1.8"/>
+<circle cx="482" cy="282" r="4" fill="#e8762c"/>
+<rect x="698.75" y="391.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="723.0" y="402" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="692" y="403" font-size="15" font-weight="800" fill="#5b3fa8" text-anchor="end">ROOM AIR SENSOR</text>
+<text x="748" y="421" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">a second one outside,</text>
+<text x="748" y="436" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">to compare with the bin</text>
+<path d="M748 440 L526 440 L524 328" fill="none" stroke="#5b3fa8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="524" cy="328" r="4" fill="#5b3fa8"/>
+<rect x="714" y="461" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="731.0" y="472" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="708" y="473" font-size="15" font-weight="800" fill="#1b2f5e" text-anchor="end">SOIL MOISTURE</text>
+<text x="748" y="491" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">a capacitive probe: no bare</text>
+<text x="748" y="506" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">metal in the dirt</text>
+<path d="M748 510 L526 510 L463 380" fill="none" stroke="#1b2f5e" stroke-width="1.8"/>
+<circle cx="463" cy="380" r="4" fill="#1b2f5e"/>
+<rect x="698.75" y="561.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="723.0" y="572" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="692" y="573" font-size="15" font-weight="800" fill="#2a6fd8" text-anchor="end">THE THUMPER</text>
+<text x="748" y="591" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">a servo that taps the glass.</text>
+<text x="748" y="606" font-size="13" font-weight="600" fill="#5b6475" text-anchor="end">Does tapping bother them?</text>
+<path d="M748 610 L526 610 L494 506" fill="none" stroke="#2a6fd8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="494" cy="506" r="4" fill="#2a6fd8"/>
+</svg>
+
+  </div>
+  <p class="sb-key"><span class="k-now">NOW</span> in our bins today &nbsp;&nbsp; <span class="k-add">ADD-ON</span> next to try: some parts on the shelf, some on the wish list</p>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ super bin (landscape) -->
+<section class="page land" id="pL">
+  <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+  </header>
+
+  <div class="kicker">Same parts, more of them</div>
+  <h2>Map the <em>whole</em> bin</h2>
+  <p class="lede">The same sensors work in a plain black tote. Six temperature probes share one wire, three moisture probes and two lasers
+    cover the corners, and the bin becomes a map: warm here, wet there.</p>
+
+  <div class="superbin">
+<svg viewBox="0 0 1120 560" role="img" aria-label="A black plastic worm bin, cut away to show several of each sensor: soil temperature probes in a grid at different depths, moisture probes, and more" font-family="Nunito Sans, Arial">
+<defs>
+  <linearGradient id="sb-soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset=".5" stop-color="#5b3a29"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
+  <linearGradient id="sb-glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#cfe6f7" stop-opacity=".55"/><stop offset=".5" stop-color="#eef7fd" stop-opacity=".2"/><stop offset="1" stop-color="#cfe6f7" stop-opacity=".55"/></linearGradient>
+  <radialGradient id="sb-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff3b5c" stop-opacity=".85"/><stop offset="1" stop-color="#ff3b5c" stop-opacity="0"/></radialGradient>
+  <linearGradient id="sb-tote" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2f36"/><stop offset="1" stop-color="#15181d"/></linearGradient>
+</defs>
+<g transform="translate(60 60)">
+<rect x="140" y="464" width="720" height="7" rx="3.5" fill="#d9cdb8"/><ellipse cx="510.0" cy="460" rx="290" ry="10" fill="#000" opacity=".12"/>
+<path d="M290 130 L790 130 L790 408 L750 430 L750 170 Z" fill="#1d2026"/>
+<path d="M250 170 L290 130 L790 130 L750 170 Z" fill="#30343c"/>
+<path d="M256 230 L290 204 L784 204 L744 230 Z" fill="#9a6a48"/>
+<rect x="256" y="230" width="488" height="194" fill="url(#sb-soil)"/>
+<g fill="#b38358" opacity=".55"><circle cx="418" cy="268" r="2.5"/><circle cx="300" cy="335" r="2.0"/><circle cx="293" cy="330" r="1.6"/><circle cx="469" cy="254" r="1.6"/><circle cx="465" cy="386" r="1.7"/><circle cx="370" cy="351" r="2.9"/><circle cx="536" cy="311" r="3.0"/><circle cx="288" cy="391" r="1.9"/><circle cx="334" cy="262" r="2.0"/><circle cx="648" cy="273" r="2.4"/><circle cx="565" cy="307" r="2.3"/><circle cx="295" cy="252" r="1.8"/><circle cx="584" cy="316" r="2.0"/><circle cx="540" cy="321" r="1.9"/><circle cx="638" cy="364" r="1.9"/><circle cx="535" cy="333" r="2.8"/><circle cx="607" cy="292" r="3.0"/><circle cx="321" cy="315" r="2.6"/><circle cx="337" cy="327" r="1.6"/><circle cx="579" cy="375" r="2.4"/><circle cx="676" cy="297" r="2.5"/><circle cx="544" cy="343" r="2.2"/><circle cx="659" cy="406" r="2.2"/><circle cx="577" cy="253" r="2.6"/><circle cx="569" cy="415" r="2.7"/><circle cx="399" cy="309" r="2.5"/><circle cx="277" cy="322" r="1.8"/><circle cx="321" cy="252" r="2.7"/><circle cx="327" cy="285" r="2.1"/><circle cx="674" cy="256" r="2.2"/><circle cx="523" cy="396" r="2.7"/><circle cx="670" cy="290" r="2.1"/><circle cx="434" cy="396" r="2.9"/><circle cx="337" cy="273" r="1.8"/><circle cx="375" cy="326" r="2.4"/><circle cx="389" cy="243" r="2.1"/><circle cx="439" cy="341" r="2.9"/><circle cx="589" cy="332" r="2.4"/><circle cx="582" cy="251" r="2.8"/><circle cx="631" cy="394" r="2.7"/></g>
+<path d="M290 300 q14 -12 28 0 t28 0" fill="none" stroke="#e8879b" stroke-width="7" stroke-linecap="round"/>
+<path d="M520 360 q12 10 24 0 t24 0" fill="none" stroke="#d96d84" stroke-width="7" stroke-linecap="round"/>
+<path d="M640 280 q12 -10 24 0 t24 2" fill="none" stroke="#e8879b" stroke-width="7" stroke-linecap="round"/>
+<path d="M400 400 q10 8 20 0 t20 -4" fill="none" stroke="#d96d84" stroke-width="6" stroke-linecap="round"/>
+<path d="M600 410 q10 -8 20 0 t20 0" fill="none" stroke="#e8879b" stroke-width="6" stroke-linecap="round"/>
+<path d="M340 228 q12 -12 26 0 q-13 6 -26 0z" fill="#6fbf3f"/><path d="M560 226 q9 -10 22 -2 q-10 8 -22 2z" fill="#f08a2c"/>
+<path d="M300 160 L300 274" stroke="#20252d" stroke-width="3.5"/><rect x="295" y="272" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<path d="M420 160 L420 334" stroke="#20252d" stroke-width="3.5"/><rect x="415" y="332" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<path d="M540 160 L540 274" stroke="#20252d" stroke-width="3.5"/><rect x="535" y="272" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<path d="M660 160 L660 354" stroke="#20252d" stroke-width="3.5"/><rect x="655" y="352" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<path d="M360 160 L360 384" stroke="#20252d" stroke-width="3.5"/><rect x="355" y="382" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<path d="M600 160 L600 386" stroke="#20252d" stroke-width="3.5"/><rect x="595" y="384" width="10" height="28" rx="5" fill="#c7cdd6" stroke="#8b94a3" stroke-width="1"/>
+<rect x="471" y="200" width="18" height="100" rx="3" fill="#1d2430"/><rect x="474" y="208" width="12" height="35.0" rx="2" fill="#2f3a4c"/><path d="M474 296 L480 306 L486 296" fill="#1d2430"/>
+<rect x="691" y="200" width="18" height="100" rx="3" fill="#1d2430"/><rect x="694" y="208" width="12" height="35.0" rx="2" fill="#2f3a4c"/><path d="M694 296 L700 306 L706 296" fill="#1d2430"/>
+<rect x="321" y="200" width="18" height="100" rx="3" fill="#1d2430"/><rect x="324" y="208" width="12" height="35.0" rx="2" fill="#2f3a4c"/><path d="M324 296 L330 306 L336 296" fill="#1d2430"/>
+<path d="M455 160 L455 380" stroke="#20252d" stroke-width="2.5"/><circle cx="455" cy="392" r="10" fill="#9aa4b2" stroke="#5b6475" stroke-width="2"/><circle cx="455" cy="392" r="3" fill="#5b6475"/><g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"><path d="M439 385 q-5 7 0 14"/><path d="M433 381 q-7 11 0 22"/><path d="M471 385 q5 7 0 14"/><path d="M477 381 q7 11 0 22"/></g>
+<rect x="367" y="162" width="26" height="11" rx="3" fill="#111"/><line x1="380" y1="173" x2="380" y2="218" stroke="#ff2d55" stroke-width="3" stroke-dasharray="6 5"/><circle cx="380" cy="220" r="11" fill="url(#sb-glow)"/>
+<rect x="607" y="162" width="26" height="11" rx="3" fill="#111"/><line x1="620" y1="173" x2="620" y2="218" stroke="#ff2d55" stroke-width="3" stroke-dasharray="6 5"/><circle cx="620" cy="220" r="11" fill="url(#sb-glow)"/>
+<circle cx="520" cy="176" r="8" fill="#f2b705" stroke="#b8860b" stroke-width="1.5"/><path d="M515 174 q2.5 -4 5 0 t5 0" fill="none" stroke="#7a5038" stroke-width="1.6"/><path d="M515 178 q2.5 -4 5 0 t5 0" fill="none" stroke="#7a5038" stroke-width="1.6"/>
+<rect x="560" y="164" width="26" height="18" rx="2.5" fill="#5b3fa8"/><circle cx="573.0" cy="173.0" r="3.2" fill="#d9d2ef"/>
+<path d="M250 170 L250 430 L750 430 L750 170" fill="none" stroke="#15181d" stroke-width="12" stroke-linejoin="round"/>
+<path d="M750 430 L790 408" stroke="#15181d" stroke-width="12" stroke-linecap="round"/>
+<path d="M756 176 L756 424" stroke="#2b2f36" stroke-width="2"/>
+<g transform="translate(772 230)"><rect x="-20" y="-20" width="40" height="40" rx="7" fill="#2f3540"/><circle r="16.0" fill="#3e4652"/><g fill="#9aa4b2"><path d="M0 0 q-4 -15 6 -15 q4 8 -6 15z"/><path d="M0 0 q15 -4 15 6 q-8 4 -15 -6z"/><path d="M0 0 q4 15 -6 15 q-4 -8 6 -15z"/><path d="M0 0 q-15 4 -15 -6 q8 -4 15 6z"/></g><circle r="4" fill="#20252d"/></g>
+<rect x="198" y="319" width="36" height="22" rx="3" fill="#2a6fd8"/><rect x="192" y="327" width="48" height="5" rx="2" fill="#2a6fd8"/><circle cx="224" cy="319" r="5" fill="#fff"/><path d="M224 319 L246 308" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M224 319 L246 308" stroke="#d6dde8" stroke-width="2.5" stroke-linecap="round"/>
+<path d="M260 156 C 220 170, 210 210, 206 236" fill="none" stroke="#20252d" stroke-width="2"/><rect x="192" y="236" width="28" height="20" rx="2.5" fill="#5b3fa8"/><circle cx="206.0" cy="246.0" r="3.2" fill="#d9d2ef"/>
+<rect x="215" y="442" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="215" y="442" width="18" height="6" rx="3" fill="#1b6fa0"/><path d="M221 462 L224 471 L227 462" fill="#5b6475"/>
+<rect x="771" y="442" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="771" y="442" width="18" height="6" rx="3" fill="#1b6fa0"/><path d="M777 462 L780 471 L783 462" fill="#5b6475"/>
+<rect x="271" y="456" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="271" y="456" width="18" height="6" rx="3" fill="#1b6fa0"/><path d="M277 476 L280 485 L283 476" fill="#5b6475"/>
+<rect x="715" y="456" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="715" y="456" width="18" height="6" rx="3" fill="#1b6fa0"/><path d="M721 476 L724 485 L727 476" fill="#5b6475"/>
+<path d="M238 156 L284 114 L802 114 L762 156 Z" fill="#2b2f36"/>
+<rect x="238" y="156" width="524" height="16" rx="3" fill="#15181d"/>
+<g fill="#0d0f12"><circle cx="290" cy="130" r="3"/><circle cx="308" cy="130" r="3"/><circle cx="326" cy="130" r="3"/><circle cx="344" cy="130" r="3"/><circle cx="362" cy="130" r="3"/><circle cx="380" cy="130" r="3"/><circle cx="398" cy="130" r="3"/><circle cx="416" cy="130" r="3"/><circle cx="434" cy="130" r="3"/><circle cx="452" cy="130" r="3"/><circle cx="298" cy="144" r="3"/><circle cx="316" cy="144" r="3"/><circle cx="334" cy="144" r="3"/><circle cx="352" cy="144" r="3"/><circle cx="370" cy="144" r="3"/><circle cx="388" cy="144" r="3"/><circle cx="406" cy="144" r="3"/><circle cx="424" cy="144" r="3"/><circle cx="442" cy="144" r="3"/><circle cx="460" cy="144" r="3"/></g>
+<rect x="430" y="132" width="58" height="16" rx="2" fill="#2e8b3e"/><rect x="453.0" y="135" width="12" height="10" fill="#20252d"/><circle cx="434" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="434" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="439" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="439" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="444" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="444" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="449" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="449" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="454" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="454" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="459" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="459" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="464" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="464" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="469" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="469" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="474" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="474" cy="145.5" r="1.1" fill="#e9d48a"/><circle cx="479" cy="134.5" r="1.1" fill="#e9d48a"/><circle cx="479" cy="145.5" r="1.1" fill="#e9d48a"/>
+<rect x="560" y="58" width="92" height="78" rx="9" fill="#1d2430"/><rect x="568" y="66" width="76" height="46.8" rx="3" fill="#0b1220"/><g font-family="monospace" font-size="8.6" fill="#e6f3ff" font-weight="700"><text x="573" y="79">The Wrigglers</text><text x="573" y="92">AIR 24.4C 39%</text><text x="573" y="104" fill="#a6e07f">MOIST  62%</text></g><circle cx="594.0" cy="124" r="5" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="2.5 2"/><circle cx="618.0" cy="124" r="5" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="2.5 2"/>
+<rect x="556" y="134" width="100" height="10" rx="4" fill="#111"/>
+<rect x="677" y="134" width="26" height="14" rx="2.5" fill="#5b3fa8"/><circle cx="690" cy="130" r="8" fill="#20252d"/><circle cx="690" cy="130" r="4.5" fill="#5b6475"/>
+<rect x="380" y="136" width="16" height="12" rx="2" fill="#c8102e"/><rect x="385" y="139" width="6" height="6" fill="#20252d"/>
+<g transform="translate(606 42) scale(0.5)" fill="none" stroke="#2a9fd8" stroke-width="9" stroke-linecap="round"><path d="M-26 0 a40 40 0 0 1 52 0"/><path d="M-40 -16 a62 62 0 0 1 80 0" opacity=".7"/><path d="M-54 -32 a84 84 0 0 1 108 0" opacity=".45"/></g>
+</g>
+<rect x="10" y="39" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="27.0" y="50" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="50" y="51" font-size="14" font-weight="800" fill="#2a9fd8" text-anchor="start">3D-PRINTED SCREEN CASE</text>
+<text x="10" y="69" font-size="12" font-weight="600" fill="#5b6475" text-anchor="start">0.96" screen, 128 x 64 pixels</text>
+<path d="M10 72 L272 72 L620 140" fill="none" stroke="#2a9fd8" stroke-width="1.8"/>
+<circle cx="620" cy="140" r="4" fill="#2a9fd8"/>
+<rect x="10" y="95" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="27.0" y="106" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="50" y="107" font-size="14" font-weight="800" fill="#c8102e" text-anchor="start">LASER RANGERS x2</text>
+<text x="10" y="125" font-size="12" font-weight="600" fill="#5b6475" text-anchor="start">bedding level, two spots</text>
+<path d="M10 128 L272 128 L440 224" fill="none" stroke="#c8102e" stroke-width="1.8"/>
+<circle cx="440" cy="224" r="4" fill="#c8102e"/>
+<path d="M10 128 L272 128 L680 224" fill="none" stroke="#c8102e" stroke-width="1.8"/>
+<circle cx="680" cy="224" r="4" fill="#c8102e"/>
+<rect x="10.75" y="151.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="35.0" y="162" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="66" y="163" font-size="14" font-weight="800" fill="#5b3fa8" text-anchor="start">ROOM AIR SENSOR</text>
+<text x="10" y="181" font-size="12" font-weight="600" fill="#5b6475" text-anchor="start">outside, to compare</text>
+<path d="M10 184 L272 184 L266 306" fill="none" stroke="#5b3fa8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="266" cy="306" r="4" fill="#5b3fa8"/>
+<rect x="10" y="247" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="27.0" y="258" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="50" y="259" font-size="14" font-weight="800" fill="#7a5038" text-anchor="start">SOIL TEMPERATURE x6</text>
+<text x="10" y="277" font-size="12" font-weight="600" fill="#5b6475" text-anchor="start">one wire, a grid of depths:</text>
+<text x="10" y="291" font-size="12" font-weight="600" fill="#5b6475" text-anchor="start">map the warm spots</text>
+<path d="M10 294 L272 294 L360 350" fill="none" stroke="#7a5038" stroke-width="1.8"/>
+<circle cx="360" cy="350" r="4" fill="#7a5038"/>
+<path d="M10 294 L272 294 L480 410" fill="none" stroke="#7a5038" stroke-width="1.8"/>
+<circle cx="480" cy="410" r="4" fill="#7a5038"/>
+<path d="M10 294 L272 294 L420 460" fill="none" stroke="#7a5038" stroke-width="1.8"/>
+<circle cx="420" cy="460" r="4" fill="#7a5038"/>
+<rect x="10.75" y="331.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="35.0" y="342" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="66" y="343" font-size="14" font-weight="800" fill="#2a6fd8" text-anchor="start">THE THUMPER</text>
+<text x="10" y="361" font-size="12" font-weight="600" fill="#5b6475" text-anchor="start">a servo tapping the wall</text>
+<path d="M10 364 L272 364 L290 378" fill="none" stroke="#2a6fd8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="290" cy="378" r="4" fill="#2a6fd8"/>
+<rect x="10.75" y="399.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="35.0" y="410" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="66" y="411" font-size="14" font-weight="800" fill="#2a9fd8" text-anchor="start">GEOPHONES x4</text>
+<text x="10" y="429" font-size="12" font-weight="600" fill="#5b6475" text-anchor="start">one under each corner</text>
+<path d="M10 432 L272 432 L284 506" fill="none" stroke="#2a9fd8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="284" cy="506" r="4" fill="#2a9fd8"/>
+<path d="M10 432 L272 432 L340 520" fill="none" stroke="#2a9fd8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="340" cy="520" r="4" fill="#2a9fd8"/>
+<rect x="1060.75" y="39.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="1085.0" y="50" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="1054" y="51" font-size="14" font-weight="800" fill="#5b3fa8" text-anchor="end">MICROPHONE</text>
+<text x="1110" y="69" font-size="12" font-weight="600" fill="#5b6475" text-anchor="end">how loud the room gets</text>
+<path d="M1110 72 L862 72 L750 192" fill="none" stroke="#5b3fa8" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="750" cy="192" r="4" fill="#5b3fa8"/>
+<rect x="1060.75" y="95.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="1085.0" y="106" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="1054" y="107" font-size="14" font-weight="800" fill="#c8102e" text-anchor="end">ACCELEROMETER</text>
+<text x="1110" y="125" font-size="12" font-weight="600" fill="#5b6475" text-anchor="end">knows when the lid moves</text>
+<path d="M1110 128 L862 128 L448 202" fill="none" stroke="#c8102e" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="448" cy="202" r="4" fill="#c8102e"/>
+<rect x="1076" y="151" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="1093.0" y="162" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="1070" y="163" font-size="14" font-weight="800" fill="#5b3fa8" text-anchor="end">AIR SENSOR + LIGHT</text>
+<text x="1110" y="181" font-size="12" font-weight="600" fill="#5b6475" text-anchor="end">temp, humidity, pressure, light</text>
+<path d="M1110 184 L862 184 L632 232" fill="none" stroke="#5b3fa8" stroke-width="1.8"/>
+<circle cx="632" cy="232" r="4" fill="#5b3fa8"/>
+<path d="M1110 184 L862 184 L580 236" fill="none" stroke="#5b3fa8" stroke-width="1.8"/>
+<circle cx="580" cy="236" r="4" fill="#5b3fa8"/>
+<rect x="1076" y="229" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="1093.0" y="240" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="1070" y="241" font-size="14" font-weight="800" fill="#e8762c" text-anchor="end">FAN</text>
+<text x="1110" y="259" font-size="12" font-weight="600" fill="#5b6475" text-anchor="end">on by humidity, moisture or heat</text>
+<path d="M1110 262 L862 262 L832 290" fill="none" stroke="#e8762c" stroke-width="1.8"/>
+<circle cx="832" cy="290" r="4" fill="#e8762c"/>
+<rect x="1076" y="289" width="34" height="15" rx="7.5" fill="#2f7d3a"/><text x="1093.0" y="300" font-size="9.5" font-weight="900" fill="#fff" text-anchor="middle" letter-spacing=".08em">NOW</text>
+<text x="1070" y="301" font-size="14" font-weight="800" fill="#1b2f5e" text-anchor="end">SOIL MOISTURE x3</text>
+<text x="1110" y="319" font-size="12" font-weight="600" fill="#5b6475" text-anchor="end">wet here, dry there?</text>
+<path d="M1110 322 L862 322 L760 310" fill="none" stroke="#1b2f5e" stroke-width="1.8"/>
+<circle cx="760" cy="310" r="4" fill="#1b2f5e"/>
+<path d="M1110 322 L862 322 L540 310" fill="none" stroke="#1b2f5e" stroke-width="1.8"/>
+<circle cx="540" cy="310" r="4" fill="#1b2f5e"/>
+<path d="M1110 322 L862 322 L390 310" fill="none" stroke="#1b2f5e" stroke-width="1.8"/>
+<circle cx="390" cy="310" r="4" fill="#1b2f5e"/>
+<rect x="1060.75" y="359.75" width="48.5" height="13.5" rx="6.75" fill="#fff" stroke="#e8762c" stroke-width="1.5" stroke-dasharray="3 2"/><text x="1085.0" y="370" font-size="9.5" font-weight="900" fill="#e8762c" text-anchor="middle" letter-spacing=".08em">ADD-ON</text>
+<text x="1054" y="371" font-size="14" font-weight="800" fill="#5b6475" text-anchor="end">VIBRATION MOTOR</text>
+<text x="1110" y="389" font-size="12" font-weight="600" fill="#5b6475" text-anchor="end">a buzz now and then</text>
+<path d="M1110 392 L862 392 L525 452" fill="none" stroke="#5b6475" stroke-width="1.8" stroke-dasharray="5 4"/>
+<circle cx="525" cy="452" r="4" fill="#5b6475"/>
+</svg>
+
+  </div>
+  <p class="sb-key"><span class="k-now">NOW</span> in our bins today &nbsp;&nbsp; <span class="k-add">ADD-ON</span> next to try: some parts on the shelf, some on the wish list</p>
 
   <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
