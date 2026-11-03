@@ -46,8 +46,8 @@
   .brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 10px;
            border-bottom: 4px solid var(--navy); position: relative; }
   .brand::after { content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 3px; background: var(--red); }
-  .brand .mlk img { height: 0.52in; display: block; }
-  .brand .whs { display: flex; align-items: center; gap: 10px; text-align: right; }
+  .brand .mlk img { height: 0.7in; margin: -0.07in 0; display: block; }
+  .brand .whs { display: flex; align-items: center; gap: 10px; text-align: left; }
   .brand .whs img { height: 0.56in; display: block; }
   .brand .whs b { display: block; font-family: "Fredoka", sans-serif; font-weight: 700; color: var(--navy);
                   font-size: 17px; letter-spacing: .06em; line-height: 1.05; }
@@ -106,7 +106,7 @@
   .comfort { background: var(--cream); border-radius: 16px; padding: 14px 16px; border: 2px solid #f1dcc0; }
   .comfort h3 { margin: 0 0 6px; color: var(--soil); font-size: 20px; }
   .comfort ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
-  .comfort .gauge { margin: 10px 0 2px; }
+  .comfort .gauge { margin: 8px 0 0; } .comfort .gcap { margin: 0 0 6px; font-size: 11px; color: #5b3a29; text-align: center; }
   h3.sec { font-size: 20px; margin: 4px 0 8px; color: var(--navy); }
 
   .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
@@ -130,12 +130,12 @@
            border-left: 6px solid var(--yellow); padding: 6px 0 6px 14px; }
 
   /* ---- page 4 ---- */
-  .next { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .next { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
   .nx { border-radius: 16px; padding: 14px; color: #fff; }
-  .nx h3 { margin: 6px 0 4px; font-size: 24px; } .nx p { margin: 0; font-size: 13px; line-height: 1.4; }
+  .nx h3 { margin: 6px 0 4px; font-size: 20px; } .nx p { margin: 0; font-size: 13px; line-height: 1.4; }
   .nx svg { width: 44px; height: 44px; }
   .n1 { background: linear-gradient(160deg, #e8762c, #f2b705); } .n2 { background: linear-gradient(160deg, #2a9fd8, #1b2f5e); }
-  .n3 { background: linear-gradient(160deg, #5fae3a, #2f7d3a); }
+  .n3 { background: linear-gradient(160deg, #5fae3a, #2f7d3a); } .n0 { background: linear-gradient(160deg, #c8102e, #7a1f3a); }
   .ideas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .ideas .card h3 { font-size: 17px; }
   .help { margin-top: 14px; border-radius: 18px; background: var(--navy); color: #fff; padding: 16px 18px; display: grid;
@@ -205,8 +205,8 @@
 <!-- ================================================================ 1 -->
 <section class="page" id="p1">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="cover-title">
@@ -315,20 +315,20 @@
     <div><b>Our driving question</b><span>How do we keep thousands of red wigglers happy, and prove it with data?</span></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">1 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 2 -->
 <section class="page" id="p2">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">The project</div>
   <h2>How a <em>smart</em> worm bin works</h2>
   <p class="lede">Red wigglers turn our cafeteria's food scraps into castings, the rich compost gardeners call black gold. The school even set up a company so students can sell it to the public. Our job is to keep
-    the worms comfortable. The bin's sensors tell us how they're doing, around the clock, even when nobody's in the room.</p>
+    the worms comfortable; the sensors tell us how they're doing.</p>
 
   <div class="steps">
     <div class="step s1"><div class="n">1</div><h3>Feed</h3><p>Scraps from the school cafeteria and shredded paper go in. Worms eat, wiggle, and leave castings behind.</p></div>
@@ -346,30 +346,38 @@
         <div class="m"><div class="ic" style="background:#f3e7df"><svg viewBox="0 0 24 24"><rect x="10" y="2" width="4" height="15" rx="2" fill="#7a5038"/><circle cx="12" cy="18.5" r="3.5" fill="#7a5038"/></svg></div><div><b>Soil temperature</b><span>waterproof probes in the bedding</span></div></div>
         <div class="m"><div class="ic" style="background:#e3f4da"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 20V9l5-5 5 5v11" fill="none" stroke="#5fae3a" stroke-width="2.5" stroke-linejoin="round"/><path d="M12 11s2.5 3 2.5 4.5a2.5 2.5 0 0 1-5 0C9.5 14 12 11 12 11z" fill="#2a9fd8"/></svg></div><div><b>Soil moisture</b><span>not too wet, not too dry</span></div></div>
         <div class="m"><div class="ic" style="background:#fff5d6"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#f2b705"/><g stroke="#f2b705" stroke-width="2" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></g></svg></div><div><b>Light</b><span>how bright it gets in the bin</span></div></div>
-        <div class="m"><div class="ic" style="background:#ffe3e8"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="#c8102e"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4" fill="none" stroke="#c8102e" stroke-width="2" stroke-linecap="round"/></svg></div><div><b>Sound</b><span>how noisy the room gets</span></div></div>
+        <div class="m"><div class="ic" style="background:#ffe3e8"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="#c8102e"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4" fill="none" stroke="#c8102e" stroke-width="2" stroke-linecap="round"/></svg></div><div><b>Sound</b><span>no ears, but do they feel it?</span></div></div>
         <div class="m"><div class="ic" style="background:#e6ebf5"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="5" rx="2" fill="#1b2f5e"/><path d="M12 8v9" stroke="#ff2d55" stroke-width="2" stroke-dasharray="2.5 2"/><path d="M4 20h16" stroke="#7a5038" stroke-width="3" stroke-linecap="round"/></svg></div><div><b>Bedding level</b><span>drops as the worms eat their bedding</span></div></div>
       </div>
     </div>
     <div class="comfort">
       <h3>The worm comfort zone</h3>
-      <svg class="gauge" viewBox="0 0 300 70" width="100%">
-        <rect x="10" y="22" width="280" height="18" rx="9" fill="#e8eef7"/>
-        <rect x="10" y="22" width="70" height="18" rx="9" fill="#9fd1f2"/><rect x="220" y="22" width="70" height="18" rx="9" fill="#f6a3a3"/>
-        <rect x="80" y="22" width="140" height="18" fill="#a6e07f"/>
-        <text x="80" y="60" font-size="12" font-weight="800" fill="#1b2f5e" text-anchor="middle">55&#176;F</text>
-        <text x="220" y="60" font-size="12" font-weight="800" fill="#1b2f5e" text-anchor="middle">77&#176;F</text>
-        <text x="150" y="15" font-size="12" font-weight="800" fill="#2f7d3a" text-anchor="middle">happy worms</text>
-        <text x="40" y="15" font-size="11" fill="#2a6f9c" text-anchor="middle" font-weight="700">sluggish</text>
-        <text x="258" y="15" font-size="11" fill="#b42318" text-anchor="middle" font-weight="700">too hot!</text>
+      <svg class="gauge" viewBox="0 0 300 62" width="100%">
+        <defs><pattern id="haz" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3.5" height="7" fill="rgba(255,255,255,.75)"/></pattern>
+          <clipPath id="gclip"><rect x="10" y="20" width="280" height="20" rx="9"/></clipPath></defs>
+        <g clip-path="url(#gclip)">
+          <rect x="10" y="20" width="105" height="20" fill="#9fd1f2"/>
+          <rect x="115" y="20" width="70" height="20" fill="#a6e07f"/>
+          <rect x="185" y="20" width="105" height="20" fill="#f9c27a"/>
+          <rect x="220" y="20" width="70" height="20" fill="#f08080"/>
+          <rect x="10" y="20" width="70" height="20" fill="#5aa9dc"/>
+          <rect x="10" y="20" width="70" height="20" fill="url(#haz)"/>
+          <rect x="220" y="20" width="70" height="20" fill="url(#haz)"/>
+        </g>
+        <g font-size="15" font-weight="800" fill="#1b2f5e" text-anchor="middle">
+          <text x="80" y="58">50</text><text x="115" y="58">59</text><text x="185" y="58">77</text><text x="220" y="58">86&#176;F</text></g>
+        <text x="150" y="15" font-size="15" font-weight="800" fill="#2f7d3a" text-anchor="middle">happy worms</text>
+        <text x="62" y="15" font-size="14" fill="#2a6f9c" text-anchor="middle" font-weight="700">sluggish</text>
+        <text x="237" y="15" font-size="14" fill="#b42318" text-anchor="middle" font-weight="700">too hot</text>
       </svg>
+      <p class="gcap">&deg;F &middot; stripes: danger, the dashboard flags it</p>
       <ul>
         <li>Bedding should feel like a <b>wrung-out sponge</b>.</li>
-        <li>Too wet and they can't breathe; that's when our <b>fan</b> runs.</li>
-        <li>They shy away from light and burrow down to escape it.</li>
-        <li>A bin that goes quiet for 10 minutes gets flagged.</li>
+        <li>Too wet and water fills the air pockets, and <b>mold</b> moves in. Our <b>fan</b> can switch on by humidity, soil moisture, or temperature.</li>
+        <li>They avoid light, yet often tunnel right along the glass.</li>
       </ul>
-      <p style="font-size:12.5px;margin:10px 0 0;color:#5b3a29"><b>The best part:</b> we don't have to guess. If something drifts out of the
-        zone at 2 a.m., the data shows it in the morning.</p>
+      <p style="font-size:12.5px;margin:10px 0 0;color:#5b3a29"><b>The best part:</b> some of this, nobody knows yet. We'll collect the data, find out,
+        and share what we learn so others can build on it.</p>
     </div>
   </div>
 
@@ -379,14 +387,14 @@
     <div class="fact"><b>Big appetites.</b> A healthy bin of red wigglers can eat about half its own weight in scraps every day.</div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">2 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ meet the bin -->
 <section class="page" id="pM">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">Meet the bin</div>
@@ -409,14 +417,14 @@
     <div><b style="color:#e8762c">A fan</b>Moves air when it gets too damp inside.</div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">3 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 3 -->
 <section class="page" id="p3">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">Along the way</div>
@@ -430,35 +438,37 @@
       <p>Ohm's law, resistor color codes, and why some sensors need a pull-up resistor. On a breadboard, any circuit can be tried before anything is permanent.</p></div>
     <div class="card"><span class="chip" style="background:#c8102e">Hands-on</span><h3>Soldering</h3>
       <p>Header pins on every board: a hot iron, a steady hand, and shiny joints instead of dull, cold ones. Each board gets tested before it goes in a bin.</p></div>
-    <div class="card"><span class="chip" style="background:#5fae3a">Sensors</span><h3>Sensors on two wires</h3>
-      <p>The I2C bus lets a screen and a pile of sensors share the same two wires, each with its own address. One color code for every build.</p></div>
+    <div class="card"><span class="chip" style="background:#5fae3a">Sensors</span><h3>Sensors, many ways to talk</h3>
+      <p>Our favorite is I2C: a screen and a pile of sensors share the same two wires. The soil probes speak other languages, each with its own wiring.</p></div>
     <div class="card"><span class="chip" style="background:#2a9fd8">Networking</span><h3>Wi-Fi, routers &amp; servers</h3>
-      <p>How a reading travels from a bin, through a classroom router and a Raspberry Pi server, all the way to a website anyone can open.</p></div>
-    <div class="card"><span class="chip" style="background:#0f9d58">Data</span><h3>Data in Google Sheets</h3>
-      <p>In Google Sheets, a day of readings turns into a chart, bins can be compared side by side, and trends nobody would spot by eye pop out.</p></div>
-    <div class="card"><span class="chip" style="background:#7a5038">Biology</span><h3>Worm science</h3>
-      <p>What red wigglers eat, why moisture matters, and how a healthy bin turns cafeteria scraps into rich castings.</p></div>
+      <p>Behind the scenes, a reading travels from a bin, through a classroom router and a Raspberry Pi server, to a website anyone can open.</p></div>
+    <div class="card"><span class="chip" style="background:#0f9d58">Data</span><h3>Data &amp; visualization</h3>
+      <p>Every reading can be exported and charted. Turn a month of numbers into pictures, compare bins side by side, and spot what nobody would by eye.</p></div>
+    <div class="card"><span class="chip" style="background:#7a5038">Biology</span><h3>Real worm science</h3>
+      <p>What red wigglers need to turn cafeteria scraps into castings, and data we can give back to everyone who studies and raises worms.</p></div>
     <div class="card story"><span class="chip" style="background:#c8102e">True story</span><h3>Debugging, for real</h3>
       <p>Our first fan only twitched. The culprit: a diode in backwards, which cooked a transistor. Now we always check which way the stripe faces.</p></div>
   </div>
 
   <div class="quote">Things break. We find out why, fix it, and write it down so the next team doesn't have to learn it the hard way.</div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">4 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 4 -->
 <section class="page" id="p4">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">Up next</div>
   <h2>Where we're <em>headed</em></h2>
-  <p class="lede">The bins are running. Next semester, students design and 3D print parts for them, and ask bigger questions of the data.</p>
+  <p class="lede">The bins are running. First, students design their own experiments. Next semester, they design and 3D print parts for them.</p>
 
   <div class="next">
+    <div class="nx n0"><svg viewBox="0 0 48 48"><path d="M19 6h10M21 6v13L10 38a3 3 0 0 0 2.6 4.5h22.8A3 3 0 0 0 38 38L27 19V6" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><path d="M14 32h20l3.5 6.5a2 2 0 0 1-1.8 3H12.3a2 2 0 0 1-1.8-3z" fill="#fff" opacity=".85"/></svg>
+      <h3>Experiments</h3><p>Each team picks a question, chooses its sensors, and plans how to test it. Every bin becomes a different experiment.</p></div>
     <div class="nx n2"><svg viewBox="0 0 48 48"><path d="M24 6l16 9v18l-16 9-16-9V15z" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="M8 15l16 9 16-9M24 24v18" fill="none" stroke="#fff" stroke-width="3"/></svg>
       <h3>3D CAD</h3><p>Design the parts on the computer first: measure, model, tweak, and check the fit before anything gets printed.</p></div>
     <div class="nx n3"><svg viewBox="0 0 48 48"><g fill="#fff"><rect x="8" y="34" width="32" height="5" rx="1.5"/><rect x="11" y="27" width="26" height="5" rx="1.5" opacity=".9"/><rect x="14" y="20" width="20" height="5" rx="1.5" opacity=".8"/><rect x="17" y="13" width="14" height="5" rx="1.5" opacity=".7"/><rect x="20" y="6" width="8" height="5" rx="1.5" opacity=".6"/></g></svg>
@@ -468,19 +478,19 @@
   </div>
 
   <div class="ideas">
-    <div class="card"><span class="chip" style="background:#0f9d58">Experiments</span><h3>Ask the data harder questions</h3>
-      <p>Does running the fan keep a bin healthier? Which bedding holds moisture best? Do busy class periods make for busier worms?</p></div>
+    <div class="card"><span class="chip" style="background:#0f9d58">Experiments</span><h3>More data, new questions</h3>
+      <p>Ten temperature probes in one bin to map its warm spots. New sensors. Even nudging the worms: a tiny vibration motor, or a servo that taps the glass. Does tapping really bother them?</p></div>
     <div class="card"><span class="chip" style="background:#6b5bd2">Creativity</span><h3>Make the screens our own</h3>
-      <p>Every team can draw pixel-art animations for their bin's screen and send them over Wi-Fi. The wolverine already made the cut.</p></div>
-    <div class="card"><span class="chip" style="background:#e8762c">Engineering</span><h3>Design for the real world</h3>
-      <p>Damp air, curious hands, and power outages: we're learning to build things that keep working when life happens.</p></div>
+      <p>Program the screen to show what each team cares about, and draw pixel-art animations for it. The wolverine already made the cut.</p></div>
+    <div class="card"><span class="chip" style="background:#e8762c">Science</span><h3>Real science, real data</h3>
+      <p>Build gear that survives damp air and curious hands, then collect data worth sharing. We plan to publish what we find.</p></div>
     <div class="card"><span class="chip" style="background:#1b2f5e">Business</span><h3>From scraps to sales</h3>
       <p>The school started a company so students can sell our worm castings to the public. Healthy bins make better soil to sell.</p></div>
   </div>
 
   <div class="help">
     <div>
-      <h3>Help us grow (the worms, too)</h3>
+      <h3>Help Woodstock High grow</h3>
       <ul>
         <li>Sensor kits and boards, so every team has its own</li>
         <li>3D printer filament and parts for the next builds</li>
@@ -488,23 +498,23 @@
         <li>Worms, bins, and bedding for more classrooms</li>
       </ul>
     </div>
-    <div class="contact"><b>Let's talk!</b><span>Stop by our bins, or reach Maker Lab Kids at<br><b style="font-size:15px;display:inline">info@makerlabkids.com</b><br>makerlabkids.com</span></div>
+    <div class="contact"><b>Let's talk!</b><span>Stop by our bins, or reach<br><b style="font-size:15px;display:inline">Ms. Audra Thomas</b><br>Woodstock High School</span></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">5 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ ideas 1 -->
 <section class="page" id="pA">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">Questions we could chase</div>
   <h2>A lab in <em>every</em> bin</h2>
   <p class="lede">Every bin logs its readings around the clock. Once all 50 are running, that's over two million readings a month,
-    and every one of them is a clue. Here are some questions students might take on.</p>
+    and every one of them is a clue. Here are a few questions to start; students will design experiments of their own.</p>
 
   <div class="idea-grid">
     <div class="idea"><div class="art" style="background:#fff1e6"><svg viewBox="0 0 120 90"><path d="M8 50 C 24 22, 40 22, 56 50 S 88 78, 112 46" fill="none" stroke="#e8762c" stroke-width="4" stroke-linecap="round"/><path d="M8 50 C 30 44, 50 46, 70 48 S 100 52, 112 49" fill="none" stroke="#5fae3a" stroke-width="4" stroke-linecap="round"/><text x="10" y="16" font-size="10" font-weight="800" fill="#e8762c">room</text><text x="80" y="76" font-size="10" font-weight="800" fill="#2f7d3a">bin</text></svg></div>
@@ -527,14 +537,14 @@
 
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">6 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ ideas 2 -->
 <section class="page" id="pB">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">Bigger ideas</div>
@@ -562,16 +572,16 @@
 
   </div>
 
-  <div class="quote" style="margin-top:8px;font-size:18px">Most of these use sensors our bins already have. The hard part is choosing.</div>
+  <div class="quote" style="margin-top:8px;font-size:18px">Most of these use sensors our bins already have. Even better: the experiments students dream up themselves.</div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">7 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 5 -->
 <section class="page" id="p5">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">On the big screen</div>
@@ -588,14 +598,14 @@
     <div><figure class="shot crop"><img src="img/skin-paper.jpg" alt="The Daily Worm"></figure><p class="cap"><b>The Daily Worm.</b> The day's readings, written up as a newspaper.</p></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">8 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 6 -->
 <section class="page" id="p6">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">On the bin, and on your phone</div>
@@ -623,14 +633,14 @@
     <div><figure class="shot crop"><img src="img/skin-garden.jpg" alt="Worm Ranch view"></figure><p class="cap"><b>Worm Ranch.</b> Each bin as a pixel pet. Keep your worm happy!</p></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">9 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 7 -->
 <section class="page" id="p7">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">Under the hood</div>
@@ -731,14 +741,14 @@
     <div><b style="color:#1b2f5e">Surface</b>the website, where anyone can see it all</div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">10 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 8 -->
 <section class="page" id="p8">
   <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
     <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
   </header>
 
   <div class="kicker">Wiring it up</div>
@@ -764,7 +774,7 @@
     <div><figure class="shot"><img src="../wiring/fan.svg" alt="Fan wiring with a transistor and a diode"></figure><p class="cap"><b>The fan.</b> A transistor switches it, and a diode, stripe on the red side, protects it.</p></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">11 / 11</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 </body>
