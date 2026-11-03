@@ -91,12 +91,67 @@ class FlashTest(unittest.TestCase):
         self.assertEqual(row["version"], "0.2.0")
         saved = flash.read_roster()
         self.assertEqual(saved[0]["uid"], "")      # --dry-run never writes roster.csv
-        # the three identity files were pushed, after the wipe and the project files
+        # the identity files (and the code version) were pushed, after the wipe and the project files
         pushed = [c for c in rn.calls if len(c) > 3 and c[2] == "fs" and c[3] == "cp"]
         remotes = [c[5] for c in pushed]
-        self.assertEqual(remotes[-3:], [":wifi.json", ":bin.json", ":name.txt"])
+        self.assertEqual(remotes[-4:], [":wifi.json", ":bin.json", ":name.txt", ":ota.json"])
         self.assertIn(":lib/picolab.py", remotes)
         self.assertTrue(any("wipe.py" in " ".join(c) for c in rn.calls))
+
+    def test_firmware_version_from_the_file_name(self):
+        self.assertEqual(flash.firmware_version({"firmware": "firmware/RPI_PICO2_W-20260824-v1.29.0.uf2"}), "1.29.0")
+        self.assertIsNone(flash.firmware_version({"firmware": "x.uf2"}))
+
+    def _mp(self, have):
+        class R(flash.FakeRunner):
+            def run(s, *args, timeout=60, check=True):
+                if "sys.implementation" in " ".join(args):
+                    s.calls.append(args)
+                    return have + "\n"
+                return super().run(*args, timeout=timeout, check=check)
+        return R()
+
+    def test_upgrade_firmware_only_when_the_version_differs(self):
+        fleet = {"firmware": "firmware/RPI_PICO2_W-20260824-v1.29.0.uf2"}
+        loads = []
+        rn = self._mp("1.29.0")
+        self.assertEqual(flash.upgrade_firmware(rn, "/dev/ttyFAKE0", fleet, load=loads.append), "/dev/ttyFAKE0")
+        self.assertEqual(loads, [])
+        self.assertFalse(any("bootloader" in " ".join(c) for c in rn.calls))
+        # an older MicroPython: bootloader, picotool, back on its port
+        rn = self._mp("1.28.0")
+        states = iter([False, True])
+        port = flash.upgrade_firmware(rn, "/dev/ttyFAKE0", fleet, wait=lambda s: None,
+                                      bootsel=lambda: next(states), load=lambda f: loads.append(f) or True)
+        self.assertEqual(port, "/dev/ttyFAKE0")
+        self.assertTrue(any("machine.bootloader()" in " ".join(c) for c in rn.calls))
+        self.assertTrue(loads and loads[0].endswith("v1.29.0.uf2"), loads)
+        # dry run: says so, touches nothing
+        rn, loads = self._mp("1.28.0"), []
+        flash.upgrade_firmware(rn, "/dev/ttyFAKE0", fleet, dry=True, load=loads.append)
+        self.assertEqual(loads, [])
+        # a board that never reaches its bootloader: a clear error, not a hang
+        t = iter(range(0, 1000, 5))
+        with self.assertRaises(RuntimeError):
+            flash.upgrade_firmware(self._mp("1.28.0"), "/dev/ttyFAKE0", fleet, wait=lambda s: None,
+                                   bootsel=lambda: False, load=loads.append, clock=lambda: next(t))
+
+    def test_a_kept_board_is_never_touched(self):
+        rows = flash.init_roster(self.fleet)
+        rn = flash.FakeRunner()
+        fleet = dict(self.fleet, keep={rn.uid: "the bench board"})
+        with self.assertRaises(RuntimeError) as e:
+            flash.flash_one(rn, "/dev/ttyFAKE0", fleet, rows, "pw", dry=True)
+        self.assertIn("keep list", str(e.exception))
+        self.assertFalse(any("wipe.py" in " ".join(c) for c in rn.calls), "never wiped")
+        self.assertIn("99e3b028541489d4", self.fleet["keep"], "the bench board is protected")
+
+    def test_flash_writes_the_code_version(self):
+        rows = flash.init_roster(self.fleet)
+        rn = flash.FakeRunner()
+        flash.flash_one(rn, "/dev/ttyFAKE0", self.fleet, rows, "pw", dry=True)
+        self.assertTrue(any(":ota.json" in c for call in rn.calls for c in call), "ota.json written")
+        self.assertRegex(flash.code_version(), r"^([0-9a-f]{7}\+?|unknown)$")
 
     def test_bootsel_from_sysfs(self):
         sysfs = os.path.join(self.tmp, "usb")

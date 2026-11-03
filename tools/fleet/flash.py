@@ -272,6 +272,69 @@ def read_uid(rn, port):
     return uid
 
 
+def firmware_version(fleet):
+    """'1.29.0' from fleet.json's firmware file name (RPI_PICO2_W-20260824-v1.29.0.uf2), or None."""
+    m = re.search(r"v(\d+\.\d+\.\d+)\.uf2$", fleet.get("firmware", ""))
+    return m.group(1) if m else None
+
+
+def read_mp_version(rn, port):
+    """The MicroPython a board runs, e.g. '1.28.0' ('' when it does not say)."""
+    try:
+        out = rn.run("connect", port, "exec",
+                     "import sys; print('%d.%d.%d' % sys.implementation.version[:3])", timeout=20, check=False)
+        v = out.strip().splitlines()[-1].strip()
+        return v if re.fullmatch(r"\d+\.\d+\.\d+", v) else ""
+    except Exception:
+        return ""
+
+
+def upgrade_firmware(rn, port, fleet, dry=False, wait=time.sleep, bootsel=None, load=None, clock=time.time):
+    """A board that runs another MicroPython than fleet.json's firmware: send it to its
+    bootloader, load the .uf2 with picotool, wait for its port. Returns the (new) port."""
+    want, have = firmware_version(fleet), read_mp_version(rn, port)
+    if not want or not have or have == want:
+        return port
+    print("  MicroPython %s -> %s: into the bootloader, then picotool" % (have, want))
+    if dry:
+        return port
+    bootsel = bootsel or bootsel_usb_devices
+    load = load or picotool_load
+    try:
+        rn.run("connect", port, "exec", "import machine; machine.bootloader()", timeout=15, check=False)
+    except Exception:
+        pass                                     # the port drops as it goes: expected
+    t0 = clock()
+    while not bootsel():
+        if clock() - t0 > 20:
+            raise RuntimeError("the board did not show up in its bootloader; hold BOOTSEL and replug it")
+        wait(0.5)
+    if not load(os.path.join(REPO, fleet["firmware"])):
+        raise RuntimeError("picotool not found: cannot load %s" % fleet["firmware"])
+    t0 = clock()
+    while True:
+        ports = rn.ports()
+        if ports:
+            wait(2)                              # let MicroPython finish starting
+            return ports[0]
+        if clock() - t0 > 40:
+            raise RuntimeError("no serial port after loading the firmware")
+        wait(0.5)
+
+
+def code_version():
+    """The commit being flashed (short hash): what the board reports as its code, the same label
+    a Wi-Fi code update uses. A '+' when the project's files have uncommitted changes."""
+    try:
+        h = subprocess.run(["git", "-C", REPO, "rev-parse", "--short=7", "HEAD"], capture_output=True,
+                           text=True, timeout=10).stdout.strip()
+        dirty = subprocess.run(["git", "-C", REPO, "status", "--porcelain", "--", "lib", "projects/worm-bin",
+                                "web/dash/msg.js", "web/cal.js"], capture_output=True, text=True, timeout=10).stdout.strip()
+        return (h + "+" if dirty else h) if h else "unknown"
+    except Exception:
+        return "unknown"
+
+
 def read_version(rn, port):
     try:
         out = rn.run("connect", port, "exec", "import picolab; print(picolab.VERSION)", timeout=20, check=False)
@@ -289,7 +352,11 @@ def put_text(rn, port, remote, text, tmpdir):
 
 
 def flash_one(rn, port, fleet, rows, password, dry=False):
+    port = upgrade_firmware(rn, port, fleet, dry=dry)
     uid = read_uid(rn, port)
+    keep = fleet.get("keep") or {}
+    if uid in keep:
+        raise RuntimeError("board %s is on fleet.json's keep list (%s): not touched" % (uid, keep[uid]))
     row, is_new = pick_row(rows, uid)
     if row is None:
         raise RuntimeError("roster is full: every line has a uid. Add names/bins and re-run.")
@@ -321,6 +388,10 @@ def flash_one(rn, port, fleet, rows, password, dry=False):
             b["teacher_pin"] = str(fleet["teacher_pin"])      # unlocks a locked name on a board; never shown
         put_text(rn, port, "bin.json", json.dumps(b) + "\n", td)
         put_text(rn, port, "name.txt", team + "\n", td)
+        code = code_version()
+        if code.endswith("+"):
+            print("  !! the project has uncommitted changes: this board's code is labelled %s" % code)
+        put_text(rn, port, "ota.json", json.dumps({"current": code}) + "\n", td)
     version = read_version(rn, port)
     row.update(uid=uid, flashed_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), version=version)
     if not dry:

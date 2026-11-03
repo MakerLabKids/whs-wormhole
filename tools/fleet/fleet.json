@@ -7,5 +7,6 @@
   "bin_first": 30,
   "teacher_pin": "2718",
   "rooms": {"1": {"periods": [1, 2], "bins": 17}, "2": {"periods": [3, 4], "bins": 17}, "3": {"periods": [5, 6], "bins": 16}},
-  "wipe_first": true
+  "wipe_first": true,
+  "keep": {"99e3b028541489d4": "The Wrigglers bench board (bin 38): hand-tuned, never wiped"}
 }
