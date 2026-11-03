@@ -118,7 +118,8 @@ class System:
 
     def enrol(self, url, body):
         req = urllib.request.Request(url.rstrip("/") + "/v1/edge/enrol", data=json.dumps(body).encode(),
-                                     headers={"Content-Type": "application/json"}, method="POST")
+                                     headers={"Content-Type": "application/json", "User-Agent": "burrow-roles/1"},
+                                     method="POST")   # Cloudflare answers Python's default agent with 403 (error 1010)
         with urllib.request.urlopen(req, timeout=20) as r:
             return json.load(r)
 

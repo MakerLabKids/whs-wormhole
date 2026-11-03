@@ -110,6 +110,21 @@ class RolesTest(unittest.TestCase):
         # each peer is its base URL (a dict here broke the peer watch: "dict + str", 2026-11-03)
         self.assertEqual(self.cfg()["peers"]["burrow3"], "http://192.168.80.23:8080")
 
+    def test_enrol_sends_a_user_agent(self):
+        # Cloudflare blocks "Python-urllib/x" with 403 / error 1010, so every role check failed (2026-11-03)
+        import io, urllib.request
+        seen = {}
+        def fake(req, timeout=None):
+            seen["ua"] = req.get_header("User-agent")
+            return io.BytesIO(b'{"edge": "burrow3", "room": 3, "token": "t"}')
+        real = urllib.request.urlopen
+        urllib.request.urlopen = fake
+        try:
+            roles.System().enrol("https://example.test", {"x": 1})
+        finally:
+            urllib.request.urlopen = real
+        self.assertTrue(seen["ua"] and not seen["ua"].startswith("Python-urllib"))
+
     def test_config_heals_peers_written_as_dicts(self):
         import json as _j, tempfile as _t
         from burrow import config
