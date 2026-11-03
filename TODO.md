@@ -139,6 +139,11 @@ converter), proven on the bench board. Classroom boards get it with the Pico ref
   replacement is good, diode goes stripe-to-red. The board still runs 58939f0 (the 509f0e1 OTA was
   rolled back); its main.py got a 5-line patch: fan full on 10 s at power-on (one-shot Timer).
   Backup of the unpatched file: scratchpad only, so re-read from the board before any rewrite.
+  Later the same evening: the board was updated over USB to 0a93670 (carry_config kept its settings;
+  ota.json current 0a93670; full backup of the old files in ~/bench-backups/, holds wifi.json, not
+  in git). Fan ran its 10 s, pushes to burrow0 fine. Its screen (0x3C) is gone from the I2C bus (the
+  BME280 0x77 and VL53L0X 0x29 answer): a loose OLED wire, check its VCC/GND/SDA/SCL. This board has
+  only the outside BME280, so the humidity fan rule never fires here (it reads the inside one).
 
 - [ ] It plays only "hello" then Wormhole (a website playlist from the 2026-11-01 test): "Play
       everything" on its page restores all shows. It runs code 58939f0 over Wi-Fi, MicroPython 1.29.
