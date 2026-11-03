@@ -303,9 +303,9 @@
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="big">50</div><small>smart worm bins, rolling out now</small></div>
-    <div class="stat"><div class="big">6</div><small>class periods, 3 classrooms</small></div>
-    <div class="stat"><div class="big">8</div><small>things each bin measures</small></div>
+    <div class="stat"><div class="big">40+</div><small>smart worm bins, rolling out now</small></div>
+    <div class="stat"><div class="big">3</div><small>classrooms, with multiple classes each</small></div>
+    <div class="stat"><div class="big">8+</div><small>things each bin measures, and counting</small></div>
     <div class="stat"><div class="big">60s</div><small>a fresh reading from every bin, all day, every day</small></div>
     <div class="stat"><div class="big">4</div><small>Raspberry Pi servers on our own school network</small></div>
   </div>
@@ -353,24 +353,24 @@
     <div class="comfort">
       <h3>The worm comfort zone</h3>
       <svg class="gauge" viewBox="0 0 300 62" width="100%">
-        <defs><pattern id="haz" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3.5" height="7" fill="rgba(255,255,255,.75)"/></pattern>
-          <clipPath id="gclip"><rect x="10" y="20" width="280" height="20" rx="9"/></clipPath></defs>
+        <defs>
+          <pattern id="coldmix" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#a6e07f"/><rect width="4" height="8" fill="#5aa9dc"/></pattern>
+          <pattern id="hotmix" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#a6e07f"/><rect width="4" height="8" fill="#ef6b6b"/></pattern>
+          <clipPath id="gclip"><rect x="10" y="20" width="280" height="20" rx="10"/></clipPath></defs>
         <g clip-path="url(#gclip)">
-          <rect x="10" y="20" width="105" height="20" fill="#9fd1f2"/>
-          <rect x="115" y="20" width="70" height="20" fill="#a6e07f"/>
-          <rect x="185" y="20" width="105" height="20" fill="#f9c27a"/>
-          <rect x="220" y="20" width="70" height="20" fill="#f08080"/>
           <rect x="10" y="20" width="70" height="20" fill="#5aa9dc"/>
-          <rect x="10" y="20" width="70" height="20" fill="url(#haz)"/>
-          <rect x="220" y="20" width="70" height="20" fill="url(#haz)"/>
+          <rect x="80" y="20" width="35" height="20" fill="url(#coldmix)"/>
+          <rect x="115" y="20" width="70" height="20" fill="#a6e07f"/>
+          <rect x="185" y="20" width="35" height="20" fill="url(#hotmix)"/>
+          <rect x="220" y="20" width="70" height="20" fill="#ef6b6b"/>
         </g>
         <g font-size="15" font-weight="800" fill="#1b2f5e" text-anchor="middle">
           <text x="80" y="58">50</text><text x="115" y="58">59</text><text x="185" y="58">77</text><text x="220" y="58">86&#176;F</text></g>
+        <text x="45" y="15" font-size="14" fill="#2a6f9c" text-anchor="middle" font-weight="700">too cold</text>
         <text x="150" y="15" font-size="15" font-weight="800" fill="#2f7d3a" text-anchor="middle">happy worms</text>
-        <text x="62" y="15" font-size="14" fill="#2a6f9c" text-anchor="middle" font-weight="700">sluggish</text>
-        <text x="237" y="15" font-size="14" fill="#b42318" text-anchor="middle" font-weight="700">too hot</text>
+        <text x="255" y="15" font-size="14" fill="#b42318" text-anchor="middle" font-weight="700">too hot</text>
       </svg>
-      <p class="gcap">&deg;F &middot; stripes: danger, the dashboard flags it</p>
+      <p class="gcap">stripes: getting risky, the dashboard warns</p>
       <ul>
         <li>Bedding should feel like a <b>wrung-out sponge</b>.</li>
         <li>Too wet and water fills the air pockets, and <b>mold</b> moves in. Our <b>fan</b> can switch on by humidity, soil moisture, or temperature.</li>
@@ -621,7 +621,7 @@
 
   <div class="kicker">Questions we could chase</div>
   <h2>A lab in <em>every</em> bin</h2>
-  <p class="lede">Every bin logs its readings around the clock. Once all 50 are running, that's over two million readings a month,
+  <p class="lede">Every bin logs its readings around the clock. Once 40-plus are running, that's well over a million readings a month,
     and every one of them is a clue. Here are a few questions to start; students will design experiments of their own.</p>
 
   <div class="idea-grid">
