@@ -7,7 +7,7 @@
 
 import { handleAdmin } from "./admin.js";
 import { watchEdges } from "./alerts.js";
-import { getSession, listTeams, login, logout, meBody } from "./auth.js";
+import { changePassword, getSession, listTeams, login, logout, meBody } from "./auth.js";
 import { handleEdge } from "./edge.js";
 import { apiShows } from "./shows.js";
 import { apiMessages } from "./messages.js";
@@ -55,6 +55,7 @@ async function handleApi(request, env, ctx, path) {
   const session = await getSession(request, env, ctx);
   if (path === "/api/me") return session ? json(meBody(session)) : json({ ok: false }, 401);
   if (path === "/api/logout" && m === "POST") return logout(request, env, session);
+  if (path === "/api/me/password" && m === "POST") return changePassword(request, env, session);
   if (path.startsWith("/api/admin")) return handleAdmin(request, env, ctx, path, session);
   if (path === "/api/messages") return apiMessages(request, env, session);
   if (path === "/api/shows") return apiShows(request, env, session);

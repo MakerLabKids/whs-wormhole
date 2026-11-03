@@ -52,6 +52,36 @@ ok('the existing bin keeps its passphrase', kj && /current passphrase/.test(kj.p
 ok('the existing team still signs in with its old passphrase', (await loginOk({ team_id: pre.team.id, passphrase: pre.passphrase, first_name: 'Kat' })) === 'team');
 ok('no student name was sent to the server', !sent.some((s) => /Lovelace|Hopper|Turing|Katherine/.test(s)), sent.filter((s) => /Lovelace|Hopper|Turing|Katherine/.test(s)).join(' | ').slice(0, 200));
 await page.screenshot({ path: 'shots/people-slips.png', fullPage: true });
+
+// 3. the teacher changes her own password: current one, new one twice, no pasting into the second
+const tp = await browser.newPage();
+tp.on('pageerror', (e) => errs.push(String(e)));
+await tp.goto(W + '/login'); await tp.waitForTimeout(600);
+await tp.click('#staff'); await tp.fill('#sn', 'Mrs. Example'); await tp.fill('#pp', tpass); await tp.click('#lf button[type=submit]');
+await tp.waitForTimeout(1200);
+await tp.goto(W + '/admin/password'); await tp.waitForSelector('#pwf', { timeout: 10000 });
+const pasteBlocked = await tp.evaluate(() => {
+  const el = document.getElementById('pwnew2'), dt = new DataTransfer(); dt.setData('text/plain', 'pasted!');
+  const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+  return !el.dispatchEvent(ev);      // false = a handler called preventDefault
+});
+ok('pasting into "new password again" is blocked', pasteBlocked);
+const pastable = await tp.evaluate(() => {
+  const el = document.getElementById('pwnew'), dt = new DataTransfer(); dt.setData('text/plain', 'x');
+  return el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+});
+ok('pasting into the first new-password box is allowed', pastable);
+await tp.fill('#pwold', 'wrong-one'); await tp.fill('#pwnew', 'wiggle'); await tp.type('#pwnew2', 'wiggle'); await tp.click('#pwf button[type=submit]');
+await tp.waitForTimeout(800);
+ok('a wrong current password is refused and she stays signed in', /current password is wrong/.test(await tp.textContent('#pwout')) && !!(await tp.$('#pwf')));
+await tp.fill('#pwold', tpass); await tp.fill('#pwnew', 'wiggle'); await tp.fill('#pwnew2', ''); await tp.type('#pwnew2', 'wiggle2'); await tp.click('#pwf button[type=submit]');
+await tp.waitForTimeout(300);
+ok('two different new passwords are caught', /different/.test(await tp.textContent('#pwout')));
+await tp.type('#pwnew2', 'wiggle'); await tp.click('#pwf button[type=submit]');
+await tp.waitForSelector('.notice.info', { timeout: 8000 });
+ok('the password is changed', /Password changed/.test(await tp.textContent('.notice.info')));
+ok('the old password no longer works', (await loginOk({ name: 'Mrs. Example', passphrase: tpass })).startsWith('refused'));
+ok('the new one does', (await loginOk({ name: 'Mrs. Example', passphrase: 'wiggle' })) === 'teacher');
 ok('no page errors', !errs.length, errs.join(' | '));
 await browser.close();
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');

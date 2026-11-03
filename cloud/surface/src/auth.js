@@ -143,6 +143,32 @@ export async function login(request, env) {
   return json(me, 200, { "set-cookie": cookieHeader(`${sid}.${sig}`, COOKIE_MAX_AGE) });
 }
 
+// POST /api/me/password {old, new}: a teacher or admin changes their own password. Teams share one
+// passphrase per bin (one student changing it would lock out the rest), so theirs is reset by an admin.
+// The old password must be right (wrong tries count toward the login limit); every OTHER session of
+// this login is signed out, this one stays.
+export const PASSWORD_MIN = 4;
+export async function changePassword(request, env, session) {
+  if (!session) return err(401, "not signed in");
+  if (session.role === "team") return err(403, "team passphrases are shared: ask a teacher to reset yours");
+  const body = await readJson(request, 16 << 10);
+  const ip_hash = await ipHash(request, env);
+  if (await overLimit(env, ip_hash)) return err(429, "too many attempts; try again in 10 minutes");
+  const oldPw = typeof body.old === "string" ? body.old : "";
+  const newPw = typeof body.new === "string" ? body.new : "";
+  const team = await env.DB.prepare("SELECT * FROM teams WHERE id = ?1").bind(session.team.id).first();
+  if (!team || team.disabled) return err(401, "not signed in");
+  if (!oldPw || !(await verifyPassword(oldPw, team))) return err(403, "the current password is wrong");   // not 401: the page reads 401 as signed out
+  if (newPw.length < PASSWORD_MIN || newPw.length > 128) return err(400, `the new password needs ${PASSWORD_MIN} to 128 characters`);
+  if (newPw === oldPw) return err(400, "the new password is the same as the old one");
+  const cred = await hashPassword(newPw);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE teams SET pass_hash = ?1, pass_salt = ?2 WHERE id = ?3").bind(cred.pass_hash, cred.pass_salt, team.id),
+    env.DB.prepare("DELETE FROM sessions WHERE team_id = ?1 AND token_hash != ?2").bind(team.id, session.token_hash),
+  ]);
+  return json({ ok: true });
+}
+
 // POST /api/logout: forget the session and clear the cookie.
 export async function logout(request, env, session) {
   if (session) await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?1").bind(session.token_hash).run();

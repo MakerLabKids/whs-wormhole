@@ -970,7 +970,7 @@
   }
 
   /* ---- view: admin (Surface, teacher/admin) --------------------------- */
-  var TABS = [['edges', 'Devices'], ['sessions', "Who's looking"], ['visits', 'Visits'], ['teams', 'Teams'], ['castings', 'Castings'], ['stats', 'Stats']];
+  var TABS = [['edges', 'Devices'], ['sessions', "Who's looking"], ['visits', 'Visits'], ['teams', 'Teams'], ['castings', 'Castings'], ['stats', 'Stats'], ['password', 'My password']];
 
   /* ---- Devices: the Burrows and their Opals, as machines (not the worm data) ----------
      One card per Burrow from its status brief: the same object a Burrow serves at
@@ -1237,6 +1237,8 @@
 
     else if (tab === 'teams') teamsTab(body);
 
+    else if (tab === 'password') passwordTab(body);
+
     else if (tab === 'castings') {
       var today = new Date(), day = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
       body.innerHTML = '<div class="toolbar"><label for="croom">room</label><select id="croom"><option value="">all</option><option>1</option><option>2</option><option>3</option></select>' +
@@ -1259,6 +1261,31 @@
     else body.innerHTML = '<div class="empty">unknown tab</div>';
 
     return { destroy: function () { timers.forEach(clearInterval); } };
+  }
+
+  /* change your own password: the current one, then the new one twice (no pasting into the second) */
+  function passwordTab(body) {
+    body.innerHTML = '<h3>Change my password</h3><p class="muted">For your teacher or admin login. Your other devices are signed out; this one stays signed in.</p>' +
+      '<form id="pwf" style="max-width:360px">' +
+      '<div class="field"><label for="pwold">current password</label><input id="pwold" type="password" autocomplete="current-password" required></div>' +
+      '<div class="field"><label for="pwnew">new password</label><input id="pwnew" type="password" autocomplete="new-password" minlength="4" required></div>' +
+      '<div class="field"><label for="pwnew2">new password again <small class="muted">(type it, no pasting)</small></label><input id="pwnew2" type="password" autocomplete="new-password" required></div>' +
+      '<button class="btn g" type="submit">Change password</button> <span id="pwout" class="muted"></span></form>';
+    var again = $('#pwnew2', body), out = $('#pwout', body);
+    ['paste', 'drop'].forEach(function (ev) {
+      again.addEventListener(ev, function (e) { e.preventDefault(); out.textContent = 'Type the new password again; pasting is off here.'; });
+    });
+    $('#pwf', body).onsubmit = function (e) {
+      e.preventDefault();
+      var o = $('#pwold', body).value, n = $('#pwnew', body).value, n2 = again.value;
+      if (n.length < 4) { out.textContent = 'The new password needs at least 4 characters.'; return; }
+      if (n !== n2) { out.textContent = 'The two new passwords are different.'; again.value = ''; again.focus(); return; }
+      if (n === o) { out.textContent = 'That is the same as the current password.'; return; }
+      out.textContent = 'Saving…';
+      api('/api/me/password', { method: 'POST', body: { old: o, new: n } }).then(function () {
+        body.innerHTML = '<div class="notice info"><b>Password changed.</b> Use the new one next time you sign in. Your other devices were signed out.</div>';
+      }).catch(function (er) { out.textContent = er.message; });
+    };
   }
 
   function teamsTab(body) {
