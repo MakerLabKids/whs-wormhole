@@ -37,9 +37,9 @@ the fan's black and E to its red. Check the transistor's label: PN2222A legs are
 E-B-C, P2N2222A are C-B-E (flat face toward you). Diagram:
 [docs/wiring/fan.svg](../../docs/wiring/fan.svg).
 Every 15 minutes, if the inside BME280 reads over 80% humidity, the fan runs for 1
-minute. At power-on it proves it works: during the demo period it flips on and off
-with every screen of the power-on sequence (`FAN_BOOT_DEMO = True`); set it to
-`False` and it just runs 3 seconds. All of it is in the config at the top of
+minute. At power-on it proves it works: full on for 10 seconds (`FAN_BOOT_S`).
+`FAN_BOOT_DEMO = True` flips it on and off with every screen of the power-on sequence
+instead (short bursts: the fan only twitches). All of it is in the config at the top of
 `main.py` (`FAN_HUMID_PCT`, `FAN_EVERY_MIN`, `FAN_RUN_S`, `FAN_BOOT_S`; `FAN = False`
 for a bin with no fan). The dashboard's relay button still switches it by hand.
 

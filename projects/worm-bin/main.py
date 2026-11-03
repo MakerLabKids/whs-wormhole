@@ -71,8 +71,8 @@ FAN = True
 FAN_HUMID_PCT = 80    # default 80 %
 FAN_EVERY_MIN = 15    # default 15 minutes
 FAN_RUN_S = 60        # default 60 seconds
-FAN_BOOT_DEMO = True  # the demo period; after it, False (FAN_BOOT_S at power-on only)
-FAN_BOOT_S = 3
+FAN_BOOT_DEMO = False # True: flip it with every power-on screen (short bursts: it only twitches)
+FAN_BOOT_S = 10       # power-on test: full on this many seconds (default 10)
 
 # How fast the servos slew to a commanded angle, in degrees per second.
 # Motion is ramped and TIME-BASED (not an instant snap) so it looks smooth
