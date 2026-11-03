@@ -82,6 +82,13 @@ window.Msg = (function () {
     return isNaN(t) ? 0 : Math.floor(t / 1000);
   }
   function when(ts) { return ts ? new Date(ts * 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
+  /* the name a device is recorded under: first name and last initial only, never a full name
+     ("Ada Lovelace" -> "Ada L."); the board cuts it down the same way */
+  function shortName(s) {
+    var w = String(s || '').replace(/[^\x20-\x7e]/g, '').trim().split(/\s+/).filter(Boolean);
+    if (!w.length) return '';
+    return w.length === 1 ? w[0] : w[0] + ' ' + w[w.length - 1].charAt(0).toUpperCase() + '.';
+  }
   function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   function fetchKey(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function deviceId() {
@@ -190,8 +197,8 @@ window.Msg = (function () {
       var a = $('rename');
       if (a) a.onclick = function () {
         var tp = prompt('The teacher PIN?'); if (!tp) return;
-        var n = prompt('The new name for this device?', j.me || ''); if (!n) return;
-        send('name=' + encodeURIComponent(n.trim()) + '&tpin=' + encodeURIComponent(tp), function (ok, r) {
+        var n = shortName(prompt('The new name for this device? (first name and last initial)', j.me || '')); if (!n) return;
+        send('name=' + encodeURIComponent(n) + '&tpin=' + encodeURIComponent(tp), function (ok, r) {
           if (ok && r && r.me) { render(r); } else alert('Not changed' + (r && r.error ? ': ' + r.error : '.'));
         });
       };
@@ -200,14 +207,16 @@ window.Msg = (function () {
       slots.innerHTML = ''; logbox.innerHTML = ''; who.innerHTML = '';
       gate.hidden = false;
       gate.innerHTML = '<p><b>Before you can post to the screen, tell the board who you are.</b></p>' +
-        '<p>Your name is recorded on the board with every message you set or clear, and shown next to it. ' +
+        '<p>Your first name and last initial are recorded on the board with every message you set or clear, and shown next to it. ' +
         'It cannot be changed from this phone or laptop afterwards; only a teacher can change it.</p>' +
-        '<input class="msg-in" id="' + ids + 'whoname" maxlength="32" placeholder="first and last name" style="display:inline-block">' +
+        '<input class="msg-in" id="' + ids + 'whoname" maxlength="20" placeholder="first name" autocomplete="off" style="display:inline-block;width:10em"> ' +
+        '<input class="msg-in" id="' + ids + 'whoinit" maxlength="1" placeholder="last initial" autocomplete="off" style="display:inline-block;width:7em"> ' +
         '<button class="msg-b msg-save" id="' + ids + 'whogo">That\'s me</button><div class="msg-note" id="' + ids + 'whonote"></div>';
       $('whogo').onclick = function () {
-        var n = $('whoname').value.trim();
-        if (n.length < 2) { $('whonote').textContent = 'Type your name first.'; return; }
-        if (!confirm('Record "' + n + '" as the name on this device? It is logged with every change and only a teacher can change it.')) return;
+        var first = $('whoname').value.trim().split(/\s+/)[0] || '', init = $('whoinit').value.replace(/[^A-Za-z]/g, '');
+        if (first.length < 2) { $('whonote').textContent = 'Type your first name.'; return; }
+        if (!init) { $('whonote').textContent = 'Type the first letter of your last name.'; return; }
+        var n = shortName(first + ' ' + init);
         $('whonote').textContent = 'telling the board...';
         send('name=' + encodeURIComponent(n), function (ok, r) {
           if (ok && r && r.me) { store('who:name', r.me); gate.hidden = true; render(r); }
@@ -252,7 +261,7 @@ window.Msg = (function () {
     function load() {
       msg.textContent = 'asking the board...';
       // the name this device already told some board: offer it to this one too (first name wins, on the board)
-      var known = identity ? fetchKey('who:name') : null;
+      var known = identity ? shortName(fetchKey('who:name')) : null;
       send(known ? 'name=' + encodeURIComponent(known) : '', function (ok, j) {
         if (ok && j && j.slots) {
           open.style.display = 'none';

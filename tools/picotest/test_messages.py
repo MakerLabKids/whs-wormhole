@@ -27,20 +27,27 @@ assert m.next() is None and m.status()["slots"] == [None] * 5
 # no name on this device: nothing changes; the first name a device sends sticks
 assert m.handle(req("slot=1&title=x&" + ME)) == {"error": "set your name first", "me": None}
 assert m.handle(req("slot=1&title=x")) == {"error": "set your name first", "me": None}
-r = m.handle(req(ME + "&name=Jamal%20K"))
-assert r["me"] == "Jamal K" and r["changes"][0]["what"] == "set their name" and r["changes"][0]["by"] == "Jamal K", r["changes"]
+r = m.handle(req(ME + "&name=Jamal%20Kowalski"))                      # kept as first name + last initial only
+assert r["me"] == "Jamal K." and r["changes"][0]["what"] == "set their name" and r["changes"][0]["by"] == "Jamal K.", r["changes"]
+assert m.handle(req(ME + "&name=Jamal%20K."))["me"] == "Jamal K.", "sending the short form again is no change"
 r = m.handle(req(ME + "&name=Someone%20Else"))
-assert r == {"error": "this device's name is set; a teacher can change it", "me": "Jamal K"}, r
+assert r == {"error": "this device's name is set; a teacher can change it", "me": "Jamal K."}, r
 assert m.handle(req(ME + "&name=Someone%20Else&tpin=0000"))["error"].startswith("this device")
-r = m.handle(req(ME + "&name=Jamal%20Kay&tpin=2718"))                 # the teacher PIN renames
-assert r["me"] == "Jamal Kay" and r["changes"][0]["what"].startswith("renamed by a teacher"), r["changes"][0]
-assert picolab.Messages(app, PATH, teacher_pin="2718").who["dev1"]["name"] == "Jamal Kay", "kept on the board"
+r = m.handle(req(ME + "&name=Jamal%20van%20der%20Berg&tpin=2718"))    # the teacher PIN renames
+assert r["me"] == "Jamal B." and r["changes"][0]["what"].startswith("renamed by a teacher"), r["changes"][0]
+assert picolab.Messages(app, PATH, teacher_pin="2718").who["dev1"]["name"] == "Jamal B.", "kept on the board"
+assert picolab._short_name("  ada  ") == "ada" and picolab._short_name("Ada lovelace") == "Ada L." and picolab._short_name("") == ""
+# a full name saved by older code is cut down when the board starts
+import json
+with open("who.json", "w") as f: json.dump({"old": {"name": "Grace Hopper", "at": 1, "via": "wifi"}, "dev1": {"name": "Jamal B.", "at": 1, "via": "wifi"}}, f)
+assert picolab.Messages(app, PATH).who["old"]["name"] == "Grace H."
+with open("who.json") as f: assert "Hopper" not in f.read(), "and saved that way"
 # set a slot: title + lines, urlencoded, trailing blank lines dropped, 16 chars max; by/via/at recorded
 r = m.handle(req("slot=1&title=Go%20Worms!&l1=line+one&l2=&l3=third%20line%20is%20quite%20long&l4=&l5=&" + ME, "X-Via: ble\r\n"))
-assert r["slots"][0].pop("at") >= 0 and r["slots"][0].pop("by") == "Jamal Kay" and r["slots"][0].pop("via") == "bluetooth"
+assert r["slots"][0].pop("at") >= 0 and r["slots"][0].pop("by") == "Jamal B." and r["slots"][0].pop("via") == "bluetooth"
 assert r["slots"][0] == {"title": "Go Worms!", "lines": ["line one", "", "third line is qu"], "shown": 0}, r["slots"][0]
 assert r["active"] == [True, False, False, False, False], r["active"]
-assert r["changes"][0] == {"ts": r["changes"][0]["ts"], "via": "bluetooth", "by": "Jamal Kay", "slot": "1", "what": "set", "title": "Go Worms!"}, r["changes"][0]
+assert r["changes"][0] == {"ts": r["changes"][0]["ts"], "via": "bluetooth", "by": "Jamal B.", "slot": "1", "what": "set", "title": "Go Worms!"}, r["changes"][0]
 assert m.handle(req("slot=2&title=&l1=&" + ME)) == {"error": "an empty message"}
 assert m.handle(req("slot=6&title=x&" + ME))["error"].startswith("slot 1-5")
 assert m.handle(req("slot=3&title=Three&count=2&" + ME))["slots"][2]["count"] == 2

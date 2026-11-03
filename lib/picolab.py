@@ -1014,6 +1014,17 @@ def _msg_text(s):
   return "".join(c for c in str(s or "") if 32 <= ord(c) < 127).strip()[:MSG_WIDTH]
 
 
+def _short_name(s):
+  """The name a device is recorded under: first name and last initial only ("Ada Lovelace" ->
+  "Ada L."), so a board never holds a student's full name."""
+  w = _msg_text(s).split()
+  if not w:
+    return ""
+  if len(w) == 1:
+    return w[0]
+  return w[0] + " " + w[-1][0].upper() + "."
+
+
 class Messages:
   """Message slots for the screen (three for the team, two for the
   teacher), set from the dashboard, kept in msg.json. A slot has a title
@@ -1066,6 +1077,14 @@ class Messages:
         self.who = json.load(f) or {}
     except Exception:
       pass
+    # names saved before the first-name-and-initial rule are cut down the same way
+    cut = False
+    for w in self.who.values():
+      if isinstance(w, dict) and w.get("name") and _short_name(w["name"]) != w["name"]:
+        w["name"] = _short_name(w["name"])
+        cut = True
+    if cut:
+      self._save_who()
 
   def _save_who(self):
     try:
@@ -1250,7 +1269,7 @@ class Messages:
       self.app.clock_hint(hint)
     via = "bluetooth" if b"X-Via: ble" in req else "wifi"
     me = (query_str(req, "me") or "").strip()[:48]
-    name = _msg_text(query_str(req, "name"))[:MSG_NAME_MAX] if query_str(req, "name") is not None else None
+    name = _short_name(query_str(req, "name"))[:MSG_NAME_MAX] if query_str(req, "name") is not None else None
     if me and name is not None:
       tpin = query_str(req, "tpin")
       have = self.who.get(me)
