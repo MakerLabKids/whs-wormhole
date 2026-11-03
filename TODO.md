@@ -51,6 +51,13 @@ Where things are: private notes/runbook/detailed architecture in MakerLabKids/wh
 
 ## Deploy (from 2026-10-31; updated 2026-11-01 morning)
 
+- [ ] **User: `npx wrangler deploy` in cloud/surface** for 0a1f923 (2026-11-02): anyone can view the
+  wall, bins, charts and live feed; a login only for messages, shows, admin, the signal meter and
+  the Bluetooth page. The wrangler.jsonc routing changed too (.html pages go through the Worker).
+- [ ] e2e rig (tools/e2e/run.sh): no Bins reach the test Worker ("bins 0"), already broken before
+  0a1f923; and cloud/surface test alerts.test.js "a re-sent batch is stored and alerted once"
+  fails ([5,3] vs [5,2]) on the old code too. Both need a look.
+
 Done 2026-11-01: Surface deploy + schema + ENROL_SECRET + TUNNEL_TOKENS; the four ssh-burrowN
 hostnames (SSH through Cloudflare works on all four); burrow2 rebuilt from a cloned card and
 enrolled; all four Pis on the same build; every Tunnel has WormHole-Core saved (`remember`) and
