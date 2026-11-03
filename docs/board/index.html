@@ -198,7 +198,7 @@
 <body>
 
 <div class="bar">
-  <span><b>Display board</b> · 11 letter pages: 7 about the project, 4 of screens. Print with <b>margins: none</b> and <b>background graphics</b> on.</span>
+  <span><b>Display board</b> · 11 letter pages. Print with <b>margins: none</b> and <b>background graphics</b> on.</span>
   <span><button type="button" onclick="window.print()">Print all 11</button> &nbsp;<a href="../index.html">Lab Guide</a></span>
 </div>
 
@@ -385,6 +385,114 @@
     <div class="fact"><b>No lungs.</b> Worms breathe through their skin, so it has to stay moist. That's why we watch humidity so closely.</div>
     <div class="fact"><b>No eyes, either.</b> They still sense light through their skin and dive for the dark. In a clear bin, you can watch them do it.</div>
     <div class="fact"><b>Big appetites.</b> A healthy bin of red wigglers can eat about half its own weight in scraps every day.</div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ 7 -->
+<section class="page" id="p7">
+  <header class="brand">
+    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+  </header>
+
+  <div class="kicker">Under the hood</div>
+  <h2>How it all <em>connects</em></h2>
+  <p class="lede" style="margin-bottom:6px">We named every piece the way a worm would. Readings tunnel up from the bins, through the classrooms, to the surface where anyone can see them.</p>
+
+  <div class="arch">
+    <svg viewBox="0 0 1000 690" role="img" aria-label="Bins send readings over Wi-Fi to a Burrow server in each classroom; classroom routers (Tunnels) link to the Portal router; the Portal reaches the internet and the website (the Surface)">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dff2ff"/><stop offset="1" stop-color="#f4fbff"/></linearGradient>
+        <linearGradient id="dirt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
+        <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fbf3f"/><stop offset="1" stop-color="#4c9a2c"/></linearGradient>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#f2b705"/></marker>
+        <marker id="ahb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2a9fd8"/></marker>
+      </defs>
+      <!-- sky + surface -->
+      <rect x="0" y="0" width="1000" height="200" rx="18" fill="url(#sky)"/>
+      <rect x="0" y="182" width="1000" height="508" rx="18" fill="url(#dirt)"/>
+      <path d="M0 196 Q 60 176 120 194 T 240 192 T 360 196 T 480 190 T 600 196 T 720 192 T 840 196 T 1000 190 L1000 210 L0 210Z" fill="url(#grass)"/>
+      <!-- cloud: the Surface -->
+      <g transform="translate(330 22)">
+        <path d="M70 120 h200 a44 44 0 0 0 0 -88 a64 64 0 0 0 -120 -18 a50 50 0 0 0 -80 34 a40 40 0 0 0 0 72z" fill="#fff" stroke="#bfe0f5" stroke-width="3"/>
+        <text x="170" y="62" text-anchor="middle" font-family="Fredoka, Arial" font-size="26" font-weight="700" fill="#1b2f5e">THE SURFACE</text>
+        <text x="170" y="86" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="15" font-weight="800" fill="#2a9fd8">whs.makerlabkids.com</text>
+        <text x="170" y="106" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#5b6475">the website, in the cloud</text>
+      </g>
+      <!-- viewers -->
+      <g font-family="Nunito Sans, Arial" font-size="13" font-weight="700" fill="#1b2f5e">
+        <g transform="translate(60 52)"><rect x="0" y="0" width="120" height="74" rx="8" fill="#1b2f5e"/><rect x="8" y="8" width="104" height="56" rx="3" fill="#0b1220"/><g fill="#5fae3a"><rect x="16" y="16" width="26" height="16" rx="2"/><rect x="47" y="16" width="26" height="16" rx="2"/><rect x="78" y="16" width="26" height="16" rx="2" fill="#f2b705"/><rect x="16" y="38" width="26" height="16" rx="2"/><rect x="47" y="38" width="26" height="16" rx="2"/><rect x="78" y="38" width="26" height="16" rx="2"/></g><text x="60" y="96" text-anchor="middle">classroom projectors</text></g>
+        <g transform="translate(820 40)"><rect x="0" y="0" width="52" height="92" rx="10" fill="#1b2f5e"/><rect x="5" y="10" width="42" height="70" rx="4" fill="#0b1220"/><path d="M12 60 l8 -14 l8 6 l8 -18 l6 10" fill="none" stroke="#5fae3a" stroke-width="3"/><text x="26" y="112" text-anchor="middle">phones</text></g>
+        <g transform="translate(890 64)"><rect x="0" y="0" width="80" height="52" rx="5" fill="#1b2f5e"/><rect x="5" y="5" width="70" height="40" rx="2" fill="#0b1220"/><rect x="-8" y="52" width="96" height="6" rx="3" fill="#24407e"/><text x="40" y="88" text-anchor="middle">laptops</text></g>
+      </g>
+      <path d="M330 92 L 190 92" stroke="#2a9fd8" stroke-width="4" marker-end="url(#ahb)"/>
+      <path d="M670 92 L 812 92" stroke="#2a9fd8" stroke-width="4" marker-end="url(#ahb)"/>
+      <!-- portal -->
+      <g transform="translate(420 238)">
+        <rect x="0" y="0" width="160" height="96" rx="14" fill="#1b2f5e" stroke="#f2b705" stroke-width="3"/>
+        <text x="80" y="34" text-anchor="middle" font-family="Fredoka, Arial" font-size="22" font-weight="700" fill="#f2b705">THE PORTAL</text>
+        <text x="80" y="56" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#dfe6f4">main router + Burrow 0</text>
+        <text x="80" y="76" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#dfe6f4">reaches the internet</text>
+      </g>
+      <path d="M500 238 L 500 150" stroke="#f2b705" stroke-width="5" marker-end="url(#ah)"/>
+      <text x="512" y="206" font-family="Nunito Sans, Arial" font-size="13" font-weight="800" fill="#fff">school internet</text>
+      <!-- three classrooms -->
+      <g font-family="Nunito Sans, Arial">
+        <g transform="translate(40 410)">
+          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 1</text>
+          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 1</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
+          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 1</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
+          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
+          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
+          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 1 &amp; 2 · 17 bins</text>
+          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
+        </g>
+        <g transform="translate(360 410)">
+          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 2</text>
+          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 2</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
+          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 2</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
+          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
+          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
+          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 3 &amp; 4 · 17 bins</text>
+          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
+        </g>
+        <g transform="translate(680 410)">
+          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 3</text>
+          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 3</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
+          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 3</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
+          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
+          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
+          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 5 &amp; 6 · 16 bins</text>
+          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
+        </g>
+      </g>
+      <!-- the backhaul: tunnels to the portal -->
+      <g fill="none" stroke="#f2b705" stroke-width="5" stroke-dasharray="10 7">
+        <path d="M180 450 C 180 330, 300 300, 418 290" marker-end="url(#ah)"/>
+        <path d="M500 450 L 500 338" marker-end="url(#ah)"/>
+        <path d="M820 450 C 820 330, 700 300, 582 290" marker-end="url(#ah)"/>
+      </g>
+      <text x="196" y="372" font-family="Nunito Sans, Arial" font-size="13" font-weight="800" fill="#ffe7c7" transform="rotate(-24 196 372)">hidden 5 GHz Wi-Fi link</text>
+    </svg>
+  </div>
+
+  <div class="keep">
+    <div class="card"><span class="chip" style="background:#e8762c">Wi-Fi drops?</span><p>Each bin saves its readings on its own memory and sends them all once the network's back. Nothing gets lost.</p></div>
+    <div class="card"><span class="chip" style="background:#5fae3a">Internet out?</span><p>Every classroom's Burrow keeps its own copy, so the bins and screens keep right on working.</p></div>
+    <div class="card"><span class="chip" style="background:#1b2f5e">A server dies?</span><p>A spare Raspberry Pi takes over the room by itself. We've already seen one do it.</p></div>
+  </div>
+
+  <div class="words">
+    <div><b style="color:#e8762c">Bin</b>a worm bin with its own little computer</div>
+    <div><b style="color:#5fae3a">Burrow</b>the Raspberry Pi server in each classroom</div>
+    <div><b style="color:#2a9fd8">Tunnel</b>each classroom's Wi-Fi router</div>
+    <div><b style="color:#c99a1e">Portal</b>the main router, out to the internet</div>
+    <div><b style="color:#1b2f5e">Surface</b>the website, where anyone can see it all</div>
   </div>
 
   <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
@@ -592,7 +700,7 @@
   <p class="cap"><b>Flight Deck.</b> Every bin in the school on one screen, like NASA's mission control. A tile flashes amber when something needs a look.</p>
 
   <div class="g2" style="margin-top:10px">
-    <div><figure class="shot crop"><img src="img/skin-bin.jpg" alt="The Living Bin"></figure><p class="cap"><b>The Living Bin.</b> A cutaway of one team's bin, drawn from its real readings.</p></div>
+    <div><figure class="shot crop"><img style="object-position:center 8%" src="img/skin-bin.jpg" alt="The Living Bin"></figure><p class="cap"><b>The Living Bin.</b> A cutaway of one team's bin, drawn from its real readings.</p></div>
     <div><figure class="shot crop"><img src="img/skin-board.jpg" alt="The Leaderboard"></figure><p class="cap"><b>The Leaderboard.</b> Bin scores, ranked. Yes, the teams take it seriously.</p></div>
     <div><figure class="shot crop"><img src="img/skin-net.jpg" alt="WORM//NET"></figure><p class="cap"><b>WORM//NET.</b> A hacker-movie look, with a 3D bin and a worm radar.</p></div>
     <div><figure class="shot crop"><img src="img/skin-paper.jpg" alt="The Daily Worm"></figure><p class="cap"><b>The Daily Worm.</b> The day's readings, written up as a newspaper.</p></div>
@@ -631,114 +739,6 @@
   <div class="g2" style="margin-top:10px">
     <div><figure class="shot crop"><img src="img/skin-orbital.jpg" alt="Orbital view"></figure><p class="cap"><b>Orbital.</b> All 46 demo bins circling the Wormhole.</p></div>
     <div><figure class="shot crop"><img src="img/skin-garden.jpg" alt="Worm Ranch view"></figure><p class="cap"><b>Worm Ranch.</b> Each bin as a pixel pet. Keep your worm happy!</p></div>
-  </div>
-
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
-</section>
-
-<!-- ================================================================ 7 -->
-<section class="page" id="p7">
-  <header class="brand">
-    <div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div></div>
-    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
-  </header>
-
-  <div class="kicker">Under the hood</div>
-  <h2>How it all <em>connects</em></h2>
-  <p class="lede" style="margin-bottom:6px">We named every piece the way a worm would. Readings tunnel up from the bins, through the classrooms, to the surface where anyone can see them.</p>
-
-  <div class="arch">
-    <svg viewBox="0 0 1000 690" role="img" aria-label="Bins send readings over Wi-Fi to a Burrow server in each classroom; classroom routers (Tunnels) link to the Portal router; the Portal reaches the internet and the website (the Surface)">
-      <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dff2ff"/><stop offset="1" stop-color="#f4fbff"/></linearGradient>
-        <linearGradient id="dirt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
-        <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fbf3f"/><stop offset="1" stop-color="#4c9a2c"/></linearGradient>
-        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#f2b705"/></marker>
-        <marker id="ahb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2a9fd8"/></marker>
-      </defs>
-      <!-- sky + surface -->
-      <rect x="0" y="0" width="1000" height="200" rx="18" fill="url(#sky)"/>
-      <rect x="0" y="182" width="1000" height="508" rx="18" fill="url(#dirt)"/>
-      <path d="M0 196 Q 60 176 120 194 T 240 192 T 360 196 T 480 190 T 600 196 T 720 192 T 840 196 T 1000 190 L1000 210 L0 210Z" fill="url(#grass)"/>
-      <!-- cloud: the Surface -->
-      <g transform="translate(330 22)">
-        <path d="M70 120 h200 a44 44 0 0 0 0 -88 a64 64 0 0 0 -120 -18 a50 50 0 0 0 -80 34 a40 40 0 0 0 0 72z" fill="#fff" stroke="#bfe0f5" stroke-width="3"/>
-        <text x="170" y="62" text-anchor="middle" font-family="Fredoka, Arial" font-size="26" font-weight="700" fill="#1b2f5e">THE SURFACE</text>
-        <text x="170" y="86" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="15" font-weight="800" fill="#2a9fd8">whs.makerlabkids.com</text>
-        <text x="170" y="106" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#5b6475">the website, in the cloud</text>
-      </g>
-      <!-- viewers -->
-      <g font-family="Nunito Sans, Arial" font-size="13" font-weight="700" fill="#1b2f5e">
-        <g transform="translate(60 52)"><rect x="0" y="0" width="120" height="74" rx="8" fill="#1b2f5e"/><rect x="8" y="8" width="104" height="56" rx="3" fill="#0b1220"/><g fill="#5fae3a"><rect x="16" y="16" width="26" height="16" rx="2"/><rect x="47" y="16" width="26" height="16" rx="2"/><rect x="78" y="16" width="26" height="16" rx="2" fill="#f2b705"/><rect x="16" y="38" width="26" height="16" rx="2"/><rect x="47" y="38" width="26" height="16" rx="2"/><rect x="78" y="38" width="26" height="16" rx="2"/></g><text x="60" y="96" text-anchor="middle">classroom projectors</text></g>
-        <g transform="translate(820 40)"><rect x="0" y="0" width="52" height="92" rx="10" fill="#1b2f5e"/><rect x="5" y="10" width="42" height="70" rx="4" fill="#0b1220"/><path d="M12 60 l8 -14 l8 6 l8 -18 l6 10" fill="none" stroke="#5fae3a" stroke-width="3"/><text x="26" y="112" text-anchor="middle">phones</text></g>
-        <g transform="translate(890 64)"><rect x="0" y="0" width="80" height="52" rx="5" fill="#1b2f5e"/><rect x="5" y="5" width="70" height="40" rx="2" fill="#0b1220"/><rect x="-8" y="52" width="96" height="6" rx="3" fill="#24407e"/><text x="40" y="88" text-anchor="middle">laptops</text></g>
-      </g>
-      <path d="M330 92 L 190 92" stroke="#2a9fd8" stroke-width="4" marker-end="url(#ahb)"/>
-      <path d="M670 92 L 812 92" stroke="#2a9fd8" stroke-width="4" marker-end="url(#ahb)"/>
-      <!-- portal -->
-      <g transform="translate(420 238)">
-        <rect x="0" y="0" width="160" height="96" rx="14" fill="#1b2f5e" stroke="#f2b705" stroke-width="3"/>
-        <text x="80" y="34" text-anchor="middle" font-family="Fredoka, Arial" font-size="22" font-weight="700" fill="#f2b705">THE PORTAL</text>
-        <text x="80" y="56" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#dfe6f4">main router + Burrow 0</text>
-        <text x="80" y="76" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#dfe6f4">reaches the internet</text>
-      </g>
-      <path d="M500 238 L 500 150" stroke="#f2b705" stroke-width="5" marker-end="url(#ah)"/>
-      <text x="512" y="206" font-family="Nunito Sans, Arial" font-size="13" font-weight="800" fill="#fff">school internet</text>
-      <!-- three classrooms -->
-      <g font-family="Nunito Sans, Arial">
-        <g transform="translate(40 410)">
-          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
-          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 1</text>
-          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 1</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
-          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 1</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
-          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
-          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
-          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 1 &amp; 2 · 17 bins</text>
-          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
-        </g>
-        <g transform="translate(360 410)">
-          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
-          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 2</text>
-          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 2</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
-          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 2</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
-          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
-          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
-          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 3 &amp; 4 · 17 bins</text>
-          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
-        </g>
-        <g transform="translate(680 410)">
-          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
-          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 3</text>
-          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 3</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
-          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 3</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
-          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
-          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
-          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 5 &amp; 6 · 16 bins</text>
-          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
-        </g>
-      </g>
-      <!-- the backhaul: tunnels to the portal -->
-      <g fill="none" stroke="#f2b705" stroke-width="5" stroke-dasharray="10 7">
-        <path d="M180 450 C 180 330, 300 300, 418 290" marker-end="url(#ah)"/>
-        <path d="M500 450 L 500 338" marker-end="url(#ah)"/>
-        <path d="M820 450 C 820 330, 700 300, 582 290" marker-end="url(#ah)"/>
-      </g>
-      <text x="196" y="372" font-family="Nunito Sans, Arial" font-size="13" font-weight="800" fill="#ffe7c7" transform="rotate(-24 196 372)">hidden 5 GHz Wi-Fi link</text>
-    </svg>
-  </div>
-
-  <div class="keep">
-    <div class="card"><span class="chip" style="background:#e8762c">Wi-Fi drops?</span><p>Each bin saves its readings on its own memory and sends them all once the network's back. Nothing gets lost.</p></div>
-    <div class="card"><span class="chip" style="background:#5fae3a">Internet out?</span><p>Every classroom's Burrow keeps its own copy, so the bins and screens keep right on working.</p></div>
-    <div class="card"><span class="chip" style="background:#1b2f5e">A server dies?</span><p>A spare Raspberry Pi takes over the room by itself. We've already seen one do it.</p></div>
-  </div>
-
-  <div class="words">
-    <div><b style="color:#e8762c">Bin</b>a worm bin with its own little computer</div>
-    <div><b style="color:#5fae3a">Burrow</b>the Raspberry Pi server in each classroom</div>
-    <div><b style="color:#2a9fd8">Tunnel</b>each classroom's Wi-Fi router</div>
-    <div><b style="color:#c99a1e">Portal</b>the main router, out to the internet</div>
-    <div><b style="color:#1b2f5e">Surface</b>the website, where anyone can see it all</div>
   </div>
 
   <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span>whs.makerlabkids.com</span></footer>
