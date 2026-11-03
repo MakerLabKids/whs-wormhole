@@ -80,6 +80,21 @@ r = http_get("/set?angle=90&pin=" + pin)
 check("/set with the PIN works", r.startswith(b"HTTP/1.0 200") and SETS == ["90"])
 r = http_get("/name?pin=" + pin + "&name=")
 check("/name rejects an empty name", b"error" in r and app._restart_at is None)
+# a rename takes two steps: propose -> the new PIN comes back -> type it in to finish
+import os
+had = open(picolab.NAME_FILE).read() if picolab.NAME_FILE in os.listdir() else None
+newpin = picolab.pin_for("Worm Town", app.ip)
+r = http_get("/name?pin=" + pin + "&name=Worm%20Town")
+check("rename step 1 only proposes and shows the new PIN", b'"pending": true' in r.replace(b'":t', b'": t') and newpin.encode() in r and app._restart_at is None)
+r = http_get("/name?pin=" + pin + "&name=Worm%20Town&confirm=0000")
+check("a wrong new PIN does not rename", b'"confirm"' in r and app._restart_at is None)
+r = http_get("/name?pin=" + pin + "&name=Worm%20Town&confirm=" + newpin)
+check("the right new PIN renames and restarts", b'"renamed": true' in r.replace(b'":t', b'": t') and app._restart_at is not None and open(picolab.NAME_FILE).read() == "Worm Town")
+app._restart_at = None
+if had is None:
+    os.remove(picolab.NAME_FILE)
+else:
+    open(picolab.NAME_FILE, "w").write(had)
 for i in range(5):
     http_get("/set?angle=1&pin=0000")
 r = http_get("/set?angle=1&pin=" + pin)

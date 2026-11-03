@@ -73,7 +73,7 @@
   // one request line out, one JSON line back (it arrives in notification-sized pieces)
   function ask(line, cb) {
     if (!rx) { cb(false, { error: 'not connected' }); return; }
-    log('> ' + line.replace(/pin=\d+/, 'pin=****'));
+    log('> ' + line.replace(/(pin|confirm)=\d+/g, '$1=****'));
     waiting.push(cb);
     var data = new TextEncoder().encode(line + '\n'), i = 0;
     (function next() {
@@ -144,11 +144,43 @@
     var pin = null;
     try { pin = localStorage.getItem(pinKey()); } catch (e) {}
     if (!pin) { pin = prompt('This board is locked. Its PIN?'); if (!pin) return; try { localStorage.setItem(pinKey(), pin); } catch (e) {} }
-    ask('/name?name=' + encodeURIComponent(n) + '&pin=' + encodeURIComponent(pin), function (ok, j) {
-      $('renamemsg').textContent = ok && j.ok ? 'Renamed. The board restarts now as "' + n + '": connect again under that name.' : 'Not renamed' + (j && j.error ? ': ' + (j.error === 'pin' ? 'wrong PIN' : j.error) : '.');
-      if (j && j.error === 'pin') { try { localStorage.removeItem(pinKey()); } catch (e) {} }
-    });
+    var call = function (url, cb) {
+      ask(url + '&pin=' + encodeURIComponent(pin), function (ok, j) {
+        if (j && j.error === 'pin') { try { localStorage.removeItem(pinKey()); } catch (e) {} cb(false, { error: 'wrong PIN' }); return; }
+        cb(ok && j && !j.error ? true : !!(j && (j.error === 'confirm' || j.cancelled)), j);
+      });
+    };
+    renameFlow(n, call, function (t) { $('renamemsg').textContent = t; }, function () { try { localStorage.removeItem(pinKey()); } catch (e) {} });
   };
+
+  // A rename takes two steps (the board enforces it): propose the name, get the NEW PIN back, type it to
+  // finish. Two warnings first, because a new name means a new Wi-Fi name and a new PIN for everyone.
+  function renameFlow(n, call, say, savePin) {
+    if (!confirm('Rename this bin to "' + n + '"?\n\nIts Wi-Fi name AND its PIN both change. Every phone on it is disconnected, ' +
+                 'and anyone without the new PIN is locked out.\n\nMost demos never need a rename.')) { say('Not renamed.'); return; }
+    if (!confirm('Last check: really rename it "' + n + '"?\n\nNext you get the new PIN. Write it down: you have to type it in to finish.')) { say('Not renamed.'); return; }
+    call('/name?name=' + encodeURIComponent(n), function (ok, j) {
+      if (!ok || !j) { say('Not renamed' + (j && j.error ? ': ' + j.error : '.')); return; }
+      if (j.restart_s && !j.pending) { say('Renamed (older board software). It restarts now as "' + n + '".'); return; }   // a board without the two steps
+      if (!j.pending) { say('Not renamed' + (j.error ? ': ' + j.error : '.')); return; }
+      say('New PIN: ' + j.new_pin + ' (not renamed yet: type it in to finish)');
+      (function ask(left) {
+        var typed = prompt('The new PIN is ' + j.new_pin + '.\nWrite it down now.\n\nType the new PIN to finish the rename' +
+                           (left < 3 ? ' (' + left + ' tries left)' : '') + ':');
+        if (typed === null) { say('Rename cancelled. The name and PIN did not change.'); return; }
+        call('/name?name=' + encodeURIComponent(n) + '&confirm=' + encodeURIComponent(typed.trim()), function (ok2, k) {
+          if (ok2 && k && k.renamed) {
+            savePin(k.new_pin);
+            say('Renamed. The board restarts now as "' + n + '", new PIN ' + k.new_pin + '. Join its Wi-Fi again.');
+          } else if (k && k.error === 'confirm' && !k.cancelled) {
+            alert('That is not the new PIN. The name has NOT changed.'); ask(k.tries_left);
+          } else {
+            say('Rename cancelled: ' + (k && k.error === 'confirm' ? 'the new PIN was typed wrong 3 times' : (k && k.error) || 'no answer') + '. The name and PIN did not change.');
+          }
+        });
+      })(3);
+    });
+  }
 })();
 </script>
 </body>

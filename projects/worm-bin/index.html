@@ -73,8 +73,8 @@
       <input id="newname" maxlength="24" placeholder="new name" style="width:11em">
       <button id="renamebtn">Rename</button></div>
       <div id="renamemsg" style="font-size:12px;color:#86efac;min-height:14px"></div>
-      <div style="font-size:11px;color:#94a3b8">Needs the PIN. The board restarts as its new
-        name (new Wi-Fi name, new PIN).</div></div>
+      <div style="font-size:11px;color:#fca5a5"><b>Careful:</b> a new name is a new Wi-Fi name AND a new PIN.
+        You'll be shown the new PIN and must type it in before the rename takes.</div></div>
     <div class="card wide"><div id="msgbox"></div></div>
 
     <div class="card"><h3>WIRING &amp; PINS</h3>
@@ -234,12 +234,39 @@ function send(q) {
   holdoff = Date.now() + 1500;
   withPin('/set?' + q);
 }
+// A rename takes two steps (the board enforces it): propose the name, get the NEW PIN back, type it to
+// finish. Two warnings first, because a new name means a new Wi-Fi name and a new PIN for everyone.
+function renameFlow(n, call, say, savePin) {
+  if (!confirm('Rename this bin to "' + n + '"?\n\nIts Wi-Fi name AND its PIN both change. Every phone on it is disconnected, ' +
+               'and anyone without the new PIN is locked out.\n\nMost demos never need a rename.')) { say('Not renamed.'); return; }
+  if (!confirm('Last check: really rename it "' + n + '"?\n\nNext you get the new PIN. Write it down: you have to type it in to finish.')) { say('Not renamed.'); return; }
+  call('/name?name=' + encodeURIComponent(n), function (ok, j) {
+    if (!ok || !j) { say('Not renamed' + (j && j.error ? ': ' + j.error : '.')); return; }
+    if (j.restart_s && !j.pending) { say('Renamed (older board software). It restarts now as "' + n + '".'); return; }   // a board without the two steps
+    if (!j.pending) { say('Not renamed' + (j.error ? ': ' + j.error : '.')); return; }
+    say('New PIN: ' + j.new_pin + ' (not renamed yet: type it in to finish)');
+    (function ask(left) {
+      var typed = prompt('The new PIN is ' + j.new_pin + '.\nWrite it down now.\n\nType the new PIN to finish the rename' +
+                         (left < 3 ? ' (' + left + ' tries left)' : '') + ':');
+      if (typed === null) { say('Rename cancelled. The name and PIN did not change.'); return; }
+      call('/name?name=' + encodeURIComponent(n) + '&confirm=' + encodeURIComponent(typed.trim()), function (ok2, k) {
+        if (ok2 && k && k.renamed) {
+          savePin(k.new_pin);
+          say('Renamed. The board restarts now as "' + n + '", new PIN ' + k.new_pin + '. Join its Wi-Fi again.');
+        } else if (k && k.error === 'confirm' && !k.cancelled) {
+          alert('That is not the new PIN. The name has NOT changed.'); ask(k.tries_left);
+        } else {
+          say('Rename cancelled: ' + (k && k.error === 'confirm' ? 'the new PIN was typed wrong 3 times' : (k && k.error) || 'no answer') + '. The name and PIN did not change.');
+        }
+      });
+    })(3);
+  });
+}
 $('renamebtn').onclick = function () {
   var n = ($('newname').value || '').trim();
   if (!n) return;
-  withPin('/name?name=' + encodeURIComponent(n), function (ok) {
-    $('renamemsg').textContent = ok ? 'Renamed. The board restarts now: join Wi-Fi "' + n + '" and browse again.' : 'Not renamed.';
-  });
+  renameFlow(n, withPin, function (t) { $('renamemsg').textContent = t; },
+    function (pin) { try { localStorage.setItem('pin:' + location.host, pin); } catch (e) {} });
 };
 // ---- SETTINGS (lib/settings.py on the board): one row per setting, saved one at a time ----
 function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }

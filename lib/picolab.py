@@ -997,6 +997,38 @@ def station_name():
   return "PicoLab" + str(board_num())
 
 
+RENAME_CONFIRM_S = 180     # a proposed rename waits this long for its new PIN
+RENAME_TRIES = 3           # wrong confirmations before the rename is cancelled
+
+
+class RenameGate:
+  """The two-step rename: propose(name, new_pin, now) -> the reply with the
+  new PIN; confirm(name, typed, now) -> {"ok", "renamed"} only if the typed
+  PIN is the proposed one, in time, for the same name. Kept apart from the
+  web server so it can be tested on its own."""
+
+  def __init__(self):
+    self.pending = None      # [name, new_pin, deadline, wrong_tries]
+
+  def propose(self, name, new_pin, now):
+    self.pending = [name, new_pin, now + RENAME_CONFIRM_S, 0]
+    return {"ok": True, "pending": True, "name": name, "new_pin": new_pin, "confirm_s": RENAME_CONFIRM_S}
+
+  def confirm(self, name, typed, now):
+    p = self.pending
+    if not p or p[0] != name or now > p[2]:
+      self.pending = None
+      return {"error": "no rename waiting: start again", "cancelled": True}
+    if str(typed).strip() != p[1]:
+      p[3] += 1
+      if p[3] >= RENAME_TRIES:
+        self.pending = None
+        return {"error": "confirm", "cancelled": True}
+      return {"error": "confirm", "tries_left": RENAME_TRIES - p[3]}
+    self.pending = None
+    return {"ok": True, "renamed": True, "name": name, "new_pin": p[1], "restart_s": 2}
+
+
 def pin_for(name, ip):
   """The board's PIN, from what is written on its screen: its name and
   the address you browse to. Two numbers glued together: the 2nd letter
@@ -2584,16 +2616,27 @@ class WebApp:
     return False
 
   def _rename(self, req):
-    """/name?name=New%20Name: write name.txt and restart in 2 s. The new
-    name is the new hotspot and the new PIN, so the page says so."""
+    """A rename takes two steps, so nobody locks themselves out by accident:
+    /name?name=New%20Name only PROPOSES it and answers with the new PIN;
+    /name?name=New%20Name&confirm=<that new PIN> (within RENAME_CONFIRM_S)
+    writes name.txt and restarts in 2 s. Three wrong confirmations cancel
+    it: the old name and PIN stay. Both steps also need the current PIN."""
     new = (query_str(req, "name") or "").strip()
     if not (1 <= len(new) <= 24) or any(ord(c) < 32 or ord(c) > 126 for c in new):
       return {"error": "name: 1-24 plain characters"}
-    with open(NAME_FILE, "w") as f:
-      f.write(new)
-    self._restart_at = uptime_s() + 2
-    log("renamed to '%s' from the web; restarting" % new)
-    return {"ok": True, "name": new, "restart_s": 2}
+    gate = getattr(self, "_rename_gate", None)
+    if gate is None:
+      gate = self._rename_gate = RenameGate()
+    confirm = query_str(req, "confirm")
+    if not confirm:
+      return gate.propose(new, pin_for(new, self.ip), uptime_s())
+    reply = gate.confirm(new, confirm, uptime_s())
+    if reply.get("ok"):
+      with open(NAME_FILE, "w") as f:
+        f.write(new)
+      self._restart_at = uptime_s() + 2
+      log("renamed to '%s' from the web (new PIN confirmed); restarting" % new)
+    return reply
 
   def dispatch(self, req):
     """A request through the gated routes (the ones poll() was given,
