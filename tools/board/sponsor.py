@@ -192,22 +192,20 @@ def one_sheet():
 TRI_CSS = '''
   .sheet { display: grid; grid-template-columns: repeat(3, 1fr); }
   .panel { padding: .36in .3in .3in; position: relative; overflow: hidden; display: flex; flex-direction: column; }
-  .panel + .panel { border-left: 1px dashed rgba(91,100,117,.18); }
   h2 { font-size: 25px; color: var(--navy); margin: 0 0 6px; line-height: 1.05; } h2 em { font-style: normal; color: var(--orange); }
   .k { font-weight: 900; letter-spacing: .18em; font-size: 10.5px; color: var(--red); margin-bottom: 2px; }
   p { font-size: 12.5px; line-height: 1.45; margin: 0 0 8px; }
-  .cover { background: linear-gradient(160deg, #1b2f5e 0%, #24407e 60%, #2a9fd8 130%); color: #fff; }
-  .cover .bg { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .cover h1 { position: relative; font-size: 64px; line-height: .9; margin: 6px 0 0; color: var(--yellow); text-shadow: 0 3px 0 rgba(0,0,0,.18); }
-  .cover h1 span { color: #fff; }
-  .cover .lead { position: relative; font-size: 15px; color: #e7efff; margin-top: 10px; line-height: 1.4; }
+  .cover { color: var(--ink); }
+  .cover h1 { position: relative; font-size: 64px; line-height: .9; margin: 6px 0 0; color: var(--navy); }
+  .cover h1 span { color: var(--orange); }
+  .cover .lead { position: relative; font-size: 15px; color: #36404f; margin-top: 10px; line-height: 1.4; }
   .cover .binart { position: relative; margin: 14px auto 0; width: 3.15in; } .cover .burst { position: absolute; left: .18in; top: 3.0in; width: 1.15in; height: 1.15in; transform: rotate(-12deg); } .cover .burst svg { width: 100%; height: 100%; }
-  .cover .binart svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 8px 14px rgba(0,0,0,.25)); }
-  .cover .kick { position: relative; font-weight: 900; letter-spacing: .2em; font-size: 11px; color: #a6e07f; margin-top: 12px; }
+  .cover .binart svg { width: 100%; height: auto; display: block; }
+  .cover .kick { position: relative; font-weight: 900; letter-spacing: .2em; font-size: 11px; color: var(--dgreen); margin-top: 12px; }
   .chips { position: relative; display: flex; gap: 8px; margin-top: auto; }
-  .chip { background: #fff; border-radius: 12px; padding: 5px 9px; display: inline-flex; align-items: center; gap: 6px; }
+  .chip { background: none; border-radius: 12px; padding: 5px 4px; display: inline-flex; align-items: center; gap: 6px; }
   .chip img { height: .38in; display: block; } .chip b { font-family: "Fredoka"; color: var(--navy); font-size: 10.5px; line-height: 1.05; letter-spacing: .04em; }
-  .back { background: var(--cream); text-align: center; align-items: center; }
+  .back { text-align: center; align-items: center; }
   .back .qr { width: 1.55in; height: 1.55in; display: block; margin: 8px auto; background: #fff; border-radius: 10px; padding: 6px; }
   .back .big { font-family: "Fredoka"; font-size: 20px; color: var(--navy); }
   .back .url { font-weight: 900; color: var(--orange); font-size: 15px; }
@@ -247,7 +245,6 @@ def trifold():
     o.append(f'''
 <!-- OUTSIDE: inside flap | back | front cover -->
 <section class="sheet">
-  <div class="sheetlabel">OUTSIDE</div>
   <div class="panel">
     <div class="k">HOW IT WORKS</div>
     <h2>A smart <em>worm bin</em></h2>
@@ -271,7 +268,6 @@ def trifold():
     <div class="logosv"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><img src="../logo.png" alt="Maker Lab Kids"></div>
   </div>
   <div class="panel cover">
-    <svg class="bg" viewBox="0 0 352 816" preserveAspectRatio="none">{squiggles(8, 352, 816, 5)}</svg>
     <div class="kick">WORMS · WIRES · WI-FI</div>
     <h1>Sponsor<br><span>a Bin!</span></h1>
     <p class="lead">Help Woodstock High students turn cafeteria scraps into real science.</p>
@@ -284,7 +280,6 @@ def trifold():
 
 <!-- INSIDE: three panels -->
 <section class="sheet">
-  <div class="sheetlabel">INSIDE</div>
   <div class="panel">
     <div class="k">THE PROJECT</div>
     <h2>Scraps in, <em>science</em> out</h2>
