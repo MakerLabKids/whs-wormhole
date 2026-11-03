@@ -144,6 +144,11 @@ converter), proven on the bench board. Classroom boards get it with the Pico ref
   in git). Fan ran its 10 s, pushes to burrow0 fine. Its screen (0x3C) is gone from the I2C bus (the
   BME280 0x77 and VL53L0X 0x29 answer): a loose OLED wire, check its VCC/GND/SDA/SCL. This board has
   only the outside BME280, so the humidity fan rule never fires here (it reads the inside one).
+  Then (32dfd53, 01c5491): power-on sequence plays during the Wi-Fi join; BME280 driver no longer
+  loses humidity on a garbled chip-ID read. Its OLED froze after four quick Pico resets (writes still
+  ACKed, no "OLED lost"); a USB power cycle fixed it. If it freezes on its own, add a stuck-screen
+  re-init (the screen keeps power through machine.reset()). ota.json: write it with a closed file
+  before a reset, or the write is lost.
 
 - [ ] It plays only "hello" then Wormhole (a website playlist from the 2026-11-01 test): "Play
       everything" on its page restores all shows. It runs code 58939f0 over Wi-Fi, MicroPython 1.29.
