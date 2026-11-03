@@ -40,7 +40,11 @@ describe("/api/public/now", () => {
     expect(r.headers.get("access-control-allow-origin")).toBe("http://localhost:8080");
   });
 
-  it("still keeps the full /api/now behind a login", async () => {
-    expect((await get("/api/now")).status).toBe(401);
+  it("lets anyone read /api/now, without the Burrows' inner status", async () => {
+    const r = await get("/api/now");
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.bins.aaa.d.in_temp_c).toBe(22.4);
+    expect(Object.keys(j.edges.burrow1).every((k) => ["edge", "room", "ts", "clk", "seen", "up_s", "version", "castings", "unverified", "cloud_ok", "bins"].includes(k))).toBe(true);
   });
 });

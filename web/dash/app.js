@@ -286,6 +286,10 @@
         who.innerHTML = html; who._html = html;
         $('#signout').onclick = function () { api('/api/logout', { method: 'POST', body: {} }).catch(function () { }).then(function () { S.me = { ok: false }; render(); }); };
       }
+    } else if (!S.local && S.me) {
+      who.hidden = false;
+      var h2 = '<a href="/login" id="signin">sign in</a> <span class="muted">to send messages or change things</span>';
+      if (who._html !== h2) { who.innerHTML = h2; who._html = h2; }
     } else { who.hidden = true; who._html = null; }
   }
   // relative times drift; refresh the header text once a second (cheap)
@@ -304,6 +308,7 @@
     if (path === '/about') return { name: 'about' };
     return { name: 'wall' };
   }
+  var NEEDS_LOGIN = { login: true, admin: true, signal: true };
   function navigate(path) { if (location.pathname !== path) history.pushState(null, '', path); render(); }
   document.addEventListener('click', function (ev) {
     var a = ev.target.closest && ev.target.closest('a[href]');
@@ -322,8 +327,9 @@
     main.innerHTML = '';
     document.body.classList.remove('print-cards');
     if (!S.me) { main.appendChild(el('div', 'empty', 'connecting…')); return; }
-    // Surface, not signed in: every route shows the login form, URL kept so a reload lands back here
-    if (!S.local && !S.me.ok) { S.view = viewLogin(main); renderHeader(); return; }
+    // Surface, not signed in: viewing is open to anyone; the pages that change things (admin) or
+    // reach into a room (the signal meter) show the login form, URL kept so signing in lands back here
+    if (!S.local && !S.me.ok && NEEDS_LOGIN[r.name]) { S.view = viewLogin(main); renderHeader(); return; }
     S.route = r;
     startPolling();   // the header (counts, edges, clock) is on every page
     var v = { wall: viewWall, bin: viewBin, live: viewLive, signal: viewSignal, login: viewLogin, admin: viewAdmin, about: viewAbout }[r.name];
@@ -512,7 +518,7 @@
           .map(function (x) { return '<div class="rd"><span class="k">' + x[0] + '</span><span class="v">' + (typeof x[1] === 'number' ? f1(x[1]) : esc(x[1])) + '<small>' + x[2] + '</small></span></div>'; }).join('') +
         '</div>' + '<div class="spacer"></div>' +
         (S.local ? '<a class="btn ghost sm" href="/api/undated?uid=' + encodeURIComponent(uid) + '&csv=1" title="Readings this bin buffered while it had no clock: kept, in buffer order (boot, seconds since boot)">undated readings (CSV)</a> '
-                 : (isNum(room) ? '<a class="btn ghost sm" href="/api/edge/' + room + '/undated?uid=' + encodeURIComponent(uid) + '&csv=1" title="Readings this bin buffered while it had no clock: kept, in buffer order (boot, seconds since boot), from its room\'s Burrow">undated readings (CSV)</a> ' : '')) +
+                 : (isNum(room) && S.me && S.me.ok ? '<a class="btn ghost sm" href="/api/edge/' + room + '/undated?uid=' + encodeURIComponent(uid) + '&csv=1" title="Readings this bin buffered while it had no clock: kept, in buffer order (boot, seconds since boot), from its room\'s Burrow">undated readings (CSV)</a> ' : '')) +
         '<a class="btn ghost sm" href="/">← wall</a>';
     }
     /* messages for the bin's screen (Surface only, signed in; msg.js is the same widget the board's
@@ -863,7 +869,13 @@
           S.me = j && j.me ? Object.assign({ ok: true }, j.me) : null;
           return S.me ? null : api('/api/me').then(function (m) { S.me = m; });
         })
-        .then(function () { S.local = false; navigate(location.pathname === '/login' ? '/' : location.pathname); })
+        .then(function () {
+          S.local = false;
+          // ?next= (from a login-only page outside this app, e.g. /bluetooth.html): a full page load
+          var next = new URLSearchParams(location.search).get('next');
+          if (next && /^\/[a-z0-9._\/-]*$/i.test(next) && next.indexOf('//') < 0) { location.href = next; return; }
+          navigate(location.pathname === '/login' ? '/' : location.pathname);
+        })
         .catch(function (e) { btn.disabled = false; err.hidden = false; err.textContent = e.status === 429 ? 'Too many tries; wait a minute.' : e.status === 401 || e.status === 403 ? 'Wrong team or passphrase.' : e.message; });
     };
     return { destroy: function () { } };
@@ -1321,7 +1333,7 @@
       'Nothing is deleted from a Burrow until the cloud has confirmed it holds an identical copy.</p>' +
       '<h2>Source code</h2><p>Everything here is open: the Bin firmware, the Burrow and Surface code, this dashboard, and the student lab guide live in one repository, ' +
       '<a href="https://github.com/MakerLabKids/whs-wormhole" target="_blank" rel="noopener">github.com/MakerLabKids/whs-wormhole</a>. The lab guide is published at <a href="https://makerlabkids.github.io/whs-wormhole/" target="_blank" rel="noopener">makerlabkids.github.io/whs-wormhole</a>.</p>' +
-      '<p class="muted">You are looking at ' + (S.local ? 'a classroom Burrow (' + esc(Object.keys(S.edges).join(', ') || 'local') + '): open to anyone in the room, no login.' : 'the Surface: the cloud copy, with team logins.') + '</p>';
+      '<p class="muted">You are looking at ' + (S.local ? 'a classroom Burrow (' + esc(Object.keys(S.edges).join(', ') || 'local') + '): open to anyone in the room, no login.' : 'the Surface: the cloud copy. Anyone can look; signing in (team passphrase, or staff password) lets you send messages and change things.') + '</p>';
     main.appendChild(box);
     return { destroy: function () { } };
   }

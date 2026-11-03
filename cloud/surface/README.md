@@ -106,11 +106,17 @@ rate limit, visits on page views, the `/live` proxy, admin roles.
 
 ## Operational notes
 
-- `/api/now` is cached 10 s at the edge after the cookie check; anonymous
-  requests never see the cached body.
-- `run_worker_first` is `["/*", "!/*.*"]`: extension-less paths (the SPA
-  routes) go through the Worker so a logged-in page view writes its `visits`
-  row; files with an extension are served straight from assets.
+- Viewing is open to anyone: `/api/now`, `/api/bins`, `/api/history` and the
+  `/live/<room>` streams need no login. An anonymous `/api/now` gets each Burrow's
+  status trimmed to the wall header's fields (no network, tunnel or event
+  details); it is cached 10 s apart from the logged-in copy. Changing things
+  needs a login: messages, shows, `/api/admin/*` (role checked), the
+  `/api/edge/<room>/*` tools (signal meter, Devices, undated CSV), and the
+  Bluetooth page (`/bluetooth.html` redirects to `/login?next=`).
+- `run_worker_first` is `["/*", "!/*.js", "!/*.css", "!/*.svg", "!/*.png",
+  "!/*.ico", "!/*.md"]`: the SPA routes and the `.html` pages go through the
+  Worker (a logged-in page view writes its `visits` row; `bluetooth.html` needs
+  a login); scripts, styles and images are served straight from assets.
 - PBKDF2 (100000 iterations) costs real CPU per login and per team created;
   the CSV import is capped at 60 rows per request for that reason.
 - Castings are never parsed by the Worker, only hashed; `verified_at` is set

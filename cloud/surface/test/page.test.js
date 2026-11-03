@@ -67,6 +67,16 @@ describe("page views + live proxy", () => {
     expect(await r.text()).toContain("test SPA");
   });
 
+  it("holds the Bluetooth page back until there is a login", async () => {
+    for (const path of ["/bluetooth.html", "/bluetooth"]) {
+      const r = await pageGet(path);
+      expect(r.status).toBe(302);
+      expect(r.headers.get("location")).toBe("/login?next=%2Fbluetooth.html");
+      expect((await pageGet(path, { cookie })).status).toBe(200);
+    }
+    expect((await pageGet("/wall.html")).status).toBe(200);   // the skins stay open
+  });
+
   it("proxies /live/<room> from the Burrow tunnel with the shared key", async () => {
     const calls = stubUpstream(() => new Response("event: hello\ndata: {}\n\n", { headers: { "content-type": "text/event-stream" } }));
     const r = await get("/live/1", { cookie });
@@ -79,7 +89,7 @@ describe("page views + live proxy", () => {
     expect(calls[0].headers.get("x-burrow-key")).toBe("local-live-key");
   });
 
-  it("returns 503 edge offline when the tunnel fails, 401 without a cookie, 404 for a bad room", async () => {
+  it("returns 503 edge offline when the tunnel fails, streams without a cookie too, 404 for a bad room", async () => {
     stubUpstream(() => new Response("bad gateway", { status: 502 }));
     let r = await get("/live/2", { cookie });
     expect(r.status).toBe(503);
@@ -90,11 +100,11 @@ describe("page views + live proxy", () => {
     expect(r.status).toBe(503);
     expect(calls[0].url).toBe("https://burrow3.whs.makerlabkids.com/live");
 
-    // No cookie: refused before any upstream call is made.
-    const anon = stubUpstream(() => new Response("x"));
-    expect((await get("/live/1")).status).toBe(401);
+    // No cookie: the stream is open, like the readings; a bad room never reaches upstream.
+    const anon = stubUpstream(() => new Response("event: hello\ndata: {}\n\n", { headers: { "content-type": "text/event-stream" } }));
+    expect((await get("/live/1")).status).toBe(200);
     expect((await get("/live/4", { cookie })).status).toBe(404);
-    expect(anon.length).toBe(0);
+    expect(anon.length).toBe(1);
 
     // Room 0 is the Portal's own Burrow (burrow0): a real room for the live path.
     const r0 = stubUpstream(() => new Response("event: hello\ndata: {}\n\n", { headers: { "content-type": "text/event-stream" } }));

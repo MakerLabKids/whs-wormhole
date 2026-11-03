@@ -16,8 +16,9 @@
     "not_found_handling": "single-page-application",
     // Worker-first for the API paths AND for extension-less page paths ("/",
     // "/admin", ...), so a logged-in page view can write its visits row;
-    // files with an extension (js/css/png) are served straight from assets.
-    "run_worker_first": ["/*", "!/*.*"]
+    // script, style and image files are served straight from assets; .html pages go
+    // through the Worker too, so it can hold back the login-only ones (bluetooth.html).
+    "run_worker_first": ["/*", "!/*.js", "!/*.css", "!/*.svg", "!/*.png", "!/*.ico", "!/*.md"]
   },
 
   "d1_databases": [

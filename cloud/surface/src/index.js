@@ -1,7 +1,8 @@
 // Wormhole Surface: the Cloudflare Worker.
 //   /v1/edge/*   Burrows (bearer token)          -> edge.js
 //   /api/*       viewers + admin (cookie)         -> auth.js, viewer.js, admin.js, messages.js
-//   /live/<room> SSE proxied from a Burrow tunnel
+//   /live/<room> SSE proxied from a Burrow tunnel (open, like the readings)
+//   /bluetooth.html needs a login (it changes boards); /admin is the SPA's, its API checks the role
 //   everything else: the dashboard SPA from static assets (+ one visits row per HTML page view)
 
 import { handleAdmin } from "./admin.js";
@@ -58,11 +59,14 @@ async function handleApi(request, env, ctx, path) {
   if (path === "/api/messages") return apiMessages(request, env, session);
   if (path === "/api/shows") return apiShows(request, env, session);
 
+  // Viewing is open to anyone; changing things (messages, shows, admin) needs a login above.
+  if (path === "/api/now" || path === "/api/bins" || path === "/api/history") {
+    if (m !== "GET") return err(405, "method not allowed");
+    if (path === "/api/now") return apiNow(request, env, ctx, session);
+    if (path === "/api/bins") return apiBins(env);
+    return apiHistory(request, env);
+  }
   if (!session) return err(401, "login required");
-  if (m !== "GET") return err(405, "method not allowed");
-  if (path === "/api/now") return apiNow(request, env, ctx);
-  if (path === "/api/bins") return apiBins(env);
-  if (path === "/api/history") return apiHistory(request, env);
   return err(404, "not found");
 }
 
@@ -108,8 +112,8 @@ async function handleLive(request, env, ctx, path) {
   if (request.method !== "GET") return err(405, "method not allowed");
   const m = path.match(/^\/live\/([0-3])$/);
   if (!m) return err(404, "not found");
-  const session = await getSession(request, env, ctx);
-  if (!session) return err(401, "login required");
+  // Open to anyone, like the wall it feeds. The 1 Hz watch is bounded on the Burrow (one poller
+  // per Bin whatever the number of viewers, at most 8 Bins).
   const room = m[1];
   const watch = (new URL(request.url).searchParams.get("watch") || "")
     .split(",").map((s) => s.trim()).filter((s) => /^[0-9a-f]{8,32}$/i.test(s)).slice(0, 8);
@@ -140,8 +144,12 @@ async function handleLive(request, env, ctx, path) {
 // Static dashboard. Any HTML GET by a logged-in viewer writes one visits row
 // (polls under /api do not). No redirects: the SPA shows its own login form
 // and asks /api/me, so anonymous requests still get index.html.
+const LOGIN_PAGES = ["/bluetooth", "/bluetooth.html", "/bluetooth/"];
 async function handlePage(request, env, ctx, path) {
   if (request.method !== "GET" && request.method !== "HEAD") return err(405, "method not allowed");
+  if (LOGIN_PAGES.includes(path) && !(await getSession(request, env, ctx))) {
+    return new Response(null, { status: 302, headers: { location: "/login?next=" + encodeURIComponent("/bluetooth.html"), "cache-control": "no-store" } });
+  }
   const wantsHtml = (request.headers.get("accept") || "").includes("text/html");
   if (request.method === "GET" && wantsHtml) {
     const session = await getSession(request, env, ctx);

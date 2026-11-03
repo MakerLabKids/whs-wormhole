@@ -3,7 +3,8 @@
 The web front end for the worm-bin telemetry. Plain HTML/CSS/JS, no build
 step, no external resources: a classroom Burrow serves it from the Pi with no
 internet for weeks at a time, and the Surface (the Cloudflare Worker at
-whs.makerlabkids.com) serves the identical files behind a cookie login.
+whs.makerlabkids.com) serves the identical files: anyone can look, a cookie login
+is needed to change things (messages, shows, admin, the Bluetooth page).
 
 ## Files
 
@@ -33,9 +34,10 @@ same-origin `<a href="/...">` links are intercepted; `/api/...` links and
 
 **Host detection.** The first request is `GET /api/me`. `{"local": true}` means
 a Burrow: no login, no admin link, SSE on `/live`. Anything else is the
-Surface: a 401 from `/api/me` (or from any later API call) swaps the current
-view for the login form without changing the URL, so a reload after signing
-in lands on the page the student wanted. SSE on the Surface opens `/live/1`,
+Surface: the wall, bin pages and the live feed show to anyone; the header
+offers "sign in". The admin pages and the signal meter (and a 401 from any later
+API call) swap the current view for the login form without changing the URL, so
+signing in lands on the page that was asked for. SSE on the Surface opens `/live/1`,
 `/live/2`, `/live/3`; each is optional (a dark room just stays disconnected).
 
 ## Status thresholds (same as the demo wall, `docs/demos/mission-control.html`)

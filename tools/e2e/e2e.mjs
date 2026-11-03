@@ -34,7 +34,8 @@ ok('Surface /api/now merges the snapshot', nowj && nowj.bins && Object.keys(nowj
 const uid = Object.keys(nowj?.bins || {})[0];
 r = await fetch(W + `/api/history?uid=${uid}&from=${Math.floor(Date.now()/1000)-3600}&to=${Math.floor(Date.now()/1000)}`, { headers: { cookie: scookie } }); const hist = await j(r);
 ok('Surface /api/history has rollup points', hist && hist.points && hist.points.length >= 1, 'points ' + hist?.points?.length + ' step ' + hist?.step);
-r = await fetch(W + '/api/now'); ok('anonymous /api/now is 401', r.status === 401);
+r = await fetch(W + '/api/now'); ok('anonymous /api/now is open', r.status === 200);
+r = await fetch(W + '/bluetooth.html', { redirect: 'manual' }); ok('anonymous Bluetooth page goes to the login', r.status === 302 && (r.headers.get('location') || '').startsWith('/login?next='), 'status ' + r.status);
 r = await fetch(W + '/api/logout', { method: 'POST', headers: { cookie: scookie, 'content-type': 'application/json' }, body: '{}' }); ok('logout accepts JSON body', r.ok);
 
 // ---- browser level ----------------------------------------------------------
@@ -42,12 +43,18 @@ const browser = await chromium.launch(); const errors = [];
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 page.on('pageerror', e => errors.push('pageerror: ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 page.on('requestfailed', rq => errors.push('reqfail: ' + rq.url()));
-await page.goto(W + '/bin/' + uid); await page.waitForTimeout(1500);
-ok('deep link while anonymous shows login and keeps URL', (await page.locator('#lf').count()) === 1 && page.url().endsWith('/bin/' + uid));
+await page.goto(W + '/bin/' + uid); await page.waitForTimeout(2500);
+ok('anonymous bin page shows its charts, no login form, no message editor', (await page.locator('#lf').count()) === 0 && (await page.locator('.chart-card').count()) >= 1 && !(await page.locator('.msgcard').isVisible()));
+ok('anonymous header offers sign in', (await page.locator('#signin').count()) === 1);
+await page.screenshot({ path: SHOTS + '/bin-anonymous.png', fullPage: true });
+await page.goto(W + '/admin/edges'); await page.waitForTimeout(1500);
+ok('anonymous admin shows login and keeps URL', (await page.locator('#lf').count()) === 1 && page.url().endsWith('/admin/edges'));
 await page.screenshot({ path: SHOTS + '/login.png' });
 await page.click('#staff'); await page.fill('#sn', 'quincy'); await page.fill('#pp', 'password123'); await page.click('#lf button[type=submit]');
 await page.waitForTimeout(2500);
-ok('staff login lands on the deep link', page.url().endsWith('/bin/' + uid) && (await page.locator('.chart-card').count()) >= 1, page.url());
+ok('staff login lands on the deep link', page.url().endsWith('/admin/edges') && (await page.locator('#lf').count()) === 0, page.url());
+await page.goto(W + '/bin/' + uid); await page.waitForTimeout(2500);
+ok('signed-in bin page shows charts', (await page.locator('.chart-card').count()) >= 1);
 await page.screenshot({ path: SHOTS + '/bin-after-staff-login.png', fullPage: true });
 await page.goto(W + '/'); await page.waitForTimeout(2500);
 const tiles = await page.locator('.tile').count(); ok('wall renders tiles from the Surface', tiles >= 12, 'tiles ' + tiles);

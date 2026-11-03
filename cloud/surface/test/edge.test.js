@@ -172,11 +172,11 @@ describe("rollups + history", () => {
     expect(h.step).toBe("1h");
     expect(h.points.length).toBe(5);
 
-    // Explicit step wins; missing uid is a 400; no cookie is a 401.
+    // Explicit step wins; missing uid is a 400; no cookie is fine (viewing is open).
     r = await get(`/api/history?uid=aaa&from=${T0 - 5 * 86400}&to=${T0 + 5 * 86400}&step=5m`, { cookie });
     expect((await r.json()).step).toBe("5m");
     expect((await get("/api/history", { cookie })).status).toBe(400);
-    expect((await get(`/api/history?uid=aaa`)).status).toBe(401);
+    expect((await get(`/api/history?uid=aaa`)).status).toBe(200);
   });
 
   it("rejects malformed rows", async () => {
@@ -241,11 +241,28 @@ describe("snapshot merge in /api/now", () => {
     expect(await env.DB.prepare("SELECT ts FROM edges WHERE edge_id='burrow1'").first("ts")).toBe(t + 1);
   });
 
-  it("/api/now needs a cookie, and the cached copy is never handed to an anonymous caller", async () => {
-    let r = await get("/api/now", { cookie });
+  it("/api/now is open, but only a cookie gets each Burrow's full status (cached apart)", async () => {
+    await edgeFetch("burrow1", "/v1/edge/snapshot", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ edge: "burrow1", room: 1, ts: T0 + 9, clk: "ntp", bins: {},
+        status: { castings: 4, cloud_ok: true, net: { ssid: "WormHole-Core" }, tunnel: { up: true }, events: { queued: 0 } } }),
+    });
+    let r = await get("/api/now?fresh=1", { cookie });
     expect(r.status).toBe(200);
-    r = await get("/api/now");
-    expect(r.status).toBe(401);
-    expect(await r.json()).toEqual({ ok: false, error: "login required" });
+    let e = (await r.json()).edges.burrow1;
+    expect(e.net.ssid).toBe("WormHole-Core");
+    r = await get("/api/now?fresh=1");
+    expect(r.status).toBe(200);
+    e = (await r.json()).edges.burrow1;
+    expect(e.castings).toBe(4);
+    expect(e.cloud_ok).toBe(true);
+    expect(e.room).toBe(1);
+    expect(e.net).toBeUndefined();
+    expect(e.tunnel).toBeUndefined();
+    expect(e.events).toBeUndefined();
+    // and the logged-in copy is still the full one after the anonymous one was cached
+    e = (await (await get("/api/now?fresh=1", { cookie })).json()).edges.burrow1;
+    expect(e.tunnel).toEqual({ up: true });
+    expect((await SELF.fetch("https://example.com/api/now", { method: "POST" })).status).toBe(405);
   });
 });

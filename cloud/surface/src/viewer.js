@@ -1,4 +1,6 @@
-// Viewer API (cookie required): /api/now, /api/bins, /api/history.
+// Viewer API, open to anyone (viewing needs no login; changing things does): /api/now, /api/bins,
+// /api/history. An anonymous /api/now gets each Burrow's status trimmed to what the wall's header
+// shows (no network, tunnel or event details).
 // Plus one anonymous, trimmed, 60 s-cached feed for the public wall skins:
 // /api/public/now (CORS for the project's GitHub Pages site).
 
@@ -11,10 +13,13 @@ const HISTORY_ROW_CAP = 10000;
 // Merge the per-Burrow snapshots into one picture. For each uid the entry
 // with the newest ts wins (a Bin that failed over to another room shows up
 // in two snapshots). Cached 10 s at the edge: 200 pollers cost ~6 D1 reads a
-// minute. Auth has already happened before we get here, on purpose.
-export async function apiNow(request, env, ctx) {
+// minute. Logged-in and anonymous callers are cached apart: only a session sees the full status.
+const EDGE_PUBLIC = ["edge", "room", "ts", "clk", "seen", "up_s", "version", "castings", "unverified", "cloud_ok", "bins"];
+export async function apiNow(request, env, ctx, session) {
   const cache = caches.default;
-  const key = new Request(request.url, { method: "GET" });
+  const u = new URL(request.url);
+  u.searchParams.set("_who", session ? "in" : "anon");
+  const key = new Request(u.toString(), { method: "GET" });
   const hit = await cache.match(key);
   if (hit) return hit;
 
@@ -25,7 +30,8 @@ export async function apiNow(request, env, ctx) {
   const edges = {}, bins = {};
   for (const r of results) {
     const status = safeParse(r.status, {}) || {};
-    edges[r.edge_id] = { ...status, edge: r.edge_id, room: r.room, ts: r.ts, clk: r.clk, seen: r.updated_at };
+    const full = { ...status, edge: r.edge_id, room: r.room, ts: r.ts, clk: r.clk, seen: r.updated_at };
+    edges[r.edge_id] = session ? full : Object.fromEntries(EDGE_PUBLIC.filter((k) => full[k] !== undefined).map((k) => [k, full[k]]));
     const snap = safeParse(r.snapshot, {}) || {};
     for (const [uid, e] of Object.entries(snap)) {
       if (!e || typeof e !== "object") continue;
