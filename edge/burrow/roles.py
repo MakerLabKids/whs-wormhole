@@ -158,8 +158,8 @@ def apply_identity(ident, sys_=None, net=True):
     role = ident.get("role") or "primary"
     cfg = load(CFG, {})
     cfg.update(edge=edge, room=room, role=role)
-    cfg["peers"] = {("burrow%d" % k): {"url": "http://192.168.80.%d:8080" % (10 if k == 0 else 20 + k)}
-                    for k in range(4) if "burrow%d" % k != edge}
+    cfg["peers"] = {("burrow%d" % k): "http://192.168.80.%d:8080" % (10 if k == 0 else 20 + k)
+                    for k in range(4) if "burrow%d" % k != edge}   # name -> base URL, as config.py expects
     save(CFG, cfg)
     if ident.get("cloud_token"):
         write_secret(CLOUD_TOKEN, ident["cloud_token"], group=SERVICE_GROUP)

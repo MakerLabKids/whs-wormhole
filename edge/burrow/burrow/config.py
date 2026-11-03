@@ -67,6 +67,9 @@ def load(path=None):
         cfg["peers"] = {}            # the file's peer list replaces the default one, it does not extend it
     _merge(cfg, user)
     cfg["peers"].pop(cfg["edge"], None)   # never peer with ourselves
+    # cards enrolled before 2026-11-03 wrote {"url": ...} per peer; a peer is its base URL
+    cfg["peers"] = {k: (v.get("url") if isinstance(v, dict) else v) for k, v in cfg["peers"].items()
+                    if (v.get("url") if isinstance(v, dict) else v)}
     cfg["_path"] = path
     return cfg
 

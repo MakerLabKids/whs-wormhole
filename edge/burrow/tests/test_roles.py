@@ -107,6 +107,17 @@ class RolesTest(unittest.TestCase):
         self.assertIn(["systemctl", "enable", "cloudflared"], self.sys.cmds)
         self.assertIn("192.168.82.10/24", self.sys.nm()[-1])
         self.assertEqual(sorted(self.cfg()["peers"]), ["burrow0", "burrow1", "burrow3"])
+        # each peer is its base URL (a dict here broke the peer watch: "dict + str", 2026-11-03)
+        self.assertEqual(self.cfg()["peers"]["burrow3"], "http://192.168.80.23:8080")
+
+    def test_config_heals_peers_written_as_dicts(self):
+        import json as _j, tempfile as _t
+        from burrow import config
+        with _t.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+            _j.dump({"edge": "burrow3", "peers": {"burrow0": {"url": "http://192.168.80.10:8080"},
+                                                  "burrow1": "http://192.168.80.21:8080", "burrow3": {"url": "x"}}}, f)
+        cfg = config.load(f.name)
+        self.assertEqual(cfg["peers"], {"burrow0": "http://192.168.80.10:8080", "burrow1": "http://192.168.80.21:8080"})
 
     # ---- standby ----
     def standby(self):
