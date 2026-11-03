@@ -23,7 +23,7 @@ All I2C devices share the standard bus (SDA=GP0, SCL=GP1, 3V3, GND).
 | GL5528 light divider | ADS1115 A2 | LDR to 3V3, 10k to GND, junction to A2 |
 | MAX9814 mic | GP27 (pin 32, ADC1) | native ADC: needs the fast 25 ms sampling |
 | DS18B20 probes | GP22 (pin 29) | one wire, many probes, 4.7k pullup to 3V3 |
-| VL53L0X compaction | I2C `0x29` | lid-mounted, aimed down: gap to the bedding surface (settling/compaction) |
+| VL53L0X bedding level | I2C `0x29` | lid-mounted, aimed down: gap to the bedding surface (the level drops over weeks as worms eat their bedding; ~1 cm per reading, so watch the trend). Its part is still named "VL53L0X compaction" in main.py |
 | Big servo (MG995) | GP16 (pin 21) | own 5V supply, grounds joined, NOT VBUS |
 | Small servo (SG90) | GP17 (pin 22) | power from VBUS (pin 40) |
 | Fan (or a relay module) | GP15 (pin 20) | through a 2N2222 switch, see below; never straight off the pin |
@@ -244,13 +244,13 @@ its new PIN. Five wrong PINs in a row lock every change for a minute.
 
 Join the board's own network (its team name), browse to the address on
 its screen (192.168.4.<bin>): live cards
-for both airs, both moistures, light, sound, compaction, and every probe,
+for both airs, both moistures, light, sound, bedding level, and every probe,
 plus sliders for both servos and a relay button. JSON at `/data`,
 actuator control at `/set?big=90`, `/set?small=45`, `/set?relay=1`.
 
 ## Calibration
 
-**Distance (compaction).** `lib/vl53l0x.py` is a port of Pololu's
+**Distance (bedding level).** `lib/vl53l0x.py` is a port of Pololu's
 driver (ST's full init and reference calibration; the old one skipped
 that and read 80 mm long). Each module still has its own offset from its
 cover glass and mounting, so calibrate it for the range a bin actually uses: the empty bin (easy to check before

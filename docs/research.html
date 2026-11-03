@@ -174,13 +174,13 @@ var P = [
     q: "Does a bigger bin hold a steadier temperature than a small one?",
     g: "2x BME280, a large bin and a small bin side by side" },
 
-  // ---- compaction & structure ----
-  { t: "Bedding settles", d: "solid", c: "env",
-    q: "Over a week, does the bedding surface drop in a steady, predictable way?",
-    g: "VL53L0X time-of-flight in the lid (soil-compaction probe)" },
-  { t: "Does wet bedding compact faster?", d: "stretch", c: "compare",
-    q: "Compare compaction rate in a damp bin vs a drier one.",
-    g: "VL53L0X compaction + moisture probe, two bins" },
+  // ---- bedding level ----
+  { t: "Watch the bedding shrink", d: "solid", c: "env",
+    q: "Over a few weeks, how fast does the bedding level drop as the worms eat it? Does each feeding show up as a bump?",
+    g: "VL53L0X time-of-flight in the lid (bedding level)" },
+  { t: "Does soggy bedding mat down?", d: "stretch", c: "compare",
+    q: "Too much water packs bedding down and squeezes out the air. Compare the level in a damp bin and a drier one.",
+    g: "VL53L0X bedding level + moisture probe, two bins" },
 
   // ---- build / automation ----
   { t: "Auto-mister", d: "stretch", c: "build",
@@ -193,11 +193,11 @@ var P = [
     q: "A servo cracks the lid on a timer to let the bin breathe.",
     g: "SG90 servo, a timing loop" },
   { t: "Harvest-ready alarm", d: "solid", c: "build",
-    q: "Beep when the castings level (compaction reading) crosses a harvest threshold.",
-    g: "VL53L0X compaction + speaker/buzzer" },
+    q: "Beep when the bedding level has dropped far enough that it's time to harvest castings.",
+    g: "VL53L0X bedding level + speaker/buzzer" },
   { t: "Worm-cam trigger", d: "stretch", c: "build",
     q: "Fire an alert (or a photo) only when the bin surface changes suddenly.",
-    g: "VL53L0X compaction, a Pi Zero to catch the event" },
+    g: "VL53L0X bedding level, a Pi Zero to catch the event" },
 
   // ---- the marquee builds (Mack Daddy, max 5) ----
   { t: "Thermal diffusion trough", d: "mack", c: "physics",
@@ -218,7 +218,7 @@ var P = [
     trade: "The big teacher build: all the geophones plus differential amps. One team per term, with staff." },
   { t: "The bin observatory", d: "mack", c: "physics",
     q: "Run the full worm-bin command center for a month and mine the data for a story nobody predicted.",
-    g: "The complete worm-bin build: 2 BME280, probe array, moisture, light, mic, compaction, on the wall",
+    g: "The complete worm-bin build: 2 BME280, probe array, moisture, light, mic, bedding level, on the wall",
     trade: "This is the maxed-out bin. Claim the ADS1115s and a full probe set for the whole run." },
 
   // ---- software / data / dashboards (build the tools) ----
