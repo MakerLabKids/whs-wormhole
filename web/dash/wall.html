@@ -20,6 +20,7 @@
   #rail .src { font-size: 12px; letter-spacing: 1px; color: #6B7683; margin-left: 4px; }
   #rail .src.live { color: #33FF66; } #rail .src.sim { color: #FFB000; }
   .view { display: none; } .view.on { display: block; }
+  body.embed #rail > span:first-child, body.embed #rail button[data-v] { display: none; }
 
   /* ---------- TAKE 1: FLIGHT DECK ---------- */
   #deck { background: #0A0E12; min-height: 100vh; padding: 0 0 30px 0;
@@ -1086,15 +1087,30 @@ setInterval(rawTick, 180);
 // ================= boot =================
 buildDeck(); buildShelf(); buildBoard(); buildNet(); buildGarden();
 var cur = 'deck';
+function pickSkin(v) {
+  var b = document.querySelector('#rail button[data-v="' + v + '"]');
+  if (b) b.onclick();
+}
 document.querySelectorAll('#rail button').forEach(function (b) {
   if (!b.dataset.v) return;   // RAW and other controls keep their own handlers
   b.onclick = function () {
     cur = b.dataset.v;
-    document.querySelectorAll('#rail button').forEach(function (x) { x.className = x === b ? 'on' : ''; });
+    document.querySelectorAll('#rail button').forEach(function (x) { if (x.dataset.v) x.className = x === b ? 'on' : ''; });
     document.querySelectorAll('.view').forEach(function (v) { v.className = 'view' + (v.id === cur ? ' on' : ''); });
     syncRawlog();
   };
 });
+/* Inside the dashboard's Wall page (?embed=1): the Wall's own "Look" dropdown picks the skin
+   (?skin=<name> at load, then a postMessage), so this page hides its skin buttons and keeps the
+   class picker, RAW and SIM. Opened on its own, it is the full page with its own buttons. */
+(function () {
+  var q = new URLSearchParams(location.search);
+  if (q.get('embed')) document.body.classList.add('embed');
+  if (q.get('skin')) pickSkin(q.get('skin'));
+  window.addEventListener('message', function (ev) {
+    if (ev.origin === location.origin && ev.data && ev.data.skin) pickSkin(ev.data.skin);
+  });
+})();
 document.getElementById('clsSel').onchange = function () {
   viewClass = this.value; focusTeam = 0; netTeam = 0;
   rebuild();

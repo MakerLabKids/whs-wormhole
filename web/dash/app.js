@@ -314,7 +314,7 @@
     var a = ev.target.closest && ev.target.closest('a[href]');
     if (!a || a.target || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
     var href = a.getAttribute('href');
-    if (href.charAt(0) !== '/' || href.indexOf('/api/') === 0 || a.hasAttribute('download')) return;
+    if (href.charAt(0) !== '/' || href.indexOf('/api/') === 0 || /\.html(\?|#|$)/.test(href) || a.hasAttribute('download')) return;   // other .html files are their own pages
     ev.preventDefault(); navigate(href);
   });
   window.addEventListener('popstate', render);
@@ -364,17 +364,40 @@
       '<span class="age" data-ts="' + (e.ts || 0) + '">' + ago(e.ts) + '</span></div>';
   }
 
+  var SKINS = [['', 'Standard wall'], ['deck', 'Skin: Flight Deck'], ['bin', 'Skin: The Living Bin'], ['board', 'Skin: The Leaderboard'],
+    ['net', 'Skin: WORM//NET'], ['paper', 'Skin: The Daily Worm'], ['orbital', 'Skin: Orbital'], ['garden', 'Skin: Worm Ranch']];
   function viewWall(main) {
     var filter = { q: '', room: '', period: '' };
     var tiles = {};   // uid -> {a, sig, group}
     var tb = el('div', 'toolbar');
-    tb.innerHTML = '<label class="sr-only" for="q">filter by team</label><input type="text" id="q" placeholder="filter teams…" autocomplete="off">' +
+    tb.innerHTML = '<label class="sr-only" for="look">look</label><select id="look" title="How the wall looks: the standard tiles, or one of the mission-control skins for a big screen">' +
+      SKINS.map(function (s) { return '<option value="' + s[0] + '">' + s[1] + '</option>'; }).join('') + '</select>' +
+      '<button type="button" class="btn ghost sm" id="skinfull" hidden title="the skin on the whole screen (Esc to leave)">full screen</button>' +
+      '<span id="filters"><label class="sr-only" for="q">filter by team</label><input type="text" id="q" placeholder="filter teams…" autocomplete="off">' +
       '<label class="sr-only" for="froom">room</label><select id="froom"><option value="">all rooms</option><option>1</option><option>2</option><option>3</option></select>' +
       '<label class="sr-only" for="fper">period</label><select id="fper"><option value="">all periods</option>' + [1, 2, 3, 4, 5, 6, 7].map(function (p) { return '<option>' + p + '</option>'; }).join('') + '</select>' +
-      '<span class="hint" id="shown"></span>';
+      '<span class="hint" id="shown"></span></span>';
     main.appendChild(tb);
     var wall = el('div', 'wall'); main.appendChild(wall);
     var empty = el('div', 'empty', 'No bins yet. When a Bin posts to this Burrow its tile appears here.'); empty.hidden = true; main.appendChild(empty);
+    /* skins: wall.html in a frame under the site's own header (its skin buttons hidden, the
+       dropdown above picks one); the choice is remembered on this browser */
+    var frame = null, look = $('#look', tb);
+    function fitFrame() { if (frame) frame.style.height = Math.max(320, window.innerHeight - frame.getBoundingClientRect().top - 12) + 'px'; }
+    function setLook(v) {
+      if (!SKINS.some(function (s) { return s[0] === v; })) v = '';
+      look.value = v;
+      try { localStorage.setItem('dash.skin', v); } catch (x) { }
+      $('#filters', tb).hidden = !!v; $('#skinfull', tb).hidden = !v;
+      wall.hidden = !!v; if (v) empty.hidden = true;
+      if (!v) { if (frame) { frame.remove(); frame = null; } draw(); return; }
+      if (frame) { frame.contentWindow.postMessage({ skin: v }, location.origin); return; }
+      frame = el('iframe', 'skinframe'); frame.title = 'mission control skin'; frame.src = '/wall.html?embed=1&skin=' + encodeURIComponent(v);
+      main.appendChild(frame); fitFrame();
+    }
+    look.onchange = function () { setLook(this.value); };
+    $('#skinfull', tb).onclick = function () { if (frame && frame.requestFullscreen) frame.requestFullscreen(); };
+    window.addEventListener('resize', fitFrame);
     $('#q', tb).oninput = function () { filter.q = this.value.trim().toLowerCase(); draw(); };
     $('#froom', tb).onchange = function () { filter.room = this.value; draw(); };
     $('#fper', tb).onchange = function () { filter.period = this.value; draw(); };
@@ -429,7 +452,7 @@
         g.hidden = !any;
         if (!g.querySelector('.tile')) g.remove();
       });
-      empty.hidden = uids.length > 0;
+      empty.hidden = uids.length > 0 || !!look.value;
       $('#shown', tb).textContent = uids.length ? shown + ' of ' + uids.length + ' bins' : '';
     }
     // "2 min ago" and stale-ness change without any new data: re-evaluate every 10 s
@@ -450,7 +473,10 @@
     });
     startPolling(); startSSE();
     draw();
-    return { onNow: draw, destroy: function () { clearInterval(tick); } };
+    var saved = new URLSearchParams(location.search).get('skin');
+    if (saved == null) { try { saved = localStorage.getItem('dash.skin') || ''; } catch (x) { saved = ''; } }
+    setLook(saved);
+    return { onNow: draw, destroy: function () { clearInterval(tick); window.removeEventListener('resize', fitFrame); } };
   }
 
   /* ---- view: deep history -------------------------------------------- */
