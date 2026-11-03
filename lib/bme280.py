@@ -26,17 +26,34 @@ class BME280:
       address = found[0]
     self.address = address
 
-    self.chip_id = self._read(REG_CHIP_ID, 1)[0]
-    self.has_humidity = self.chip_id == 0x60  # 0x58 = BMP280
+    # The chip ID decides whether humidity exists (0x60 BME280, 0x58 BMP280). One garbled read on a
+    # shaky bus used to make a BME280 look like a BMP280 for good (humidity "--" until a restart),
+    # so read it up to three times and refuse anything else: the caller retries the connect.
+    cid = None
+    for _ in range(3):
+      try:
+        cid = self._read(REG_CHIP_ID, 1)[0]
+      except OSError:
+        cid = None
+      if cid in (0x60, 0x58):
+        break
+      time.sleep_ms(5)
+    if cid not in (0x60, 0x58):
+      raise OSError("BME280 chip id %s, not 0x60/0x58" % (hex(cid) if cid is not None else "unreadable"))
+    self.chip_id = cid
+    self.has_humidity = cid == 0x60
 
     self._load_calibration()
+    self._configure()
+    time.sleep_ms(50)
 
-    # humidity x1, temp x1, pressure x1, normal mode, 0.5ms standby
+  def _configure(self):
+    # humidity x1 (ctrl_hum only takes effect after a ctrl_meas write), temp x1, pressure x1,
+    # normal mode, 0.5ms standby
     if self.has_humidity:
       self._write(REG_CTRL_HUM, 0x01)
     self._write(REG_CTRL_MEAS, 0x27)
     self._write(REG_CONFIG, 0x00)
-    time.sleep_ms(50)
 
   def _read(self, reg, n):
     return self.i2c.readfrom_mem(self.address, reg, n)
@@ -89,9 +106,12 @@ class BME280:
       var2 = p * self.P8 / 32768.0
       press_hpa = (p + (var1 + var2 + self.P7) / 16.0) / 100.0
 
-    # Humidity
+    # Humidity. 0x8000 = "skipped": the chip lost its settings (a power blip resets it to
+    # humidity off), so send them again; the next reading has humidity back.
     hum_pct = None
-    if self.has_humidity:
+    if self.has_humidity and adc_h == 0x8000:
+      self._configure()
+    elif self.has_humidity:
       h = t_fine - 76800.0
       h = (adc_h - (self.H4 * 64.0 + self.H5 / 16384.0 * h)) * (
           self.H2 / 65536.0 * (1.0 + self.H6 / 67108864.0 * h *
