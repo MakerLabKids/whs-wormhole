@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Demo The Wrigglers</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --navy:#1b2f5e; --red:#c8102e; --orange:#e8762c; --green:#2f7d3a; --blue:#2a9fd8; --cream:#fff8ec; --ink:#1f2633; --muted:#5b6475; --line:#e3e8f0; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { size: letter portrait; margin: 0; }
+  body { margin: 0; background: #d9dee6; font-family: "Nunito Sans", Arial, sans-serif; color: var(--ink); }
+  .sheet { width: 8.5in; height: 11in; margin: 18px auto; background: #fff; padding: .42in .5in .4in; position: relative; overflow: hidden; }
+  @media print { body { background: #fff; } .sheet { margin: 0; } }
+  @media screen and (max-width: 860px) { .sheet { zoom: calc(100vw / 8.9in); } }
+  h1, h2, h3 { font-family: "Fredoka", Arial, sans-serif; color: var(--navy); }
+  .top { display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--navy); padding-bottom: 8px; }
+  .top img { height: .5in; } .top .whs { display: flex; gap: 8px; align-items: center; font-family: "Fredoka"; font-weight: 700; color: var(--navy); font-size: 14px; line-height: 1.05; }
+  h1 { font-size: 34px; margin: 12px 0 2px; } h1 em { font-style: normal; color: var(--orange); }
+  .sub { margin: 0 0 10px; color: #36404f; font-size: 14px; }
+  .keys { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .key { border-radius: 12px; padding: 8px 12px; background: var(--navy); color: #fff; }
+  .key small { display: block; font-weight: 800; letter-spacing: .12em; font-size: 10px; color: #a6e07f; }
+  .key b { font-family: "Fredoka"; font-size: 23px; letter-spacing: .02em; }
+  .key.pin { background: var(--red); } .key.pin small { color: #ffd6dc; }
+  .key.url { background: var(--green); } .key.url small { color: #d9f5c9; } .key.url b { font-size: 19px; }
+  .two { display: grid; grid-template-columns: 1fr 1.55fr; gap: 14px; }
+  h2 { font-size: 19px; margin: 6px 0 4px; } h2 .n { color: var(--orange); }
+  ul, ol { margin: 0; padding-left: 18px; font-size: 12.6px; line-height: 1.42; } li { margin-bottom: 3px; }
+  .box { background: var(--cream); border: 2px solid #f1dcc0; border-radius: 12px; padding: 8px 12px; margin-top: 8px; }
+  .box h3 { margin: 0 0 3px; font-size: 15px; color: #7a5038; } .box p { margin: 0; font-size: 12.2px; line-height: 1.4; }
+  ol.show > li { margin-bottom: 5px; } ol.show b.t { color: var(--navy); }
+  .say { color: var(--green); font-style: italic; }
+  .warn { background: #fdeef1; border-color: #f5c2cc; } .warn h3 { color: var(--red); }
+  .foot { position: absolute; left: .5in; right: .5in; bottom: .28in; font-size: 10px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 5px; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<section class="sheet">
+  <div class="top"><div class="whs"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><div>WOODSTOCK<br>HIGH SCHOOL</div></div><img src="../logo.png" alt="Maker Lab Kids"></div>
+
+  <h1>Demo <em>The Wrigglers</em> bin</h1>
+  <p class="sub">One bin, one phone, about ten minutes. No router or Raspberry Pi needed: the bin makes its own Wi-Fi.</p>
+
+  <div class="keys">
+    <div class="key"><small>WI-FI (NO PASSWORD)</small><b>The Wrigglers</b></div>
+    <div class="key url"><small>OPEN IN THE BROWSER</small><b>192.168.4.38</b></div>
+    <div class="key pin"><small>PIN FOR CHANGES</small><b>1126</b></div>
+  </div>
+
+  <div class="two">
+    <div>
+      <h2><span class="n">1</span> Bring</h2>
+      <ul>
+        <li>The Wrigglers bin, sensors and fan attached</li>
+        <li>A USB power source: a phone charger or power bank, plus its micro-USB cable</li>
+        <li>Your phone (or a laptop) to show the bin's page</li>
+        <li>Optional: a laptop with internet for the Mission Control demo</li>
+        <li>Sponsor one-sheets and brochures to hand out</li>
+      </ul>
+
+      <h2><span class="n">2</span> Set up</h2>
+      <ol>
+        <li>Plug the bin into power. Its screen plays the power-on show and the <b>fan runs for 10 seconds</b>: that's the fan test.</li>
+        <li>After about 30 seconds, join the Wi-Fi <b>The Wrigglers</b> on your phone. If the phone says "no internet", choose to stay connected.</li>
+        <li>Open <b>http://192.168.4.38</b>. Readings update every second.</li>
+      </ol>
+
+      <div class="box"><h3>Do I need an Opal or a hotspot?</h3>
+        <p><b>No.</b> The bin's own Wi-Fi is all this demo needs. A phone hotspot doesn't help: the bin sends its readings to a classroom Raspberry Pi, not straight to the internet. Seeing this bin live on <b>whs.makerlabkids.com</b> needs a classroom Opal router and Pi with internet.</p></div>
+
+      <div class="box warn"><h3>If something's off</h3>
+        <p>No "The Wrigglers" Wi-Fi? Wait a minute: if the bin finds a classroom network first, it joins that instead, and its screen shows where. Unplug and replug to start over. A reading shows "--"? That sensor's wire is loose; the rest keep working. Don't tap <b>Rename</b>: it changes the Wi-Fi name and the PIN.</p></div>
+    </div>
+
+    <div>
+      <h2><span class="n">3</span> Show it off</h2>
+      <ol class="show">
+        <li><b class="t">Breathe on it.</b> Breathe on the air sensor inside the lid. Humidity jumps on the phone within seconds.
+          <span class="say">"Worms breathe through their skin, so damp air matters."</span></li>
+        <li><b class="t">Warm a probe.</b> Hold a soil temperature probe in your fist. Watch the temperature climb.</li>
+        <li><b class="t">Wave at the laser.</b> Slide a hand under the laser ranger and watch the distance change, in millimeters.
+          <span class="say">"In the bin it watches the bedding level drop as the worms eat."</span></li>
+        <li><b class="t">Write on the screen.</b> On the page, open <b>Messages on the screen</b>, enter the PIN <b>1126</b> and your first name, and type a short message (16 letters a line).
+          It shows on the bin's screen after the current show. Try a visitor's name: <span class="say">"Sponsors can see their name here."</span></li>
+        <li><b class="t">Make the fan kick on.</b> In <b>Settings</b> (PIN 1126), set the fan humidity to 30 % and the check to every 1 minute, then <b>Restart to apply</b>. The fan starts within a minute.
+          Afterward, tap <b>Put them back</b>.</li>
+        <li><b class="t">Show the day.</b> <b>Last 24 hours</b> charts what the bin has seen today.</li>
+        <li><b class="t">Mission Control.</b> On a laptop with internet, open <b>makerlabkids.github.io/whs-wormhole/demos/mission-control.html</b>: seven ways to watch a classroom full of bins, with pretend data.</li>
+      </ol>
+
+      <div class="box"><h3>The website</h3>
+        <p>Anyone can view <b>whs.makerlabkids.com</b>. Each teacher has her own <b>admin login</b> (given separately). Signing in adds messages to any bin's screen from anywhere, plus the admin pages. That works for bins that report through a classroom Pi.</p></div>
+    </div>
+  </div>
+
+  <div class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · The Wrigglers, bin 38</span><span>Keep this sheet with the bin: it has the PIN.</span></div>
+</section>
+</body>
+</html>
