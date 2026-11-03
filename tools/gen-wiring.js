@@ -437,38 +437,50 @@ projects["light-basic"] = () => diagram(
   ]);
 
 // shared: the banded 4.7k pullup from a DATA line up to the 3V3 rail
-function pullup47(ry) {
-  const rx = RAIL_GND + 34;
-  let s = resistorGlyph(rx, ry - 26, 13, 32, 4700, true);
-  s += text(rx + 6, ry - 30, "4.7k", { size: 9, color: C.ink, anchor: "middle", bold: true });
-  s += wire([[RAIL_PWR, ry - 18], [rx + 6, ry - 18], [rx + 6, ry - 26]], W.pwr, 2.5);
-  s += wire([[rx + 6, ry + 6], [rx + 6, ry], [DEV_X - 8, ry]], W.probe, 2.5);
+// The 4.7k PULL-UP, standing between the probe's red 3V3 line (above) and its yellow DATA line
+// (below), right beside the probe, with nothing else between those two lines: it reads as
+// "data to 3V3", never as going to GND (the old drawing sat it on the black line).
+function pullup47(vccY, dataY, callout = true) {
+  const rx = DEV_X - 40, bodyH = Math.min(30, dataY - vccY - 12), by = (vccY + dataY) / 2 - bodyH / 2;
+  let s = wire([[rx, vccY], [rx, by]], "#9AA3AD", 2.4) + wire([[rx, by + bodyH], [rx, dataY]], "#9AA3AD", 2.4);
+  s += resistorGlyph(rx - 7, by, 14, bodyH, 4700, true);
+  s += dot(rx, vccY, W.pwr) + dot(rx, dataY, W.probe);
+  s += text(rx - 12, by + bodyH / 2 + 4, "4.7k", { size: 11, color: C.ink, anchor: "end", bold: true, halo: true });
+  if (callout) {
+    const cy = dataY + 52;
+    s += `<rect x="${DEV_X - 4}" y="${cy - 14}" width="${DEV_W + 8}" height="40" rx="6" fill="#FFF7ED" stroke="${C.orange}" stroke-width="1.5"/>`;
+    s += text(DEV_X + DEV_W / 2, cy + 1, "4.7k PULL-UP: DATA to 3V3", { size: 11, color: C.ink, anchor: "middle", bold: true });
+    s += text(DEV_X + DEV_W / 2, cy + 17, "(red side), never to GND", { size: 11, color: "#B45309", anchor: "middle", bold: true });
+  }
   return s;
 }
 function ds18b20Box(y, title) {
-  const x = DEV_X, w = DEV_W, h = 66;
+  const x = DEV_X, w = DEV_W, h = 82;
   let s = deviceBox(x, y, w, h, title, "", C.orange);
-  const p = { VCC: { x, y: y + 34 }, GND: { x, y: y + 48 }, DATA: { x, y: y + 62 } };
-  s += devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.GND.y, "blk GND") + devPin(x, p.DATA.y, "yel DATA");
+  // GND on top, so red 3V3 and yellow DATA sit next to each other for the pull-up
+  const p = { GND: { x, y: y + 30 }, VCC: { x, y: y + 44 }, DATA: { x, y: y + 78 } };
+  s += devPin(x, p.GND.y, "blk GND") + devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.DATA.y, "yel DATA");
   return { s, p };
 }
 
 projects["soil-temperature"] = () => diagram(
   "soil-temperature wiring", "DS18B20 waterproof probe(s) + OLED  ·  needs a 4.7k pullup",
   [1, 2, 29, 36, 38], () => {
-    const x = DEV_X, y = 262, w = DEV_W, h = 92;
+    const x = DEV_X, y = 262, w = DEV_W, h = 112;
     let s = deviceBox(x, y, w, h, "DS18B20", "one or many on one wire", C.orange);
-    const p = { VCC: { x, y: y + 42 }, GND: { x, y: y + 60 }, DATA: { x, y: y + 78 } };
-    s += devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.GND.y, "black GND") + devPin(x, p.DATA.y, "yellow DATA");
+    // GND on top, so red 3V3 and yellow DATA sit next to each other for the pull-up
+    const p = { GND: { x, y: y + 40 }, VCC: { x, y: y + 62 }, DATA: { x, y: y + 104 } };
+    s += devPin(x, p.GND.y, "black GND") + devPin(x, p.VCC.y, "red 3V3") + devPin(x, p.DATA.y, "yellow DATA");
     s += oledI2C();
-    s += tap(RAIL_PWR, p.VCC, W.pwr) + tap(RAIL_GND, p.GND, W.gnd);
+    s += tap(RAIL_GND, p.GND, W.gnd) + tap(RAIL_PWR, p.VCC, W.pwr);
     s += sig(29, p.DATA, W.probe);
-    s += pullup47(y + 78);
+    s += pullup47(p.VCC.y, p.DATA.y);
     return s;
   },
   [
     { color: W.probe, text: "yellow DATA -> GP22 (pin 29)" },
-    { color: W.pwr, text: "red -> 3V3 (pin 36);  4.7k: DATA -> 3V3" },
+    { color: W.pwr, text: "red -> 3V3 (pin 36)" },
+    { text: "4.7k PULL-UP between yellow DATA and red 3V3, never GND" },
     { color: W.gnd, text: "black -> GND (pin 38)" },
     { color: W.sda, text: "OLED SDA/SCL on GP0 / GP1 (pins 1, 2)" },
     { text: "4.7k bands: yellow violet red gold" },
@@ -479,23 +491,23 @@ projects["soil-temperature-multi"] = () => diagram(
   "many DS18B20 probes, one wire", "three shown, dozens possible  ·  STILL just one 4.7k pullup",
   [1, 2, 29, 36, 38], () => {
     let s = oledI2C();
-    const boxes = [ds18b20Box(238, "DS18B20 probe 1"),
-                   ds18b20Box(330, "DS18B20 probe 2"),
-                   ds18b20Box(422, "DS18B20 probe 3")];
+    const boxes = [ds18b20Box(236, "DS18B20 probe 1"),
+                   ds18b20Box(340, "DS18B20 probe 2"),
+                   ds18b20Box(444, "DS18B20 probe 3")];
     boxes.forEach(b => { s += b.s; });
     // power + ground: every probe taps the same rails
     boxes.forEach(b => { s += tap(RAIL_PWR, b.p.VCC, W.pwr) + tap(RAIL_GND, b.p.GND, W.gnd); });
     // ONE data lane from GP22 feeds every probe's DATA pin
     s += bus(29, boxes.map(b => b.p.DATA), W.probe);
     // and ONE pullup for the whole bus
-    s += pullup47(boxes[0].p.DATA.y);
-    s += text(DEV_X + DEV_W / 2, 520, "probe 4, 5, 6... same three wires. No new resistor.",
+    s += pullup47(boxes[0].p.VCC.y, boxes[0].p.DATA.y, false);
+    s += text(DEV_X + DEV_W / 2, 552, "probe 4, 5, 6... same three wires. No new resistor.",
       { size: 11.5, color: C.gray, anchor: "middle", italic: true });
     return s;
   },
   [
     { color: W.probe, text: "ONE yellow DATA bus -> GP22 (pin 29), all probes" },
-    { color: W.pwr, text: "ONE 4.7k pullup TOTAL: DATA -> 3V3" },
+    { color: W.pwr, text: "ONE 4.7k PULL-UP total: DATA -> 3V3, never GND" },
     { color: W.gnd, text: "all reds to 3V3 rail, all blacks to GND rail" },
     { text: "each probe has a factory serial number, so the" },
     { text: "code tells them apart automatically (and you can" },
