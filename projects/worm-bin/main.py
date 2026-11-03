@@ -642,8 +642,24 @@ display.show([
 ], title=False)
 boot_card_at = time.ticks_ms()
 
+# The power-on sequence plays WHILE the board joins Wi-Fi (that takes 15 s or more): the school card
+# holds BOOT_CARD_MS, then the shows and cards run from the join's waits (picolab.IDLE). The boot
+# messages are added once the message slots exist, below.
+boot_steps = [("hold", BOOT_CARD_MS - time.ticks_diff(time.ticks_ms(), boot_card_at))]
+if WORM_SHOWS:
+  boot_steps += [("show", wormshow.School), ("card", "", ["AND..."], BOOT_AND_MS),
+                 ("card", "", ["MAKER LAB KIDS"], BOOT_MLK_MS), ("show", wormshow.MakerLabStill)]
+if fan and FAN_BOOT_DEMO:
+  # the fan flips on, off, on... with every screen of the power-on sequence, and ends off
+  boot_steps = [x for st in boot_steps for x in (("call", fan.toggle), st)] + [("call", fan.off)]
+elif fan:
+  fan.run(FAN_BOOT_S * 1000, "power-on check")
+display.boot(boot_steps)
+picolab.IDLE = lambda: (display.tick(), fan and fan.poll(None))
+
 light = picolab.StatusLight()
 app = picolab.WebApp()
+picolab.IDLE = None
 messages = picolab.Messages(app, teacher_pin=(app.bin or {}).get("teacher_pin") or TEACHER_PIN)   # the message slots (msg.json)
 display.CARD_MS = MESSAGE_S * 1000
 # The Burrow's reply to each push carries what the website set for this bin (messages, shows, a
@@ -729,18 +745,12 @@ if BLUETOOTH:
     ble = blelink.BleLink(app, data_fn)
   except Exception as e:
     picolab.log("Bluetooth off:", e)
-# The rest of the power-on sequence (step 1 is on the screen already).
-boot_steps = [("hold", BOOT_CARD_MS - time.ticks_diff(time.ticks_ms(), boot_card_at))]
-if WORM_SHOWS:
-  boot_steps += [("show", wormshow.School), ("card", "", ["AND..."], BOOT_AND_MS),
-                 ("card", "", ["MAKER LAB KIDS"], BOOT_MLK_MS), ("show", wormshow.MakerLabStill)]
-boot_steps.append(("cards", messages.boot_cards))
-if fan and FAN_BOOT_DEMO:
-  # the fan flips on, off, on... with every screen of the power-on sequence, and ends off
-  boot_steps = [x for st in boot_steps for x in (("call", fan.toggle), st)] + [("call", fan.off)]
-elif fan:
-  fan.run(FAN_BOOT_S * 1000, "power-on check")
-display.boot(boot_steps)
+# The boot messages close the power-on sequence (started above, before the Wi-Fi join): after
+# whatever is still playing, or straight away if it already finished.
+if display._boot is not None:
+  display._boot.append(("cards", messages.boot_cards))
+else:
+  display.boot([("cards", messages.boot_cards)])
 tick = picolab.Throttle(READ_EVERY_MS)
 heartbeat = picolab.Throttle(5000)
 page = 0                         # OLED page (only moves when rows overflow a screen)

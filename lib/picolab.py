@@ -910,6 +910,27 @@ def _static_header(name):
           + "\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n").encode()
 
 
+# Called over and over while the board waits on Wi-Fi at power-on (the join can take 15 s or more),
+# so the screen's power-on sequence keeps playing instead of freezing on its first card.
+IDLE = None
+
+
+def idle_ms(ms):
+  """Wait ms, feeding the watchdog and running IDLE every ~20 ms."""
+  start = time.ticks_ms()
+  while True:
+    left = ms - time.ticks_diff(time.ticks_ms(), start)
+    if left <= 0:
+      return
+    if IDLE:
+      try:
+        IDLE()
+      except Exception as e:
+        log("idle:", e)
+    feed()
+    time.sleep_ms(min(20, left))
+
+
 def _try_join(sta, ssid, password, attempts=2, wait_s=12):
   """Try to join one network a couple of times. Returns True on success.
   Two tries because a single attempt at weak signal is a coin flip."""
@@ -919,8 +940,7 @@ def _try_join(sta, ssid, password, attempts=2, wait_s=12):
       for _ in range(wait_s * 2):
         if sta.isconnected():
           return True
-        feed()
-        time.sleep_ms(500)
+        idle_ms(500)
     except Exception:
       pass
     if sta.isconnected():
@@ -929,7 +949,7 @@ def _try_join(sta, ssid, password, attempts=2, wait_s=12):
       sta.disconnect()
     except Exception:
       pass
-    time.sleep(1)
+    idle_ms(1000)
   return sta.isconnected()
 
 
@@ -1990,7 +2010,7 @@ class WebApp:
           # fifty bins coming back from a power cut should not all hit the
           # access point and the DHCP server in the same second
           import random
-          time.sleep_ms(random.randrange(JOIN_STAGGER_S * 1000))
+          idle_ms(random.randrange(JOIN_STAGGER_S * 1000))
         for name in present:
           if _try_join(sta, name, password):
             self._on_joined(name)
