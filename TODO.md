@@ -29,7 +29,12 @@ out there and nothing needs migrating. A Pico is set up once by cable and update
    `tools/fleet/flash.py` (MicroPython 1.29, the worm-bin code, boot.py + lib/ota.py, wifi.json,
    bin.json with the bin number 30-79). Label the lids to match. Do ONE first: Claude checks its
    pushes and sends it a Wi-Fi code update before the rest. Recalibrate distance once mounted.
-3. **Re-burn the spare Pi cards** from /workspace/burrow-golden.img.gz with the current
+3. **The golden image is stale (2026-11-03):** a card burned from it carries the OLD router password and
+   backhaul key in tunnel.json (from before the 11-01 rotation) and roles.py's 0600 cloud token (the
+   burrow service cannot read it: no uploads). burrow3's new card needed all three fixed by hand.
+   Re-image it from burrow3 (`edge/burrow/tools/clone-card.sh image 3 burrow-golden.img.gz`, ~20 min)
+   before burning more. The old burrow3 Pi/card (silent since 11-01 18:54) is retired: find it.
+   **Re-burn the spare Pi cards** from /workspace/burrow-golden.img.gz with the current
    `sudo edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX` (it now adds the
    enrolment secret; cards burned before 2026-11-01 14:30 lack it and cannot enrol).
 4. **Watch a real standby takeover**: a spare Pi on a room's Opal (shows up as burrowN-sb-xxxx on
@@ -42,7 +47,7 @@ out there and nothing needs migrating. A Pico is set up once by cable and update
 7. **Built 2026-11-01 evening, not yet on hardware:** (a) the watchdog restarts a room's 2.4 GHz
    WormHole when every Bin heard in the last 2 h has been silent 10 min (hourly at most), then reboots
    the Opal if still silent 10 min later (6-hourly at most) (ed3887d): on burrow0/1/2; **burrow3 was
-   offline (silent since 18:54) and still needs `update-burrow.sh 3`**. (b) Bin settings in
+   offline (silent since 18:54); on 2026-11-03 00:00 a fresh card (serial e53556f0) enrolled as burrow3 in its place and is on 496ff1b**. (b) Bin settings in
    settings.json, edited on the bin's page (Settings card; lib/settings.py): checked off-board and in a
    browser against the real module, not yet on a board; try it on the bench board with the fan.
 
