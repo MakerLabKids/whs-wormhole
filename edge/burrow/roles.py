@@ -29,6 +29,7 @@ CFG = os.environ.get("BURROW_CONFIG", "/etc/burrow/burrow.json")
 TUNNEL = os.environ.get("TUNNEL_CONFIG", "/etc/burrow/tunnel.json")
 STATE = os.environ.get("BURROW_ROLE_STATE", "/data/burrow/role-state.json")
 CLOUD_TOKEN = os.environ.get("BURROW_CLOUD_TOKEN", "/etc/burrow/cloud.token")
+SERVICE_GROUP = "burrow"      # the burrow service's user/group: it reads the cloud token
 TUNNEL_TOKEN = os.environ.get("BURROW_TUNNEL_TOKEN", "/etc/cloudflared/token")
 SECRET = os.environ.get("BURROW_ENROL_SECRET", "/etc/burrow/enrol.secret")
 EVENTS = os.environ.get("BURROW_ROLE_LOG", "/data/burrow/role-events.log")
@@ -161,7 +162,7 @@ def apply_identity(ident, sys_=None, net=True):
                     for k in range(4) if "burrow%d" % k != edge}
     save(CFG, cfg)
     if ident.get("cloud_token"):
-        write_secret(CLOUD_TOKEN, ident["cloud_token"])
+        write_secret(CLOUD_TOKEN, ident["cloud_token"], group=SERVICE_GROUP)
     if role == "primary" and ident.get("tunnel_token"):
         write_secret(TUNNEL_TOKEN, ident["tunnel_token"])
         sys_.run("systemctl", "enable", "cloudflared")
@@ -194,11 +195,20 @@ def apply_identity(ident, sys_=None, net=True):
     return cfg
 
 
-def write_secret(path, value):
+def write_secret(path, value, group=None):
+    """A secret file: root only (0600), or root + `group` (0640) for one a service user reads.
+    The cloud token is read by the burrow service (user burrow), like setup-pi.sh makes it: a
+    0600 root file there left a freshly enrolled Pi unable to upload (2026-11-03, burrow3)."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(value)
-    os.chmod(path, 0o600)
+    os.chmod(path, 0o640 if group else 0o600)
+    if group:
+        try:
+            import grp
+            os.chown(path, 0 if os.geteuid() == 0 else -1, grp.getgrnam(group).gr_gid)
+        except (KeyError, PermissionError, OSError):
+            pass                     # tests and dev boxes have no burrow group
 
 
 def set_hosts(edge, path=None):

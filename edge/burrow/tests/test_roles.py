@@ -94,6 +94,8 @@ class RolesTest(unittest.TestCase):
         self.assertFalse(os.path.exists(roles.TUNNEL_TOKEN))                  # the donor's tunnel token is gone
         self.assertIn(["systemctl", "disable", "--now", "cloudflared"], self.sys.cmds)
         self.assertEqual(open(roles.CLOUD_TOKEN).read(), "tok")
+        # the burrow service (group burrow) must be able to read it: 0640, never 0600
+        self.assertEqual(os.stat(roles.CLOUD_TOKEN).st_mode & 0o777, 0o640)
         self.assertIn("auto", self.sys.nm()[-1])
         self.assertEqual(roles.load(roles.TUNNEL, {})["host"], "192.168.82.1")
         self.assertIn("127.0.1.1\tburrow2-sb-00b2", open(roles.HOSTS).read())
