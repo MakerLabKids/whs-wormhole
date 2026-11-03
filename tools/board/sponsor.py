@@ -164,7 +164,7 @@ def one_sheet():
     <div class="strip">
       <div class="ph"><img src="../board/img/build-screen.jpg" alt="A worm bin with a 3D-printed lid and its screen"><span class="cap">Built by students</span></div>
       <div class="ph"><img src="../board/img/skin-deck.jpg" alt="Mission control: every bin on one screen" style="object-position:left top"><span class="cap">Live on the big screen</span></div>
-      <div class="oleds"><img src="../board/img/oled-school.png" alt="Wolverine on the bin screen"><img src="../board/img/oled-wormparty.png" alt="Worm party animation">
+      <div class="oleds"><img src="../board/img/oled-school.png" alt="Wolverine on the bin screen"><img src="../board/img/oled-yourname.png" alt="Sponsored by: your name here, on the bin screen">
         <img src="../board/img/oled-scientist.png" alt="Data screen"><img src="../board/img/oled-bigworm.png" alt="Wormhole animation"></div>
     </div>
 
@@ -259,7 +259,7 @@ def trifold():
     </div>
     <ul class="meas"><li>Air temperature</li><li>Humidity</li><li>Air pressure</li><li>Soil temperature</li><li>Soil moisture</li><li>Bedding level</li><li>Light (coming)</li><li>Sound (coming)</li></ul>
     <div class="photo" style="margin-top:10px"><img src="../board/img/build-lid-top.jpg" alt="The 3D-printed honeycomb lid with its screen case" style="height:1.75in"></div>
-    <div class="oled-row"><img src="../board/img/oled-school.png" alt="Wolverine"><img src="../board/img/oled-radar.png" alt="Worm radar"><img src="../board/img/oled-scientist.png" alt="Data"><img src="../board/img/oled-compost.png" alt="Compost"></div>
+    <div class="oled-row"><img src="../board/img/oled-school.png" alt="Wolverine"><img src="../board/img/oled-radar.png" alt="Worm radar"><img src="../board/img/oled-scientist.png" alt="Data"><img src="../board/img/oled-yourname.png" alt="Sponsored by: your name here"></div>
   </div>
   <div class="panel back">
     <div class="big" style="margin-top:6px">Watch the bins live</div>

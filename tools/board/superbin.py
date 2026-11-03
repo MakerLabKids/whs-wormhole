@@ -63,6 +63,9 @@ def geophone(x, y):     # sits on the table, spike into it
     return (f'<rect x="{x-9}" y="{y-20}" width="18" height="20" rx="3" fill="#2a9fd8"/><rect x="{x-9}" y="{y-20}" width="18" height="6" rx="3" fill="#1b6fa0"/>'
             f'<path d="M{x-3} {y} L{x} {y+9} L{x+3} {y}" fill="#5b6475"/>')
 
+def wallphone(x, y):   # a geophone stuck to the bin's wall
+    return f'<rect x="{x-9}" y="{y-11}" width="18" height="22" rx="3" fill="#2a9fd8" stroke="#fff" stroke-width="1.5"/><rect x="{x-9}" y="{y-11}" width="18" height="6" rx="3" fill="#1b6fa0"/>'
+
 def servo(x, y, flip=False):  # SG90 body with an arm reaching toward x (flip: arm to the right)
     s = -1 if not flip else 1
     return (f'<rect x="{x-18}" y="{y-11}" width="36" height="22" rx="3" fill="#2a6fd8"/><rect x="{x-24}" y="{y-3}" width="48" height="5" rx="2" fill="#2a6fd8"/>'
@@ -143,7 +146,6 @@ def portrait():
     # outside: room air sensor clipped to the glass, the thumper, geophones
     o.append(f'<path d="M{R+6} {top-4} C {R+30} {top+40}, {R+26} 300, {R+22} 318" fill="none" stroke="#20252d" stroke-width="2"/>' + board(R + 8, 318, 28, 20))
     o.append(servo(R + 34, 520))
-    o += [geophone(L - 46, bot + 20), geophone(L - 18, bot + 34), geophone(R + 18, bot + 34), geophone(R + 46, bot + 20)]
     # the lid
     o.append(f'<path d="M{L-10} {top-20} L{L-10} {top-2} A{rx+10} {ry+8} 0 0 0 {R+10} {top-2} L{R+10} {top-20} Z" fill="#d9ab00"/><ellipse cx="{cx}" cy="{top-20}" rx="{rx+10}" ry="{ry+8}" fill="#f2c400"/>')
     dots = []
@@ -168,7 +170,6 @@ def portrait():
     C.append(callout("L", 12, 236, "ADD-ON", "LIGHT SENSOR", ["how bright it gets", "inside the glass"], (cx - 26, top + 38), "#b8860b"))
     C.append(callout("L", 12, 330, "NOW", "SOIL TEMPERATURE", ["waterproof probes; many share", "one wire, so try three depths"], [(cx - 54, 426), (cx - 4, 546), (cx + 40, 666)], "#7a5038"))
     C.append(callout("L", 12, 500, "ADD-ON", "VIBRATION MOTOR", ["buried in the bedding, a buzz", "now and then. Do they move?"], (cx - 94, 610), MUTED))
-    C.append(callout("L", 12, 640, "ADD-ON", "GEOPHONES x4", ["super-sensitive vibration", "sensors. Can we hear worms?"], [(L - 46, bot + 4), (L - 18, bot + 18)], "#2a9fd8"))
     C.append(callout("R", 748, 26, "NOW", "0.96\" SCREEN", ["128 x 64 pixels. We program it;", "add buttons to flip or pause"], (cx + 94, top - 100), "#2a9fd8"))
     C.append(callout("R", 748, 112, "NOW", "PICO 2 W", ["the brain, on Wi-Fi:", "a reading every minute"], (cx - 6, top - 36), GREEN))
     C.append(callout("R", 748, 190, "ADD-ON", "ACCELEROMETER", ["knows when the lid moves", "(the laser can tell, too)"], (cx + 86, top - 14), RED))
@@ -216,12 +217,15 @@ def landscape():
     o.append(f'<path d="M{X0} {T+20} L{X0} {B} L{X1} {B} L{X1} {T+20}" fill="none" stroke="#15181d" stroke-width="12" stroke-linejoin="round"/>')
     o.append(f'<path d="M{X1} {B} L{X1+D} {B-D+18}" stroke="#15181d" stroke-width="12" stroke-linecap="round"/>')
     o.append(f'<path d="M{X1+6} {T+26} L{X1+6} {B-6}" stroke="#2b2f36" stroke-width="2"/>')
+    o += [wallphone(X0 + 2, B - 18), wallphone(X1 - 2, B - 18)]                          # front corners, low
     # fan on the right wall
     o.append(fan(X1 + 22, 230, 20))
     # thumper on the left wall (outside), room air sensor outside, geophones at the corners
     o.append(servo(X0 - 34, 330, flip=True))
     o.append(f'<path d="M{X0+10} {T+6} C {X0-30} {T+20}, {X0-40} 210, {X0-44} 236" fill="none" stroke="#20252d" stroke-width="2"/>' + board(X0 - 58, 236, 28, 20))
-    o += [geophone(X0 - 26, B + 32), geophone(X1 + 30, B + 32), geophone(X0 + 30, B + 46), geophone(X1 - 26, B + 46)]
+    o += [wallphone(X0 + D + 14, T - D + 44), wallphone(X1 + D - 6, T - D + 44)]          # back corners, high
+    REF = (X1 + 100, B + 32)
+    o.append(geophone(*REF))
     # the lid: black, with vent holes, a lip
     o.append(f'<path d="M{X0-12} {T+6} L{X0+D-6} {T-D+4} L{X1+D+12} {T-D+4} L{X1+12} {T+6} Z" fill="#2b2f36"/>')
     o.append(f'<rect x="{X0-12}" y="{T+6}" width="{X1-X0+24}" height="16" rx="3" fill="#15181d"/>')
@@ -244,7 +248,8 @@ def landscape():
     c("L", 10, 132, "ADD-ON", "ROOM AIR SENSOR", ["outside, to compare"], (X0 - 44, 246), "#5b3fa8")
     c("L", 10, 228, "NOW", "SOIL TEMPERATURE x6", ["one wire, a grid of depths:", "map the warm spots"], [(300, 290), (420, 350), (360, 400)], "#7a5038")
     c("L", 10, 312, "ADD-ON", "THE THUMPER", ["a servo tapping the wall"], (X0 - 20, 318), "#2a6fd8")
-    c("L", 10, 380, "ADD-ON", "GEOPHONES x4", ["one under each corner"], [(X0 - 26, B + 16), (X0 + 30, B + 30)], "#2a9fd8")
+    c("L", 10, 372, "ADD-ON", "GEOPHONES x4 + 1", ["four on the bin, far apart: can we", "locate motion? One off the bin hears", "the room, so we can subtract it"], [(X0 + 2, B - 18), (X0 + D + 14, T - D + 44)], "#2a9fd8")
+    c("R", 990, 410, "ADD-ON", "REFERENCE GEOPHONE", ["on the table, not the bin"], (X1 + 100, B + 14), "#2a9fd8")
     c("R", 990, 20, "ADD-ON", "MICROPHONE", ["how loud the room gets"], (690, T - 18), "#5b3fa8")
     c("R", 990, 76, "ADD-ON", "ACCELEROMETER", ["knows when the lid moves"], (388, T - 8), RED)
     c("R", 990, 132, "NOW", "AIR SENSOR + LIGHT", ["temp, humidity, pressure, light"], [(572, T + 22), (520, T + 26)], "#5b3fa8")
