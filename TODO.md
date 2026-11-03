@@ -54,6 +54,9 @@ Where things are: private notes/runbook/detailed architecture in MakerLabKids/wh
 (notes/ here); teacher overview in the lab guide (How Wormhole Works).
 
 ## Deploy (from 2026-10-31; updated 2026-11-01 morning)
+- [ ] **Two-step rename (05fa2c8)**: try it first on one of the user's home test bins (NOT The Wrigglers, bin 38: that is
+      Audra's demo bin; leave it as it is, the demo sheet matches it). Then roll the Pico code out; the website's
+      Bluetooth page goes live with the next `wrangler deploy`.
 - [x] **5267724 on all four Pis (2026-11-03 08:48)**: peer list written as {"url"} dicts (broke the peer watch on
       freshly enrolled cards) and roles.py's enrol request had no User-Agent, so Cloudflare answered 403 / error 1010:
       a refused Pi could never re-ask and a standby could never take over. burrow3 recovered at 08:46 by re-asking.
