@@ -54,10 +54,12 @@ Where things are: private notes/runbook/detailed architecture in MakerLabKids/wh
 (notes/ here); teacher overview in the lab guide (How Wormhole Works).
 
 ## Deploy (from 2026-10-31; updated 2026-11-01 morning)
-- [ ] **Roll e411e40 to the Pis, one at a time** (peer list written as {"url"} dicts broke the peer watch and
-      replication on every freshly enrolled card; config.py heals them once updated). Then refresh the golden image.
-      2026-11-03 08:00: the user shuffled cards (new spare card in the Tunnel 1 Pi, burrow2's card in the Tunnel 3 Pi,
-      old burrow3 card in the Tunnel 2 Pi, burrow1's card out). Check who is who before rolling.
+- [x] **5267724 on all four Pis (2026-11-03 08:48)**: peer list written as {"url"} dicts (broke the peer watch on
+      freshly enrolled cards) and roles.py's enrol request had no User-Agent, so Cloudflare answered 403 / error 1010:
+      a refused Pi could never re-ask and a standby could never take over. burrow3 recovered at 08:46 by re-asking.
+- [ ] **Refresh the golden image** from a Pi on 5267724 (cards burned from the old image carry both bugs until updated).
+- [ ] The spare card from 2026-11-03 holds a revoked burrow3 pass: in a different Pi it is refused, re-asks after
+      10 min and should come up as a standby. Watch that once (first real test of the fixed re-ask).
 
 - [ ] **User: `npx wrangler deploy` in cloud/surface** for 0a1f923 + the skins dropdown (2026-11-02; the Pis pick the dashboard up on their next update-burrow.sh): anyone can view the
   wall, bins, charts and live feed; a login only for messages, shows, admin, the signal meter and
