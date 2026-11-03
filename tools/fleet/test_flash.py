@@ -146,6 +146,21 @@ class FlashTest(unittest.TestCase):
         self.assertFalse(any("wipe.py" in " ".join(c) for c in rn.calls), "never wiped")
         self.assertIn("99e3b028541489d4", self.fleet["keep"], "the bench board is protected")
 
+    def test_a_board_without_wifi_is_refused_before_anything(self):
+        rows = flash.init_roster(self.fleet)
+        class NoW(flash.FakeRunner):
+            def run(s, *args, timeout=60, check=True):
+                if "network.WLAN" in " ".join(args):
+                    s.calls.append(args)
+                    return "[CYW43] Failed to start CYW43\nWIFI False\n"
+                return super().run(*args, timeout=timeout, check=check)
+        rn = NoW()
+        with self.assertRaises(RuntimeError) as e:
+            flash.flash_one(rn, "/dev/ttyFAKE0", self.fleet, rows, "pw", dry=True)
+        self.assertIn("no working Wi-Fi", str(e.exception))
+        self.assertFalse(any("wipe.py" in " ".join(c) for c in rn.calls), "never wiped")
+        self.assertEqual(rows[0]["uid"], "", "no roster line taken")
+
     def test_flash_writes_the_code_version(self):
         rows = flash.init_roster(self.fleet)
         rn = flash.FakeRunner()

@@ -322,6 +322,18 @@ def upgrade_firmware(rn, port, fleet, dry=False, wait=time.sleep, bootsel=None, 
         wait(0.5)
 
 
+def has_wifi(rn, port):
+    """True when the board's Wi-Fi chip starts. A plain Pico (no W) on the W firmware prints
+    "Failed to start CYW43" and never joins anything: it must not get a bin's name."""
+    try:
+        out = rn.run("connect", port, "exec",
+                     "import network\nw = network.WLAN(network.STA_IF)\ntry:\n w.active(True)\nexcept Exception:\n pass\n"
+                     "print('WIFI', w.active())", timeout=30, check=False)
+    except Exception:
+        return False
+    return "WIFI True" in out
+
+
 def code_version():
     """The commit being flashed (short hash): what the board reports as its code, the same label
     a Wi-Fi code update uses. A '+' when the project's files have uncommitted changes."""
@@ -357,6 +369,9 @@ def flash_one(rn, port, fleet, rows, password, dry=False):
     keep = fleet.get("keep") or {}
     if uid in keep:
         raise RuntimeError("board %s is on fleet.json's keep list (%s): not touched" % (uid, keep[uid]))
+    if not has_wifi(rn, port):
+        raise RuntimeError("board %s has no working Wi-Fi (a plain Pico, not a Pico W?): "
+                           "set it aside, it was not wiped or named" % uid)
     row, is_new = pick_row(rows, uid)
     if row is None:
         raise RuntimeError("roster is full: every line has a uid. Add names/bins and re-run.")
@@ -539,6 +554,8 @@ class FakeRunner(Runner):
             return self.uid + "\n"
         if "picolab.VERSION" in joined:
             return "0.2.0\n"
+        if "network.WLAN" in joined:
+            return "WIFI True\n"
         if "os.listdir" in joined:
             return json.dumps({"files": ["main.py", "lib"], "name": "Dirt Vader", "bin": "{}", "wifi": "present"}) + "\n"
         if args[:1] == ("connect",) and args[1:2] == ("list",):
