@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Worms, Wires &amp; Wi-Fi</title>
+<meta name="description" content="Woodstock High School x Maker Lab Kids: an 8-page display board for the vermiculture PBL. Print on letter paper.">
+<link rel="icon" href="../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1b2f5e; --navy-2: #24407e; --red: #c8102e; --orange: #e8762c; --green: #5fae3a;
+    --blue: #2a9fd8; --yellow: #f2b705; --soil: #5b3a29; --soil-2: #7a5038; --cream: #fff8ec;
+    --ink: #1f2633; --muted: #5b6475; --line: #e3e8f0; --paper: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; background: #d9dee6; color: var(--ink); font-family: "Nunito Sans", Arial, sans-serif; }
+  h1, h2, h3, .big { font-family: "Fredoka", "Nunito Sans", Arial, sans-serif; }
+
+  /* ---- the screen-only bar ---- */
+  .bar { max-width: 8.5in; margin: 18px auto 0; padding: 0 16px; display: flex; gap: 12px; align-items: center;
+         justify-content: space-between; flex-wrap: wrap; font-size: 14px; color: #2b3445; }
+  .bar button { font: inherit; font-weight: 700; background: var(--navy); color: #fff; border: 0; border-radius: 8px;
+                padding: 9px 16px; cursor: pointer; }
+  .bar a { color: var(--navy); }
+
+  /* ---- a sheet of letter paper ---- */
+  .page { width: 8.5in; height: 11in; margin: 18px auto; background: var(--paper); position: relative; overflow: hidden;
+          padding: 0.42in 0.5in 0.62in; box-shadow: 0 6px 24px rgba(20, 30, 50, .18); display: flex; flex-direction: column; }
+  @page { size: letter portrait; margin: 0; }
+  @media print {
+    body { background: none; }
+    .bar { display: none; }
+    .page { margin: 0; box-shadow: none; break-after: page; page-break-after: always; }
+    .page:last-child { break-after: auto; page-break-after: auto; }
+  }
+  @media screen and (max-width: 860px) {
+    /* phones: scale the sheets down so a whole page fits the width */
+    .page { zoom: calc(100vw / 8.9in); }
+  }
+
+  /* ---- the two lockups on every page ---- */
+  .brand { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 10px;
+           border-bottom: 4px solid var(--navy); position: relative; }
+  .brand::after { content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 3px; background: var(--red); }
+  .brand .mlk img { height: 0.52in; display: block; }
+  .brand .whs { display: flex; align-items: center; gap: 10px; text-align: right; }
+  .brand .whs img { height: 0.56in; display: block; }
+  .brand .whs b { display: block; font-family: "Fredoka", sans-serif; font-weight: 700; color: var(--navy);
+                  font-size: 17px; letter-spacing: .06em; line-height: 1.05; }
+  .brand .whs span { display: block; color: var(--red); font-weight: 800; font-size: 10.5px; letter-spacing: .14em;
+                     text-transform: uppercase; margin-top: 3px; }
+  .x { font-family: "Fredoka", sans-serif; color: #9aa4b5; font-size: 22px; font-weight: 600; }
+
+  .foot { position: absolute; left: 0.5in; right: 0.5in; bottom: 0.26in; display: flex; justify-content: space-between;
+          align-items: center; font-size: 9.5px; color: var(--muted); letter-spacing: .03em; border-top: 1px solid var(--line);
+          padding-top: 6px; }
+  .foot .pg { font-family: "Fredoka", sans-serif; font-weight: 700; color: #fff; background: var(--navy);
+              border-radius: 999px; padding: 2px 10px; font-size: 10px; }
+  .foot b { color: var(--navy); }
+
+  .kicker { font-weight: 800; color: var(--red); letter-spacing: .16em; text-transform: uppercase; font-size: 12px; margin: 20px 0 2px; }
+  h2 { font-size: 40px; line-height: 1.02; margin: 0 0 8px; color: var(--navy); font-weight: 700; }
+  h2 em { font-style: normal; color: var(--green); }
+  .lede { font-size: 15.5px; line-height: 1.45; color: #36404f; margin: 0 0 14px; max-width: 6.6in; }
+  p { line-height: 1.45; }
+
+  /* ---- page 1 ---- */
+  .cover-title { margin: 22px 0 0; }
+  .cover-title h1 { font-size: 66px; line-height: .95; margin: 0; color: var(--navy); font-weight: 700; letter-spacing: -.01em; }
+  .cover-title h1 .w { color: var(--soil-2); } .cover-title h1 .r { color: var(--orange); } .cover-title h1 .f { color: var(--blue); }
+  .cover-title .sub { font-size: 18px; margin: 10px 0 0; color: #36404f; line-height: 1.4; max-width: 6.4in; }
+  .tag { display: inline-block; background: var(--green); color: #fff; font-weight: 800; letter-spacing: .14em; font-size: 11px;
+         padding: 5px 12px; border-radius: 999px; text-transform: uppercase; }
+  .hero { margin: 8px -0.1in 0; }
+  .hero svg { width: 100%; height: auto; display: block; }
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 4px; }
+  .stat { background: var(--navy); color: #fff; border-radius: 14px; padding: 12px 8px 10px; text-align: center; }
+  .stat .big { font-size: 34px; font-weight: 700; line-height: 1; color: var(--yellow); }
+  .stat:nth-child(2) .big { color: #8fd4ff; } .stat:nth-child(3) .big { color: #a6e07f; } .stat:nth-child(4) .big { color: #ffb37a; }
+  .stat:nth-child(5) .big { color: #ff8fa0; }
+  .stat small { display: block; font-size: 11.5px; margin-top: 6px; line-height: 1.25; color: #dfe6f4; font-weight: 600; }
+  .question { margin-top: 14px; background: var(--cream); border: 2px dashed var(--orange); border-radius: 16px; padding: 14px 18px;
+              display: flex; gap: 14px; align-items: center; }
+  .question .q { font-family: "Fredoka", sans-serif; font-size: 44px; color: var(--orange); line-height: 1; }
+  .question b { display: block; color: var(--red); letter-spacing: .14em; font-size: 11px; text-transform: uppercase; }
+  .question span { font-family: "Fredoka", sans-serif; font-size: 22px; color: var(--navy); font-weight: 600; line-height: 1.2; }
+
+  /* ---- page 2 ---- */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 6px 0 14px; }
+  .step { border-radius: 16px; padding: 14px 14px 12px; color: #fff; position: relative; }
+  .step .n { font-family: "Fredoka", sans-serif; font-size: 30px; font-weight: 700; opacity: .9; line-height: 1; }
+  .step h3 { margin: 4px 0 4px; font-size: 22px; }
+  .step p { margin: 0; font-size: 13px; line-height: 1.4; }
+  .s1 { background: linear-gradient(135deg, #7a5038, #5b3a29); } .s2 { background: linear-gradient(135deg, #2f9a4f, #5fae3a); }
+  .s3 { background: linear-gradient(135deg, #1b2f5e, #2a9fd8); }
+  .measures { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 12px; }
+  .m { display: flex; gap: 10px; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  .m .ic { flex: 0 0 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; }
+  .m .ic svg { width: 24px; height: 24px; }
+  .m b { display: block; font-size: 14px; color: var(--navy); }
+  .m span { font-size: 12px; color: var(--muted); line-height: 1.3; display: block; }
+  .two { display: grid; grid-template-columns: 1.45fr 1fr; gap: 14px; align-items: start; }
+  .comfort { background: var(--cream); border-radius: 16px; padding: 14px 16px; border: 2px solid #f1dcc0; }
+  .comfort h3 { margin: 0 0 6px; color: var(--soil); font-size: 20px; }
+  .comfort ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+  .comfort .gauge { margin: 10px 0 2px; }
+  h3.sec { font-size: 20px; margin: 4px 0 8px; color: var(--navy); }
+
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .fact { background: #fdeef1; border-radius: 16px; padding: 12px 14px; font-size: 13px; line-height: 1.45; color: #3a4352;
+          border: 2px solid #f6cbd4; position: relative; }
+  .fact b { display: block; font-family: "Fredoka", sans-serif; font-size: 18px; color: #c8102e; margin-bottom: 2px; }
+  .words { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+  .words div { border-radius: 12px; background: var(--cream); border: 1.5px solid #f1dcc0; padding: 8px 10px; font-size: 11.5px;
+               line-height: 1.35; color: #3a4352; text-align: center; }
+  .words b { display: block; font-family: "Fredoka", sans-serif; font-size: 19px; }
+
+  /* ---- page 3 ---- */
+  .learned { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; }
+  .card { border-radius: 14px; padding: 12px 14px 11px; border: 1.5px solid var(--line); position: relative; background: #fff; }
+  .card .chip { display: inline-block; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; font-weight: 800;
+                color: #fff; border-radius: 999px; padding: 3px 9px; margin-bottom: 6px; }
+  .card h3 { margin: 0 0 4px; font-size: 18.5px; color: var(--navy); }
+  .card p { margin: 0; font-size: 12.8px; color: #3a4352; }
+  .card.story { background: #fff4f4; border-color: #f4c7cd; }
+  .quote { margin: 14px 0 0; font-family: "Fredoka", sans-serif; font-size: 21px; color: var(--navy); line-height: 1.3;
+           border-left: 6px solid var(--yellow); padding: 6px 0 6px 14px; }
+
+  /* ---- page 4 ---- */
+  .next { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .nx { border-radius: 16px; padding: 14px; color: #fff; }
+  .nx h3 { margin: 6px 0 4px; font-size: 24px; } .nx p { margin: 0; font-size: 13px; line-height: 1.4; }
+  .nx svg { width: 44px; height: 44px; }
+  .n1 { background: linear-gradient(160deg, #e8762c, #f2b705); } .n2 { background: linear-gradient(160deg, #2a9fd8, #1b2f5e); }
+  .n3 { background: linear-gradient(160deg, #5fae3a, #2f7d3a); }
+  .ideas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ideas .card h3 { font-size: 17px; }
+  .help { margin-top: 14px; border-radius: 18px; background: var(--navy); color: #fff; padding: 16px 18px; display: grid;
+          grid-template-columns: 1.25fr 1fr; gap: 16px; align-items: center; }
+  .help h3 { margin: 0 0 6px; font-size: 26px; color: var(--yellow); }
+  .help ul { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; }
+  .help .contact { background: #fff; color: var(--navy); border-radius: 14px; padding: 12px 14px; text-align: center; }
+  .help .contact b { font-family: "Fredoka", sans-serif; font-size: 20px; display: block; }
+  .help .contact span { font-size: 12.5px; color: var(--muted); display: block; margin-top: 4px; line-height: 1.4; }
+
+  /* ---- screenshot pages ---- */
+  .shot { margin: 0; border-radius: 12px; overflow: hidden; border: 1px solid #c9d1de; background: #0b1220; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .cap { font-size: 11.5px; color: var(--muted); margin: 5px 2px 0; line-height: 1.35; }
+  .cap b { color: var(--navy); }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .crop { aspect-ratio: 16 / 9.4; overflow: hidden; } .crop img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+
+  .oled-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 6px 0 4px; }
+  .oled { background: #1e293b; border-radius: 10px; padding: 7px; box-shadow: inset 0 0 0 2px #0f172a; }
+  .oled img { width: 100%; display: block; image-rendering: pixelated; border-radius: 3px; }
+  .oled + .cap { text-align: center; }
+
+  .arch svg { width: 100%; height: auto; display: block; }
+  .keep { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+  .keep .card p { font-size: 12.3px; }
+
+  .wiring { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .wiring .shot { background: #fff; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; font-weight: 700; margin: 4px 0 10px; }
+  .legend i { display: inline-block; width: 22px; height: 6px; border-radius: 3px; vertical-align: middle; margin-right: 5px; }
+  .photo-row { display: grid; grid-template-columns: 0.78fr 1fr; gap: 14px; align-items: center; margin-bottom: 10px; }
+  .photo-row .shot { border-radius: 14px; }
+  .photo-row p { margin: 0 0 6px; font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span><b>Display board</b> · 8 letter pages: 4 about the project, 4 of screens. Print with <b>margins: none</b> and <b>background graphics</b> on.</span>
+  <span><button type="button" onclick="window.print()">Print all 8</button> &nbsp;<a href="../index.html">Lab Guide</a></span>
+</div>
+
+<!-- ================================================================ 1 -->
+<section class="page" id="p1">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="x">&times;</div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="cover-title">
+    <span class="tag">Vermiculture project-based learning</span>
+    <h1 style="margin-top:12px"><span class="w">Worms</span>, <span class="r">Wires</span><br>&amp; <span class="f">Wi-Fi</span></h1>
+    <p class="sub">Every worm bin in our classrooms is a little science station: sensors in the dirt, a screen on the lid,
+      and a Wi-Fi connection that sends its readings to the whole school, every minute of every day.</p>
+  </div>
+
+  <div class="hero">
+    <svg viewBox="0 0 760 400" role="img" aria-label="A smart worm bin: sensors in the bedding, a Pico computer and screen on the lid, sending its readings over Wi-Fi">
+      <defs>
+        <linearGradient id="soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset=".45" stop-color="#5b3a29"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
+        <linearGradient id="tote" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c4a86"/><stop offset="1" stop-color="#1b2f5e"/></linearGradient>
+        <linearGradient id="lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b5ea8"/><stop offset="1" stop-color="#24407e"/></linearGradient>
+        <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff3b5c" stop-opacity=".8"/><stop offset="1" stop-color="#ff3b5c" stop-opacity="0"/></radialGradient>
+      </defs>
+      <ellipse cx="380" cy="372" rx="250" ry="18" fill="#000" opacity=".10"/>
+      <!-- wifi waves -->
+      <g transform="translate(0 -26)" fill="none" stroke="#2a9fd8" stroke-width="7" stroke-linecap="round">
+        <path d="M456 92 a46 46 0 0 1 60 0" opacity=".95"/><path d="M440 74 a70 70 0 0 1 92 0" opacity=".7"/><path d="M424 56 a94 94 0 0 1 124 0" opacity=".45"/>
+      </g>
+      <!-- the tote -->
+      <path d="M150 150 L610 150 L585 360 L175 360 Z" fill="url(#tote)"/>
+      <path d="M176 172 L584 172 L564 342 L196 342 Z" fill="url(#soil)"/>
+      <!-- bedding texture -->
+      <g fill="#a8774f" opacity=".55">
+        <circle cx="230" cy="200" r="3"/><circle cx="300" cy="190" r="2.5"/><circle cx="420" cy="205" r="3"/><circle cx="510" cy="195" r="2.5"/>
+        <circle cx="260" cy="260" r="2.5"/><circle cx="390" cy="275" r="3"/><circle cx="470" cy="250" r="2.5"/><circle cx="540" cy="285" r="2"/>
+        <circle cx="330" cy="310" r="2.5"/><circle cx="240" cy="320" r="2"/><circle cx="450" cy="318" r="2.5"/>
+      </g>
+      <!-- food scraps on top -->
+      <path d="M262 176 q14 -16 30 0 q-15 8 -30 0z" fill="#6fbf3f"/><path d="M500 178 q10 -12 26 -2 q-12 10 -26 2z" fill="#f08a2c"/>
+      <rect x="352" y="172" width="22" height="7" rx="3" fill="#e9dcc0" transform="rotate(-8 363 175)"/>
+      <!-- worms -->
+      <g fill="none" stroke-linecap="round">
+        <path d="M222 236 q18 -16 36 0 t36 0 t30 -6" stroke="#e8879b" stroke-width="9"/>
+        <path d="M398 296 q16 14 32 0 t32 0" stroke="#d96d84" stroke-width="9"/>
+        <path d="M480 222 q14 -12 28 0 t28 2" stroke="#e8879b" stroke-width="8"/>
+        <path d="M280 300 q12 10 24 0 t22 -4" stroke="#d96d84" stroke-width="7"/>
+      </g>
+      <g fill="#7a2f3e"><circle cx="324" cy="230" r="2.4"/><circle cx="462" cy="296" r="2.4"/><circle cx="536" cy="224" r="2.2"/></g>
+      <!-- probes -->
+      <rect x="340" y="100" width="9" height="190" rx="4" fill="#c7cdd6"/><rect x="336" y="94" width="17" height="14" rx="3" fill="#7d8796"/>
+      <rect x="430" y="146" width="22" height="104" rx="4" fill="#1d2430"/><rect x="434" y="196" width="14" height="40" rx="2" fill="#2f3a4c"/>
+      <!-- laser beam from under the lid -->
+      <rect x="252" y="128" width="30" height="14" rx="3" fill="#111"/>
+      <line x1="267" y1="142" x2="267" y2="190" stroke="#ff2d55" stroke-width="3" stroke-dasharray="6 5"/>
+      <circle cx="267" cy="192" r="11" fill="url(#glow)"/>
+      <!-- the lid -->
+      <rect x="138" y="118" width="484" height="26" rx="10" fill="url(#lid)"/>
+      <!-- pico + screen on the lid -->
+      <rect x="430" y="78" width="140" height="44" rx="6" fill="#1f7a3a"/>
+      <g fill="#c9a227"><circle cx="440" cy="84" r="2.3"/><circle cx="450" cy="84" r="2.3"/><circle cx="460" cy="84" r="2.3"/><circle cx="470" cy="84" r="2.3"/><circle cx="480" cy="84" r="2.3"/><circle cx="490" cy="84" r="2.3"/></g>
+      <rect x="520" y="86" width="40" height="28" rx="2" fill="#c7cfd6"/>
+      <rect x="560" y="52" width="104" height="70" rx="8" fill="#0f172a" stroke="#334155" stroke-width="3"/>
+      <rect x="568" y="60" width="88" height="54" rx="3" fill="#0b1220"/>
+      <g font-family="monospace" font-size="10" fill="#bfe6ff" font-weight="700">
+        <text x="574" y="74">COMPOST</text><text x="574" y="86">COWBOYS</text><text x="574" y="102" fill="#a6e07f">76F 64%</text>
+      </g>
+      <!-- fan on the end -->
+      <g transform="translate(612 230)">
+        <rect x="-4" y="-40" width="72" height="80" rx="12" fill="#2f3540"/>
+        <circle cx="32" cy="0" r="30" fill="#3e4652"/>
+        <g fill="#9aa4b2"><path d="M32 0 q-6 -26 10 -26 q6 14 -10 26z"/><path d="M32 0 q26 -6 26 10 q-14 6 -26 -10z"/><path d="M32 0 q6 26 -10 26 q-6 -14 10 -26z"/><path d="M32 0 q-26 6 -26 -10 q14 -6 26 10z"/></g>
+        <circle cx="32" cy="0" r="8" fill="#20252d"/>
+      </g>
+      <!-- callouts -->
+      <g font-family="Nunito Sans, Arial" font-size="15" font-weight="800">
+        <text x="18" y="40" fill="#c8102e">LASER RANGER</text>
+        <text x="18" y="58" fill="#5b6475" font-weight="600" font-size="13">how far the bedding settles</text>
+        <path d="M120 66 L 120 84 L 258 128" fill="none" stroke="#c8102e" stroke-width="2"/><circle cx="258" cy="128" r="4" fill="#c8102e"/>
+        <text x="222" y="18" fill="#1b2f5e">SOIL THERMOMETERS</text>
+        <text x="222" y="36" fill="#5b6475" font-weight="600" font-size="13">probes in the bedding</text>
+        <path d="M300 44 L 300 70 L 340 96" fill="none" stroke="#5b6475" stroke-width="2"/><circle cx="342" cy="98" r="4" fill="#5b6475"/>
+        <text x="742" y="18" fill="#2a9fd8" text-anchor="end">PICO 2 W + SCREEN</text>
+        <text x="742" y="36" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">a tiny computer on Wi-Fi</text>
+        <text x="742" y="292" fill="#e8762c" text-anchor="end">FAN</text>
+        <text x="742" y="309" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">kicks on when</text>
+        <text x="742" y="325" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">it's too damp</text>
+        <text x="18" y="292" fill="#1b2f5e">MOISTURE PROBE</text>
+        <text x="18" y="310" fill="#5b6475" font-weight="600" font-size="13">wet, dry, or just right?</text>
+        <path d="M150 300 C 300 304, 380 292, 430 236" fill="none" stroke="#5b6475" stroke-width="2" stroke-dasharray="4 4"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="big">50</div><small>smart worm bins, rolling out now</small></div>
+    <div class="stat"><div class="big">6</div><small>class periods, 3 classrooms</small></div>
+    <div class="stat"><div class="big">8</div><small>things each bin measures</small></div>
+    <div class="stat"><div class="big">60s</div><small>a fresh reading from every bin, all day, every day</small></div>
+    <div class="stat"><div class="big">4</div><small>Raspberry Pi servers on our own school network</small></div>
+  </div>
+
+  <div class="question">
+    <div class="q">?</div>
+    <div><b>Our driving question</b><span>How do we keep thousands of red wigglers happy, and prove it with data?</span></div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">1 / 8</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ 2 -->
+<section class="page" id="p2">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="x">&times;</div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="kicker">The project</div>
+  <h2>How a <em>smart</em> worm bin works</h2>
+  <p class="lede">Red wigglers turn food scraps into castings, the rich compost gardeners call black gold. Our job is to keep
+    them comfortable. The bin's sensors tell us how they're doing, around the clock, even when nobody's in the room.</p>
+
+  <div class="steps">
+    <div class="step s1"><div class="n">1</div><h3>Feed</h3><p>Food scraps and shredded paper go in. Worms eat, wiggle, and leave castings behind.</p></div>
+    <div class="step s2"><div class="n">2</div><h3>Sense</h3><p>Sensors in and around the bin take readings twice a second. The screen on the lid shows them.</p></div>
+    <div class="step s3"><div class="n">3</div><h3>Share</h3><p>Every minute the bin sends its readings over Wi-Fi to the classroom server, then up to the website.</p></div>
+  </div>
+
+  <div class="two">
+    <div>
+      <h3 class="sec">What every bin keeps an eye on</h3>
+      <div class="measures">
+        <div class="m"><div class="ic" style="background:#ffe9dc"><svg viewBox="0 0 24 24"><path d="M10 3a2 2 0 0 1 4 0v10.3a4.5 4.5 0 1 1-4 0z" fill="#e8762c"/></svg></div><div><b>Air temperature</b><span>inside the bin and out in the room</span></div></div>
+        <div class="m"><div class="ic" style="background:#dff2ff"><svg viewBox="0 0 24 24"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13z" fill="#2a9fd8"/></svg></div><div><b>Humidity</b><span>how damp the air is</span></div></div>
+        <div class="m"><div class="ic" style="background:#ece8ff"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#6b5bd2" stroke-width="2.5"/><path d="M12 13l4-4" stroke="#6b5bd2" stroke-width="2.5" stroke-linecap="round"/></svg></div><div><b>Air pressure</b><span>weather moving through</span></div></div>
+        <div class="m"><div class="ic" style="background:#f3e7df"><svg viewBox="0 0 24 24"><rect x="10" y="2" width="4" height="15" rx="2" fill="#7a5038"/><circle cx="12" cy="18.5" r="3.5" fill="#7a5038"/></svg></div><div><b>Soil temperature</b><span>waterproof probes in the bedding</span></div></div>
+        <div class="m"><div class="ic" style="background:#e3f4da"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 20V9l5-5 5 5v11" fill="none" stroke="#5fae3a" stroke-width="2.5" stroke-linejoin="round"/><path d="M12 11s2.5 3 2.5 4.5a2.5 2.5 0 0 1-5 0C9.5 14 12 11 12 11z" fill="#2a9fd8"/></svg></div><div><b>Soil moisture</b><span>not too wet, not too dry</span></div></div>
+        <div class="m"><div class="ic" style="background:#fff5d6"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#f2b705"/><g stroke="#f2b705" stroke-width="2" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></g></svg></div><div><b>Light</b><span>worms like it dark</span></div></div>
+        <div class="m"><div class="ic" style="background:#ffe3e8"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="#c8102e"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4" fill="none" stroke="#c8102e" stroke-width="2" stroke-linecap="round"/></svg></div><div><b>Sound</b><span>how noisy the room gets</span></div></div>
+        <div class="m"><div class="ic" style="background:#e6ebf5"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="5" rx="2" fill="#1b2f5e"/><path d="M12 8v9" stroke="#ff2d55" stroke-width="2" stroke-dasharray="2.5 2"/><path d="M4 20h16" stroke="#7a5038" stroke-width="3" stroke-linecap="round"/></svg></div><div><b>Bedding level</b><span>a laser measures how it settles</span></div></div>
+      </div>
+    </div>
+    <div class="comfort">
+      <h3>The worm comfort zone</h3>
+      <svg class="gauge" viewBox="0 0 300 70" width="100%">
+        <rect x="10" y="22" width="280" height="18" rx="9" fill="#e8eef7"/>
+        <rect x="10" y="22" width="70" height="18" rx="9" fill="#9fd1f2"/><rect x="220" y="22" width="70" height="18" rx="9" fill="#f6a3a3"/>
+        <rect x="80" y="22" width="140" height="18" fill="#a6e07f"/>
+        <text x="80" y="60" font-size="12" font-weight="800" fill="#1b2f5e" text-anchor="middle">55&#176;F</text>
+        <text x="220" y="60" font-size="12" font-weight="800" fill="#1b2f5e" text-anchor="middle">77&#176;F</text>
+        <text x="150" y="15" font-size="12" font-weight="800" fill="#2f7d3a" text-anchor="middle">happy worms</text>
+        <text x="40" y="15" font-size="11" fill="#2a6f9c" text-anchor="middle" font-weight="700">sluggish</text>
+        <text x="258" y="15" font-size="11" fill="#b42318" text-anchor="middle" font-weight="700">too hot!</text>
+      </svg>
+      <ul>
+        <li>Bedding should feel like a <b>wrung-out sponge</b>.</li>
+        <li>Too wet and they can't breathe; that's when our <b>fan</b> runs.</li>
+        <li>They hate light, so the bins stay covered.</li>
+        <li>A bin that goes quiet for 10 minutes gets flagged.</li>
+      </ul>
+      <p style="font-size:12.5px;margin:10px 0 0;color:#5b3a29"><b>The best part:</b> we don't have to guess. If something drifts out of the
+        zone at 2 a.m., the data shows it in the morning.</p>
+    </div>
+  </div>
+
+  <div class="facts">
+    <div class="fact"><b>No lungs.</b> Worms breathe through their skin, so it has to stay moist. That's why we watch humidity so closely.</div>
+    <div class="fact"><b>No eyes, either.</b> They still sense light through their skin and dive for the dark. Lids stay on!</div>
+    <div class="fact"><b>Big appetites.</b> A healthy bin of red wigglers can eat about half its own weight in scraps every day.</div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">2 / 8</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ 3 -->
+<section class="page" id="p3">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="x">&times;</div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="kicker">So far</div>
+  <h2>What we've <em>learned</em> (and wired, and soldered)</h2>
+  <p class="lede">We started with a box of loose parts. Here's what it took to turn them into working science stations.</p>
+
+  <div class="learned">
+    <div class="card"><span class="chip" style="background:#1b2f5e">Computing</span><h3>Microcontrollers &amp; code</h3>
+      <p>A Raspberry Pi Pico 2 W is a computer the size of a stick of gum. We program it in MicroPython, so a few lines turn a pin on or read a sensor.</p></div>
+    <div class="card"><span class="chip" style="background:#e8762c">Electronics</span><h3>Circuits &amp; breadboards</h3>
+      <p>Ohm's law, resistor color codes, and why a sensor needs a pull-up resistor. A breadboard lets us try a circuit before we commit.</p></div>
+    <div class="card"><span class="chip" style="background:#c8102e">Hands-on</span><h3>Soldering</h3>
+      <p>Header pins on every board: a hot iron, a steady hand, and shiny joints instead of cold, dull ones. Then a test to prove it works.</p></div>
+    <div class="card"><span class="chip" style="background:#5fae3a">Sensors</span><h3>Sensors on two wires</h3>
+      <p>The I2C bus lets a screen and a pile of sensors share the same two wires, each with its own address. One color code for every build.</p></div>
+    <div class="card"><span class="chip" style="background:#2a9fd8">Networking</span><h3>Wi-Fi, routers &amp; servers</h3>
+      <p>How a reading travels from a bin, through a classroom router and a Raspberry Pi server, all the way to a website anyone can open.</p></div>
+    <div class="card"><span class="chip" style="background:#0f9d58">Data</span><h3>Data in Google Sheets</h3>
+      <p>We pull the readings into Google Sheets to chart a day of temperatures, take averages, compare bins, and spot trends nobody would see by eye.</p></div>
+    <div class="card"><span class="chip" style="background:#7a5038">Biology</span><h3>Worm science</h3>
+      <p>What red wigglers eat, why moisture matters, and how a healthy bin turns scraps into castings for the school garden.</p></div>
+    <div class="card story"><span class="chip" style="background:#c8102e">True story</span><h3>Debugging, for real</h3>
+      <p>Our first fan only twitched. The culprit: a diode in backwards, which cooked a transistor. Now we always check which way the stripe faces.</p></div>
+  </div>
+
+  <div class="quote">Things break. We find out why, fix it, and write it down so the next team doesn't have to learn it the hard way.</div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">3 / 8</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ 4 -->
+<section class="page" id="p4">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="x">&times;</div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="kicker">Up next</div>
+  <h2>Where we're <em>headed</em></h2>
+  <p class="lede">The bins are running. Now we get to design and build the parts ourselves, and ask bigger questions of the data.</p>
+
+  <div class="next">
+    <div class="nx n1"><svg viewBox="0 0 48 48"><rect x="8" y="6" width="32" height="8" rx="2" fill="#fff"/><path d="M24 14v8" stroke="#fff" stroke-width="3"/><path d="M18 22h12l-3 6h-6z" fill="#fff"/><rect x="10" y="34" width="28" height="8" rx="2" fill="#fff" opacity=".85"/><rect x="16" y="30" width="16" height="4" rx="1" fill="#fff" opacity=".6"/></svg>
+      <h3>3D printing</h3><p>Print our own sensor mounts, lid brackets, and a snug case for each bin's computer and screen.</p></div>
+    <div class="nx n2"><svg viewBox="0 0 48 48"><path d="M24 6l16 9v18l-16 9-16-9V15z" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="M8 15l16 9 16-9M24 24v18" fill="none" stroke="#fff" stroke-width="3"/></svg>
+      <h3>CAD</h3><p>Design those parts on the computer first: measure, model, tweak, and test the fit before anything gets made.</p></div>
+    <div class="nx n3"><svg viewBox="0 0 48 48"><rect x="6" y="30" width="36" height="10" rx="2" fill="#fff"/><path d="M24 6v16" stroke="#fff" stroke-width="4"/><path d="M19 22h10l-5 7z" fill="#fff"/><path d="M10 36h28" stroke="#5fae3a" stroke-width="2" stroke-dasharray="4 3"/></svg>
+      <h3>CAM</h3><p>Turn designs into toolpaths for a CNC router or laser cutter: custom lids, labels, and signs for every bin.</p></div>
+  </div>
+
+  <div class="ideas">
+    <div class="card"><span class="chip" style="background:#0f9d58">Experiments</span><h3>Ask the data harder questions</h3>
+      <p>Does running the fan keep a bin healthier? Which bedding holds moisture best? Do busy class periods make for busier worms?</p></div>
+    <div class="card"><span class="chip" style="background:#6b5bd2">Creativity</span><h3>Make the screens our own</h3>
+      <p>Every team can draw pixel-art animations for their bin's screen and send them over Wi-Fi. The wolverine already made the cut.</p></div>
+    <div class="card"><span class="chip" style="background:#e8762c">Engineering</span><h3>Design for the real world</h3>
+      <p>Damp air, curious hands, and power outages: we're learning to build things that keep working when life happens.</p></div>
+    <div class="card"><span class="chip" style="background:#1b2f5e">Careers</span><h3>Skills that travel</h3>
+      <p>Coding, electronics, networking, design and data: the same tools engineers and scientists use every day.</p></div>
+  </div>
+
+  <div class="help">
+    <div>
+      <h3>Help us grow (the worms, too)</h3>
+      <ul>
+        <li>Sensor kits and boards, so every team has its own</li>
+        <li>3D printer filament and parts for the next builds</li>
+        <li>CAD/CAM tools and cutting materials</li>
+        <li>Worms, bins, and bedding for more classrooms</li>
+      </ul>
+    </div>
+    <div class="contact"><b>Let's talk!</b><span>Stop by our bins, or reach Maker Lab Kids at<br><b style="font-size:15px;display:inline">info@makerlabkids.com</b><br>makerlabkids.com</span></div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">4 / 8</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ 5 -->
+<section class="page" id="p5">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="x">&times;</div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="kicker">On the big screen</div>
+  <h2>Mission control, <em>seven ways</em></h2>
+  <p class="lede" style="margin-bottom:10px">Same bins, same live numbers, seven different looks for the classroom projector. Pick your favorite.</p>
+
+  <figure class="shot"><img src="img/skin-deck.jpg" alt="Flight Deck: every bin as a mission-control tile"></figure>
+  <p class="cap"><b>Flight Deck.</b> Every bin in the school on one screen, like NASA's mission control. A tile flashes amber when something needs a look.</p>
+
+  <div class="g2" style="margin-top:10px">
+    <div><figure class="shot crop"><img src="img/skin-bin.jpg" alt="The Living Bin"></figure><p class="cap"><b>The Living Bin.</b> A cutaway of one team's bin, drawn from its real readings.</p></div>
+    <div><figure class="shot crop"><img src="img/skin-board.jpg" alt="The Leaderboard"></figure><p class="cap"><b>The Leaderboard.</b> Bin scores, ranked. Yes, the teams take it seriously.</p></div>
+    <div><figure class="shot crop"><img src="img/skin-net.jpg" alt="WORM//NET"></figure><p class="cap"><b>WORM//NET.</b> A hacker-movie look, with a 3D bin and a worm radar.</p></div>
+    <div><figure class="shot crop"><img src="img/skin-paper.jpg" alt="The Daily Worm"></figure><p class="cap"><b>The Daily Worm.</b> The day's readings, written up as a newspaper.</p></div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">5 / 8</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ 6 -->
+<section class="page" id="p6">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="x">&times;</div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="kicker">On the bin, and on your phone</div>
+  <h2>Little screens, <em>big data</em></h2>
+  <p class="lede" style="margin-bottom:8px">Each bin has a 128&times;64-pixel screen on its lid. At power-on it plays a show; the rest of the day it shows the bin's readings and messages from the team.</p>
+
+  <div class="oled-grid">
+    <div><div class="oled"><img src="img/oled-school.png" alt="Woodstock High wolverine on the bin screen"></div></div>
+    <div><div class="oled"><img src="img/oled-wormparty.png" alt="Worm party animation"></div></div>
+    <div><div class="oled"><img src="img/oled-radar.png" alt="Worm radar animation"></div></div>
+    <div><div class="oled"><img src="img/oled-scientist.png" alt="Data screen"></div></div>
+    <div><div class="oled"><img src="img/oled-bigworm.png" alt="Wormhole title animation"></div></div>
+    <div><div class="oled"><img src="img/oled-underground.png" alt="Underground worms animation"></div></div>
+    <div><div class="oled"><img src="img/oled-makerlab.png" alt="Maker Lab Kids logo on the bin screen"></div></div>
+    <div><div class="oled"><img src="img/oled-compost.png" alt="Compost pile animation"></div></div>
+  </div>
+  <p class="cap" style="text-align:center">Real frames from the bins' screens. Students draw their own in a free pixel-art editor and send them to their bin over Wi-Fi.</p>
+
+  <div class="g2" style="margin-top:12px">
+    <div><figure class="shot"><img src="img/dash-wall.jpg" alt="The website's wall of bins"></figure><p class="cap"><b>The wall.</b> Every bin, grouped by class period, updating live. Green is happy; amber means take a look.</p></div>
+    <div><figure class="shot"><img src="img/dash-bin.jpg" alt="One bin's live charts"></figure><p class="cap"><b>One bin, up close.</b> Tap a bin for its charts: the last hour, day, week or month, or live, one reading a second.</p></div>
+  </div>
+  <div class="g2" style="margin-top:10px">
+    <div><figure class="shot crop"><img src="img/skin-orbital.jpg" alt="Orbital view"></figure><p class="cap"><b>Orbital.</b> All 46 demo bins circling the Wormhole.</p></div>
+    <div><figure class="shot crop"><img src="img/skin-garden.jpg" alt="Worm Ranch view"></figure><p class="cap"><b>Worm Ranch.</b> Each bin as a pixel pet. Keep your worm happy!</p></div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">6 / 8</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ 7 -->
+<section class="page" id="p7">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="x">&times;</div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="kicker">Under the hood</div>
+  <h2>How it all <em>connects</em></h2>
+  <p class="lede" style="margin-bottom:6px">We named every piece the way a worm would. Readings tunnel up from the bins, through the classrooms, to the surface where anyone can see them.</p>
+
+  <div class="arch">
+    <svg viewBox="0 0 1000 690" role="img" aria-label="Bins send readings over Wi-Fi to a Burrow server in each classroom; classroom routers (Tunnels) link to the Portal router; the Portal reaches the internet and the website (the Surface)">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dff2ff"/><stop offset="1" stop-color="#f4fbff"/></linearGradient>
+        <linearGradient id="dirt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
+        <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fbf3f"/><stop offset="1" stop-color="#4c9a2c"/></linearGradient>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#f2b705"/></marker>
+        <marker id="ahb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2a9fd8"/></marker>
+      </defs>
+      <!-- sky + surface -->
+      <rect x="0" y="0" width="1000" height="200" rx="18" fill="url(#sky)"/>
+      <rect x="0" y="182" width="1000" height="508" rx="18" fill="url(#dirt)"/>
+      <path d="M0 196 Q 60 176 120 194 T 240 192 T 360 196 T 480 190 T 600 196 T 720 192 T 840 196 T 1000 190 L1000 210 L0 210Z" fill="url(#grass)"/>
+      <!-- cloud: the Surface -->
+      <g transform="translate(330 22)">
+        <path d="M70 120 h200 a44 44 0 0 0 0 -88 a64 64 0 0 0 -120 -18 a50 50 0 0 0 -80 34 a40 40 0 0 0 0 72z" fill="#fff" stroke="#bfe0f5" stroke-width="3"/>
+        <text x="170" y="62" text-anchor="middle" font-family="Fredoka, Arial" font-size="26" font-weight="700" fill="#1b2f5e">THE SURFACE</text>
+        <text x="170" y="86" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="15" font-weight="800" fill="#2a9fd8">whs.makerlabkids.com</text>
+        <text x="170" y="106" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#5b6475">the website, in the cloud</text>
+      </g>
+      <!-- viewers -->
+      <g font-family="Nunito Sans, Arial" font-size="13" font-weight="700" fill="#1b2f5e">
+        <g transform="translate(60 52)"><rect x="0" y="0" width="120" height="74" rx="8" fill="#1b2f5e"/><rect x="8" y="8" width="104" height="56" rx="3" fill="#0b1220"/><g fill="#5fae3a"><rect x="16" y="16" width="26" height="16" rx="2"/><rect x="47" y="16" width="26" height="16" rx="2"/><rect x="78" y="16" width="26" height="16" rx="2" fill="#f2b705"/><rect x="16" y="38" width="26" height="16" rx="2"/><rect x="47" y="38" width="26" height="16" rx="2"/><rect x="78" y="38" width="26" height="16" rx="2"/></g><text x="60" y="96" text-anchor="middle">classroom projectors</text></g>
+        <g transform="translate(820 40)"><rect x="0" y="0" width="52" height="92" rx="10" fill="#1b2f5e"/><rect x="5" y="10" width="42" height="70" rx="4" fill="#0b1220"/><path d="M12 60 l8 -14 l8 6 l8 -18 l6 10" fill="none" stroke="#5fae3a" stroke-width="3"/><text x="26" y="112" text-anchor="middle">phones</text></g>
+        <g transform="translate(890 64)"><rect x="0" y="0" width="80" height="52" rx="5" fill="#1b2f5e"/><rect x="5" y="5" width="70" height="40" rx="2" fill="#0b1220"/><rect x="-8" y="52" width="96" height="6" rx="3" fill="#24407e"/><text x="40" y="88" text-anchor="middle">laptops</text></g>
+      </g>
+      <path d="M330 92 L 190 92" stroke="#2a9fd8" stroke-width="4" marker-end="url(#ahb)"/>
+      <path d="M670 92 L 812 92" stroke="#2a9fd8" stroke-width="4" marker-end="url(#ahb)"/>
+      <!-- portal -->
+      <g transform="translate(420 238)">
+        <rect x="0" y="0" width="160" height="96" rx="14" fill="#1b2f5e" stroke="#f2b705" stroke-width="3"/>
+        <text x="80" y="34" text-anchor="middle" font-family="Fredoka, Arial" font-size="22" font-weight="700" fill="#f2b705">THE PORTAL</text>
+        <text x="80" y="56" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#dfe6f4">main router + Burrow 0</text>
+        <text x="80" y="76" text-anchor="middle" font-family="Nunito Sans, Arial" font-size="12.5" fill="#dfe6f4">reaches the internet</text>
+      </g>
+      <path d="M500 238 L 500 150" stroke="#f2b705" stroke-width="5" marker-end="url(#ah)"/>
+      <text x="512" y="206" font-family="Nunito Sans, Arial" font-size="13" font-weight="800" fill="#fff">school internet</text>
+      <!-- three classrooms -->
+      <g font-family="Nunito Sans, Arial">
+        <g transform="translate(40 410)">
+          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 1</text>
+          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 1</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
+          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 1</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
+          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
+          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
+          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 1 &amp; 2 · 17 bins</text>
+          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
+        </g>
+        <g transform="translate(360 410)">
+          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 2</text>
+          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 2</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
+          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 2</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
+          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
+          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
+          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 3 &amp; 4 · 17 bins</text>
+          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
+        </g>
+        <g transform="translate(680 410)">
+          <rect x="0" y="0" width="280" height="250" rx="16" fill="#fff" fill-opacity=".1" stroke="#c99b74" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="140" y="26" text-anchor="middle" font-family="Fredoka, Arial" font-size="18" font-weight="700" fill="#ffe7c7">CLASSROOM 3</text>
+          <rect x="70" y="40" width="140" height="50" rx="10" fill="#2a9fd8"/><text x="140" y="62" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">TUNNEL 3</text><text x="140" y="80" text-anchor="middle" font-size="11" fill="#e8f6ff">classroom router</text>
+          <rect x="70" y="106" width="140" height="50" rx="10" fill="#5fae3a"/><text x="140" y="128" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">BURROW 3</text><text x="140" y="146" text-anchor="middle" font-size="11" fill="#effbe6">Raspberry Pi server</text>
+          <g fill="#e8762c"><rect x="22" y="184" width="44" height="34" rx="6"/><rect x="74" y="184" width="44" height="34" rx="6"/><rect x="126" y="184" width="44" height="34" rx="6"/><rect x="178" y="184" width="44" height="34" rx="6"/><rect x="230" y="184" width="30" height="34" rx="6" opacity=".6"/></g>
+          <g fill="#fff" font-size="10" font-weight="800" text-anchor="middle"><text x="44" y="206">BIN</text><text x="96" y="206">BIN</text><text x="148" y="206">BIN</text><text x="200" y="206">BIN</text><text x="245" y="206">…</text></g>
+          <text x="140" y="238" text-anchor="middle" font-size="12" font-weight="700" fill="#ffe7c7">periods 5 &amp; 6 · 16 bins</text>
+          <path d="M140 184 L140 160" stroke="#f2b705" stroke-width="4" marker-end="url(#ah)"/>
+        </g>
+      </g>
+      <!-- the backhaul: tunnels to the portal -->
+      <g fill="none" stroke="#f2b705" stroke-width="5" stroke-dasharray="10 7">
+        <path d="M180 450 C 180 330, 300 300, 418 290" marker-end="url(#ah)"/>
+        <path d="M500 450 L 500 338" marker-end="url(#ah)"/>
+        <path d="M820 450 C 820 330, 700 300, 582 290" marker-end="url(#ah)"/>
+      </g>
+      <text x="196" y="372" font-family="Nunito Sans, Arial" font-size="13" font-weight="800" fill="#ffe7c7" transform="rotate(-24 196 372)">hidden 5 GHz Wi-Fi link</text>
+    </svg>
+  </div>
+
+  <div class="keep">
+    <div class="card"><span class="chip" style="background:#e8762c">Wi-Fi drops?</span><p>Each bin saves its readings on its own memory and sends them all once the network's back. Nothing gets lost.</p></div>
+    <div class="card"><span class="chip" style="background:#5fae3a">Internet out?</span><p>Every classroom's Burrow keeps its own copy, so the bins and screens keep right on working.</p></div>
+    <div class="card"><span class="chip" style="background:#1b2f5e">A server dies?</span><p>A spare Raspberry Pi takes over the room by itself. We've already seen one do it.</p></div>
+  </div>
+
+  <div class="words">
+    <div><b style="color:#e8762c">Bin</b>a worm bin with its own little computer</div>
+    <div><b style="color:#5fae3a">Burrow</b>the Raspberry Pi server in each classroom</div>
+    <div><b style="color:#2a9fd8">Tunnel</b>each classroom's Wi-Fi router</div>
+    <div><b style="color:#c99a1e">Portal</b>the main router, out to the internet</div>
+    <div><b style="color:#1b2f5e">Surface</b>the website, where anyone can see it all</div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">7 / 8</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ 8 -->
+<section class="page" id="p8">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="x">&times;</div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="kicker">Wiring it up</div>
+  <h2>From breadboard to <em>bin</em></h2>
+
+  <div class="photo-row">
+    <figure class="shot"><img src="img/laser-sensor.jpg" alt="Close-up of the laser distance sensor on a breadboard, its laser glowing"></figure>
+    <div>
+      <p><b style="color:#c8102e">That purple dot is a laser.</b> This tiny sensor times how long light takes to bounce off the bedding and back, to within about a centimeter. Mounted under the lid, it tells us how the bin settles over the weeks.</p>
+      <p>Every sensor gets the same treatment: a wiring diagram, a breadboard test, then into the bin.</p>
+      <div class="legend">
+        <span><i style="background:#c62828"></i>3.3 V power</span><span><i style="background:#1b1b1b"></i>ground</span>
+        <span><i style="background:#1e64b4"></i>I2C data</span><span><i style="background:#f2c400;outline:1px solid #8b949c"></i>I2C clock</span>
+        <span><i style="background:#43a047"></i>signal</span><span><i style="background:#e8762c"></i>5 V</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wiring">
+    <div><figure class="shot"><img src="../wiring/bme280.svg" alt="BME280 air sensor wiring"></figure><p class="cap"><b>Air sensor.</b> Temperature, humidity and pressure on the I2C bus.</p></div>
+    <div><figure class="shot"><img src="../wiring/soil-temperature.svg" alt="DS18B20 soil thermometer wiring"></figure><p class="cap"><b>Soil thermometers.</b> Many probes share one wire and one 4.7k resistor.</p></div>
+    <div><figure class="shot"><img src="../wiring/soil-moisture.svg" alt="Soil moisture probe wiring"></figure><p class="cap"><b>Moisture probe.</b> One analog wire: the wetter the bedding, the lower the voltage.</p></div>
+    <div><figure class="shot"><img src="../wiring/fan.svg" alt="Fan wiring with a transistor and a diode"></figure><p class="cap"><b>The fan.</b> A transistor switches it, and a diode, stripe on the red side, protects it.</p></div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">8 / 8</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+</body>
+</html>
