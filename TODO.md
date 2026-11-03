@@ -29,11 +29,10 @@ out there and nothing needs migrating. A Pico is set up once by cable and update
    `tools/fleet/flash.py` (MicroPython 1.29, the worm-bin code, boot.py + lib/ota.py, wifi.json,
    bin.json with the bin number 30-79). Label the lids to match. Do ONE first: Claude checks its
    pushes and sends it a Wi-Fi code update before the rest. Recalibrate distance once mounted.
-3. **The golden image is stale (2026-11-03):** a card burned from it carries the OLD router password and
-   backhaul key in tunnel.json (from before the 11-01 rotation) and roles.py's 0600 cloud token (the
-   burrow service cannot read it: no uploads). burrow3's new card needed all three fixed by hand.
-   Re-image it from burrow3 (`edge/burrow/tools/clone-card.sh image 3 burrow-golden.img.gz`, ~20 min)
-   before burning more. The old burrow3 Pi/card (silent since 11-01 18:54) is retired: find it.
+3. **Golden image refreshed 2026-11-03 00:30** from burrow3 (496ff1b: current router password and
+   backhaul key, the 0640 cloud-token fix); validated (gzip -t, 6987710464 bytes, p3 at 13647872). The
+   old one is burrow-golden-7c69e0c.img.gz: its cards need tunnel.json + token mode fixed by hand.
+   The old burrow3 Pi/card (silent since 11-01 18:54) is retired: re-burn its card before reuse.
    **Re-burn the spare Pi cards** from /workspace/burrow-golden.img.gz with the current
    `sudo edge/burrow/tools/clone-card.sh write burrow-golden.img.gz /dev/sdX` (it now adds the
    enrolment secret; cards burned before 2026-11-01 14:30 lack it and cannot enrol).
