@@ -336,6 +336,29 @@
     </div>
   </section>
 
+  <section class="sensor move" id="fan">
+    <figure><a href="wiring/fan.svg"><img src="wiring/fan.svg" alt="Fan wiring: a 2N2222 transistor with legs E B C, a 470 ohm resistor, and a diode across the fan" loading="lazy"></a>
+      <figcaption>Every part in place: the transistor as you hold it, the diode across the fan. Click to enlarge.</figcaption></figure>
+    <div>
+      <h3>Fan <span class="part">5V fan + 2N2222</span></h3>
+      <p class="what">blows air through the bin when it gets too damp</p>
+      <p>The worm-bin monitor runs it for a minute every 15 minutes while the air inside is over 80%
+         humidity, and for a moment at power-on to show it works.</p>
+      <p class="multi" style="border-left:4px solid var(--orange)"><b>Wiring:</b> a Pico pin can't run a
+         0.2 A fan, so a <b>2N2222 transistor</b> switches it. Hold the transistor <b>flat face toward you,
+         legs down: E, B, C</b> left to right. <b>E</b> to <b>GND</b> (pin 38). <b>B</b> through a
+         <b>470 ohm</b> resistor (yellow violet brown gold) to <b>GP15</b> (pin 20). <b>C</b> to the fan's
+         <b>black</b> wire. The fan's <b>red</b> wire to <b>VBUS</b> (pin 40, 5V, not 3V3).</p>
+      <p class="multi" style="border-left:4px solid var(--orange)"><b>The diode, across the fan:</b> a
+         1N5819 (or 1N5817, 1N4001-1N4007) with <b>one leg on the fan's red wire and the other on its
+         black wire</b>, the <b>stripe on the red side</b>. When the fan switches off it kicks back a
+         voltage spike; the diode soaks it up so it can't kill the transistor.</p>
+      <p class="multi"><b>Check the label:</b> a transistor printed <b>P2N2222A</b> (with a P in front) has
+         its legs the other way round, <b>C B E</b>: swap the two outer wires.</p>
+      <p class="links"><a class="rd ext" href="https://github.com/MakerLabKids/whs-wormhole/tree/main/projects/worm-bin#readme">Worm-bin README</a></p>
+    </div>
+  </section>
+
   <h2>The big one: the worm-bin monitor</h2>
   <hr class="rule o">
   <div class="big" id="worm-bin">

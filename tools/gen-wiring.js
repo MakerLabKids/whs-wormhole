@@ -662,35 +662,103 @@ projects["vibration"] = () => diagram(
     { text: "no diode = dead transistor; or use a kit module" },
   ]);
 
-projects["fan"] = () => diagram(
-  "fan wiring", "a 5V fan switched by a 2N2222 transistor (worm bin, GP15) + OLED",
-  [1, 2, 20, 38, 40], () => {
-    const x = DEV_X, y = 250, w = DEV_W, h = 96;
-    let s = deviceBox(x, y, w, h, "fan switch", "2N2222 + 470 ohm + diode", C.orange);
-    const p = { SIG: { x, y: y + 44 }, PWR: { x, y: y + 64 }, GND: { x, y: y + 84 } };
-    s += devPin(x, p.SIG.y, "B (base)") + devPin(x, p.PWR.y, "fan +5V") + devPin(x, p.GND.y, "E (emitter)");
-    s += oledI2C();
-    s += sig(20, p.SIG, W.sig);       // GP15 = pin 20 -> base via 470 ohm
-    s += sig(40, p.PWR, W.vbus);      // VBUS 5V: the fan's own power, not 3V3
-    s += tap(RAIL_GND, p.GND, W.gnd);
-    // fan glyph to the right: red to +5V, black to the collector
-    const mx = x + w + 70, my = y + 70;   // below the (tall) Connections box
-    s += `<circle cx="${mx + 18}" cy="${my + 18}" r="18" fill="#334155" stroke="#1e293b" stroke-width="1.5"/>`;
-    s += text(mx + 18, my + 24, "FAN", { size: 11, color: "#e2e8f0", anchor: "middle", bold: true });
-    s += text(mx + 18, my + 54, "5V fan, 0.2 A", { size: 10, color: C.gray, anchor: "middle" });
-    s += wire([[x + w, y + 58], [mx, my + 10]], W.vbus, 2);
-    s += wire([[x + w, y + 74], [mx, my + 26]], C.ink, 2);
-    return s;
-  },
-  [
-    { color: W.sig, text: "GP15 (pin 20) -> 470 ohm -> 2N2222 base (middle leg)" },
-    { color: W.vbus, text: "fan red -> VBUS (pin 40), 5V, NOT 3V3" },
-    { color: C.ink, text: "fan black -> 2N2222 collector" },
-    { color: W.gnd, text: "2N2222 emitter -> GND (pin 38)" },
-    { text: "diode ACROSS the fan: band to red, other end to black" },
-    { text: "no diode? a 2nd transistor: B+C tied to black, E to red" },
-    { text: "check the label: PN2222A legs E-B-C, P2N2222A legs C-B-E" },
-  ]);
+// The fan gets its own drawing, parts in place (not a box): the 2N2222 as you hold it (flat face,
+// legs E B C), the 470 ohm with its bands, and the diode lying ACROSS the fan's two wires with its
+// stripe on the red side. The OLED is left out here (it is on every other diagram) so the parts fit.
+projects["fan"] = () => {
+  reset([20, 38, 40]);
+  const VB = pin(40), GN = pin(38), G15 = pin(20);
+  const RED_Y = 240, BLK_Y = 360, FANX = 980;          // the fan's two wires, and where the fan starts
+  const TX = 600, LEG = { E: TX - 30, B: TX, C: TX + 30 }, BODY_Y = 420, LEG_END = 560;
+  let s = drawPico();
+  // --- the fan, on the right, its own red and black wires coming out of its left side
+  s += `<rect x="${FANX}" y="${RED_Y - 25}" width="170" height="170" rx="16" fill="#2F3540" stroke="#151A21" stroke-width="2"/>`;
+  s += `<circle cx="${FANX + 85}" cy="${RED_Y + 60}" r="68" fill="#3E4652" stroke="#151A21" stroke-width="1.5"/>`;
+  for (let k = 0; k < 7; k++) {
+    const t = k * 2 * Math.PI / 7, cx = FANX + 85, cy = RED_Y + 60;
+    const x1 = cx + 18 * Math.cos(t), y1 = cy + 18 * Math.sin(t), x2 = cx + 62 * Math.cos(t + 0.5), y2 = cy + 62 * Math.sin(t + 0.5);
+    const x3 = cx + 62 * Math.cos(t + 0.95), y3 = cy + 62 * Math.sin(t + 0.95);
+    s += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)} Q${(cx + 70 * Math.cos(t + 0.72)).toFixed(1)} ${(cy + 70 * Math.sin(t + 0.72)).toFixed(1)} ${x3.toFixed(1)} ${y3.toFixed(1)} Z" fill="#8B95A3"/>`;
+  }
+  s += `<circle cx="${FANX + 85}" cy="${RED_Y + 60}" r="20" fill="#20252D"/>`;
+  s += text(FANX + 85, RED_Y + 66, "FAN", { size: 13, color: "#E2E8F0", anchor: "middle", bold: true });
+  s += text(FANX + 85, RED_Y + 168, "5V fan, 0.2 A, two wires", { size: 11, color: C.gray, anchor: "middle" });
+  // --- +5V: VBUS (pin 40) -> the fan's red wire
+  s += wire([[EXIT_R, VB.y], [400, VB.y], [400, RED_Y], [840, RED_Y]], W.vbus) + dot(EXIT_R, VB.y, W.vbus);
+  s += wire([[840, RED_Y], [FANX, RED_Y]], W.pwr, 4);
+  s += text(420, RED_Y - 8, "+5V from VBUS (pin 40)", { size: 11.5, color: W.vbus, bold: true });
+  s += text(FANX - 8, RED_Y - 8, "fan RED", { size: 11.5, color: W.pwr, bold: true, anchor: "end" });
+  // --- the diode ACROSS the fan: one leg on the red wire, one on the black, stripe on the red side
+  const DX = 900;
+  s += wire([[DX, RED_Y], [DX, RED_Y + 28]], "#9AA3AD", 2.4) + wire([[DX, RED_Y + 92], [DX, BLK_Y]], "#9AA3AD", 2.4);
+  s += `<rect x="${DX - 13}" y="${RED_Y + 28}" width="26" height="64" rx="5" fill="#1B1B1B"/>`;
+  s += `<rect x="${DX - 13}" y="${RED_Y + 30}" width="26" height="11" fill="#D5D9DE"/>`;
+  s += dot(DX, RED_Y, W.pwr) + dot(DX, BLK_Y, W.gnd);
+  s += arrowhead(DX - 16, RED_Y + 36, 1, 0, 11, C.navy) + wire([[DX - 58, RED_Y + 36], [DX - 26, RED_Y + 36]], C.navy, 2);
+  s += text(DX - 62, RED_Y + 40, "STRIPE", { size: 12, color: C.navy, bold: true, anchor: "end" });
+  s += text(DX - 62, RED_Y + 55, "toward red (+5V)", { size: 11, color: C.navy, anchor: "end" });
+  s += text(DX - 22, RED_Y + 82, "1N5819", { size: 11, color: C.ink, bold: true, anchor: "end" });
+  s += text(DX + 20, RED_Y + 56, "ACROSS", { size: 11, color: C.ink, bold: true });
+  s += text(DX + 20, RED_Y + 70, "= one leg on", { size: 10, color: C.ink });
+  s += text(DX + 20, RED_Y + 82, "each wire", { size: 10, color: C.ink });
+  // --- the 2N2222, as you hold it: flat face toward you, legs down
+  s += `<path d="M${TX - 45} ${BODY_Y + 80} L${TX - 45} ${BODY_Y + 22} Q${TX - 45} ${BODY_Y} ${TX - 23} ${BODY_Y} L${TX + 23} ${BODY_Y} Q${TX + 45} ${BODY_Y} ${TX + 45} ${BODY_Y + 22} L${TX + 45} ${BODY_Y + 80} Z" fill="#1F2329" stroke="#0B0D10" stroke-width="1.5"/>`;
+  s += text(TX, BODY_Y + 36, "2N2222", { size: 12, color: "#E5E7EB", anchor: "middle", bold: true });
+  s += text(TX, BODY_Y + 52, "flat face", { size: 9.5, color: "#AEB6BF", anchor: "middle" });
+  s += text(TX, BODY_Y + 64, "toward you", { size: 9.5, color: "#AEB6BF", anchor: "middle" });
+  for (const k of ["E", "B", "C"]) s += wire([[LEG[k], BODY_Y + 80], [LEG[k], LEG_END]], "#9AA3AD", 3);
+  for (const k of ["E", "B", "C"]) {
+    s += `<circle cx="${LEG[k]}" cy="${BODY_Y + 112}" r="11" fill="#FFFFFF" stroke="${C.navy}" stroke-width="2"/>`;
+    s += text(LEG[k], BODY_Y + 117, k, { size: 13, color: C.navy, anchor: "middle", bold: true });
+  }
+  // the top view: the D shape, flat side toward you
+  const TVX = 745, TVY = 470;
+  s += `<path d="M${TVX - 50} ${TVY + 18} L${TVX + 50} ${TVY + 18} A50 50 0 0 0 ${TVX - 50} ${TVY + 18} Z" fill="#1F2329" stroke="#0B0D10" stroke-width="1.5"/>`;
+  for (const [k, dx] of [["E", -30], ["B", 0], ["C", 30]]) {
+    s += `<circle cx="${TVX + dx}" cy="${TVY + 10}" r="4" fill="#C9CED6"/>`;
+    s += text(TVX + dx, TVY + 1, k, { size: 12, color: "#FFFFFF", anchor: "middle", bold: true });
+  }
+  s += text(TVX, TVY - 40, "looking down on it:", { size: 10.5, color: C.gray, anchor: "middle" });
+  s += text(TVX, TVY + 36, "flat side toward YOU", { size: 11, color: C.ink, anchor: "middle", bold: true });
+  // --- E (left leg) -> GND (pin 38)
+  s += wire([[LEG.E, LEG_END], [LEG.E, 575], [360, 575], [360, GN.y], [EXIT_R, GN.y]], W.gnd) + dot(EXIT_R, GN.y, W.gnd) + dot(LEG.E, LEG_END, W.gnd);
+  s += text(368, 568, "E -> GND (pin 38)", { size: 11, color: W.gnd, bold: true });
+  // --- C (right leg) -> the fan's black wire
+  s += wire([[LEG.C, LEG_END], [LEG.C, 612], [820, 612], [820, BLK_Y], [840, BLK_Y]], W.gnd) + dot(LEG.C, LEG_END, W.gnd);
+  s += wire([[840, BLK_Y], [FANX, BLK_Y]], "#1B1B1B", 4);
+  s += text(650, 604, "C -> fan black", { size: 11, color: W.gnd, bold: true });
+  s += text(FANX - 8, BLK_Y + 18, "fan BLACK", { size: 11.5, color: W.gnd, bold: true, anchor: "end" });
+  // --- GP15 (pin 20) -> 470 ohm -> B (middle leg)
+  const RY = 652;
+  s += wire([[EXIT_L, G15.y], [92, G15.y], [92, RY], [420, RY]], W.sig) + dot(EXIT_L, G15.y, W.sig);
+  s += resistorGlyph(420, RY - 11, 84, 22, 470, false);
+  s += wire([[504, RY], [LEG.B, RY], [LEG.B, LEG_END]], W.sig) + dot(LEG.B, LEG_END, W.sig);
+  s += text(462, RY + 30, "470 ohm: yellow violet brown gold", { size: 11, color: C.ink, anchor: "middle" });
+  s += text(120, RY - 8, "GP15 (pin 20)", { size: 11, color: W.sig, bold: true });
+  s += text(LEG.B + 8, RY - 30, "-> B (middle)", { size: 11, color: W.sig, bold: true });
+  s += drawPinNumbers();
+  // --- the steps, in the order you build it
+  const steps = [
+    "1. Hold the 2N2222 flat face toward you, legs down: E B C.",
+    "2. E (left leg) to GND, pin 38.",
+    "3. B (middle leg) through the 470 ohm resistor to GP15, pin 20.",
+    "4. C (right leg) to the fan's BLACK wire.",
+    "5. The fan's RED wire to VBUS, pin 40 (5V, not 3V3).",
+    "6. The diode ACROSS the fan: one leg on the red wire, one on",
+    "    the black wire, the STRIPE on the red side.",
+    "Label says P2N2222A? Its legs are C B E: swap the outer two.",
+  ];
+  const lx = 870, ly = 455;
+  let leg = `<rect x="${lx - 14}" y="${ly - 26}" width="330" height="${36 + steps.length * 19}" rx="9" fill="#FFFFFF" stroke="#E1E8EF" stroke-width="1.5"/>`;
+  leg += text(lx, ly - 6, "Build it", { size: 13, color: C.navy, bold: true });
+  steps.forEach((t, i) => { leg += text(lx, ly + 16 + i * 19, t, { size: 10.6, color: i === steps.length - 1 ? "#B45309" : C.ink, bold: i === steps.length - 1 }); });
+  const head = text(40, 36, "fan wiring", { size: 22, color: C.navy, bold: true })
+    + text(40, 55, "a 5V fan switched by a 2N2222 transistor on GP15 (the worm bin's fan pin); the OLED is wired as on the other diagrams", { size: 12.5, color: C.gray });
+  const foot = text(40, 706, "Maker Lab Kids  ·  Pico 2 W  ·  numbers outside the board are physical header pins", { size: 10.5, color: C.gray })
+    + text(1180, 706, "MakerLabKids.com", { size: 10.5, color: C.blue, anchor: "end", bold: true });
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 720" font-family="Arial, Helvetica, sans-serif">`
+    + `<rect width="1220" height="720" fill="#FFFFFF"/>` + head + s + leg + foot + `</svg>`;
+};
 
 const names = Object.keys(projects);
 for (const name of names) {
