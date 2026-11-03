@@ -111,7 +111,7 @@ ONE_CSS = '''
   .perk { display: flex; gap: 10px; align-items: flex-start; background: #f6f8fc; border-radius: 14px; padding: 8px 10px; }
   .pi { flex: 0 0 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; } .pi svg { width: 26px; height: 26px; }
   .perk h3 { margin: 0; font-size: 17px; color: var(--navy); } .perk p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.35; color: #3a4352; }
-  .strip { display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .strip { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
   .ph { border-radius: 14px; overflow: hidden; position: relative; height: 1.12in; background: #0b1220; }
   .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .ph .cap { position: absolute; left: 8px; bottom: 8px; background: rgba(27,47,94,.9); color: #fff; font-weight: 800; font-size: 11.5px; border-radius: 99px; padding: 3px 10px; }
@@ -163,7 +163,8 @@ def one_sheet():
 
     <div class="strip">
       <div class="ph"><img src="../board/img/build-screen.jpg" alt="A worm bin with a 3D-printed lid and its screen"><span class="cap">Built by students</span></div>
-      <div class="ph"><img src="../board/img/skin-deck.jpg" alt="Mission control: every bin on one screen" style="object-position:left top"><span class="cap">Live on the big screen</span></div>
+      <div class="ph"><img src="img/class-soldering.jpg" alt="Woodstock High students at a Learn to Solder session" style="object-position:center 60%"><span class="cap">Learning to solder</span></div>
+      <div class="ph"><img src="img/breadboards.jpg" alt="A table of student breadboards with Picos, screens and sensor probes"><span class="cap">First circuits</span></div>
       <div class="oleds"><img src="../board/img/oled-school.png" alt="Wolverine on the bin screen"><img src="../board/img/oled-yourname.png" alt="Sponsored by: your name here, on the bin screen">
         <img src="../board/img/oled-scientist.png" alt="Data screen"><img src="../board/img/oled-bigworm.png" alt="Wormhole animation"></div>
     </div>
@@ -218,7 +219,8 @@ TRI_CSS = '''
   .s1 { background: linear-gradient(135deg, #7a5038, #5b3a29); } .s2 { background: linear-gradient(135deg, #2f7d3a, #5fae3a); } .s3 { background: linear-gradient(135deg, #1b2f5e, #2a9fd8); }
   .meas { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11.5px; margin-top: 8px; padding: 0; list-style: none; }
   .meas li::before { content: "● "; color: var(--green); }
-  .photo { border-radius: 12px; overflow: hidden; margin: 4px 0 8px; background: #ddd; } .photo img { width: 100%; display: block; object-fit: cover; }
+  .photo { border-radius: 12px; overflow: hidden; margin: 4px 0 8px; background: #ddd; position: relative; } .photo img { width: 100%; display: block; object-fit: cover; }
+  .photo .cap { position: absolute; left: 7px; bottom: 7px; background: rgba(27,47,94,.9); color: #fff; font-weight: 800; font-size: 10.5px; border-radius: 99px; padding: 2px 9px; }
   .q { background: var(--cream); border-left: 5px solid var(--yellow); border-radius: 0 12px 12px 0; padding: 8px 10px; font-family: "Fredoka"; font-size: 15px; color: var(--navy); line-height: 1.25; }
   .tperk { display: flex; gap: 9px; align-items: flex-start; margin-bottom: 9px; }
   .pi { flex: 0 0 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; } .pi svg { width: 22px; height: 22px; }
@@ -255,7 +257,7 @@ def trifold():
       <div class="step s3"><h3>3 · Share</h3><p>Every minute, Wi-Fi carries the readings to a website anyone can open.</p></div>
     </div>
     <ul class="meas"><li>Air temperature</li><li>Humidity</li><li>Air pressure</li><li>Soil temperature</li><li>Soil moisture</li><li>Bedding level</li><li>Light (coming)</li><li>Sound (coming)</li></ul>
-    <div class="photo" style="margin-top:10px"><img src="../board/img/build-lid-top.jpg" alt="The 3D-printed honeycomb lid with its screen case" style="height:1.75in"></div>
+    <div class="photo" style="margin-top:10px"><img src="img/pico-wide.jpg" alt="A Raspberry Pi Pico board" style="height:1.5in"><span class="cap">The brain: a Raspberry Pi Pico</span></div>
     <div class="oled-row"><img src="../board/img/oled-school.png" alt="Wolverine"><img src="../board/img/oled-radar.png" alt="Worm radar"><img src="../board/img/oled-scientist.png" alt="Data"><img src="../board/img/oled-yourname.png" alt="Sponsored by: your name here"></div>
   </div>
   <div class="panel back">
@@ -287,7 +289,7 @@ def trifold():
     <p>Every bin is a clear cylinder or tote of red wigglers with a 3D-printed lid, a tiny Wi-Fi computer, a screen and a set of sensors, all built by students.</p>
     <p>The worms eat scraps from our own cafeteria. The school even started a company so students can sell the castings to the public.</p>
     <div class="q">How do we keep thousands of red wigglers happy, and prove it with data?</div>
-    <div class="photo" style="margin-top:auto"><img src="../board/img/build-red-lid.jpg" alt="An earlier red lid on a clear cylinder with the sensors inside" style="height:1.7in"></div>
+    <div class="photo" style="margin-top:auto"><img src="img/class-soldering.jpg" alt="Woodstock High students at a Learn to Solder session" style="height:1.7in;object-position:center 60%"><span class="cap">Learning to solder at Woodstock High</span></div>
   </div>
   <div class="panel">
     <div class="k">FOR SPONSORS</div>
@@ -305,6 +307,7 @@ def trifold():
     <div class="tiles"><div style="background:#1b2f5e"><b>40+</b>smart bins</div><div style="background:#e8762c"><b>3</b>classrooms</div>
       <div style="background:#2f7d3a"><b>8+</b>things measured</div><div style="background:#c8102e"><b>60s</b>a fresh reading</div></div>
     <p style="margin-top:10px">Some of what we measure, nobody knows yet. Our students will share their data and findings so others can build on them.</p>
+    <div class="photo" style="margin-top:auto"><img src="img/breadboards.jpg" alt="A table of student breadboards with Picos, screens and sensor probes" style="height:1.35in"><span class="cap">First circuits: Picos, screens, probes</span></div>
   </div>
 </section>
 </body>
