@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sponsor a Bin Brochure</title>
+<meta name="description" content="A trifold brochure for sponsors of the Woodstock High School smart worm bins: two letter-landscape sheets.">
+<link rel="icon" href="../favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --navy:#1b2f5e; --navy2:#24407e; --red:#c8102e; --orange:#e8762c; --green:#5fae3a; --dgreen:#2f7d3a; --blue:#2a9fd8;
+          --yellow:#f2c400; --soil:#5b3a29; --soil2:#7a5038; --cream:#fff8ec; --ink:#1f2633; --muted:#5b6475; --pink:#e8879b; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; background: #d9dee6; color: var(--ink); font-family: "Nunito Sans", Arial, sans-serif; }
+  h1, h2, h3, .fd { font-family: "Fredoka", "Nunito Sans", Arial, sans-serif; }
+  .bar { max-width: 11in; margin: 18px auto 0; padding: 0 16px; display: flex; gap: 12px; align-items: center; justify-content: space-between;
+          flex-wrap: wrap; font-size: 14px; color: #2b3445; }
+  .bar button { font: inherit; font-weight: 700; background: var(--navy); color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; }
+  .bar a { color: var(--navy); }
+  @page { size: letter landscape; margin: 0; }
+  .sheet { width: 11in; height: 8.5in; margin: 18px auto; background: #fff; position: relative; overflow: hidden;
+           box-shadow: 0 6px 24px rgba(20,30,50,.18); }
+  @media print { body { background: #fff; } .bar { display: none; } .sheet { margin: 0; box-shadow: none; break-after: page; } }
+  @media screen and (max-width: 1160px) { .sheet { zoom: calc(100vw / 11.4in); } }
+  .worm { fill: none; stroke-linecap: round; }
+
+  .sheet { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .panel { padding: .36in .3in .3in; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+  .panel + .panel { border-left: 1px dashed rgba(91,100,117,.18); }
+  h2 { font-size: 25px; color: var(--navy); margin: 0 0 6px; line-height: 1.05; } h2 em { font-style: normal; color: var(--orange); }
+  .k { font-weight: 900; letter-spacing: .18em; font-size: 10.5px; color: var(--red); margin-bottom: 2px; }
+  p { font-size: 12.5px; line-height: 1.45; margin: 0 0 8px; }
+  .cover { background: linear-gradient(160deg, #1b2f5e 0%, #24407e 60%, #2a9fd8 130%); color: #fff; }
+  .cover .bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cover h1 { position: relative; font-size: 64px; line-height: .9; margin: 6px 0 0; color: var(--yellow); text-shadow: 0 3px 0 rgba(0,0,0,.18); }
+  .cover h1 span { color: #fff; }
+  .cover .lead { position: relative; font-size: 15px; color: #e7efff; margin-top: 10px; line-height: 1.4; }
+  .cover .binart { position: relative; margin: 14px auto 0; width: 3.15in; } .cover .burst { position: absolute; left: .18in; top: 3.0in; width: 1.15in; height: 1.15in; transform: rotate(-12deg); } .cover .burst svg { width: 100%; height: 100%; }
+  .cover .binart svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 8px 14px rgba(0,0,0,.25)); }
+  .cover .kick { position: relative; font-weight: 900; letter-spacing: .2em; font-size: 11px; color: #a6e07f; margin-top: 12px; }
+  .chips { position: relative; display: flex; gap: 8px; margin-top: auto; }
+  .chip { background: #fff; border-radius: 12px; padding: 5px 9px; display: inline-flex; align-items: center; gap: 6px; }
+  .chip img { height: .38in; display: block; } .chip b { font-family: "Fredoka"; color: var(--navy); font-size: 10.5px; line-height: 1.05; letter-spacing: .04em; }
+  .back { background: var(--cream); text-align: center; align-items: center; }
+  .back .qr { width: 1.55in; height: 1.55in; display: block; margin: 8px auto; background: #fff; border-radius: 10px; padding: 6px; }
+  .back .big { font-family: "Fredoka"; font-size: 20px; color: var(--navy); }
+  .back .url { font-weight: 900; color: var(--orange); font-size: 15px; }
+  .back .contact { background: var(--navy); color: #fff; border-radius: 14px; padding: 12px; margin-top: 14px; width: 100%; }
+  .back .contact h3 { margin: 0 0 4px; color: var(--yellow); font-size: 21px; } .back .contact p { margin: 0; font-size: 13px; }
+  .back .logosv { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: auto; }
+  .back .logosv img { height: .55in; }
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .step { border-radius: 12px; padding: 9px 11px; color: #fff; } .step h3 { margin: 0; font-size: 17px; } .step p { margin: 2px 0 0; font-size: 12px; line-height: 1.35; }
+  .s1 { background: linear-gradient(135deg, #7a5038, #5b3a29); } .s2 { background: linear-gradient(135deg, #2f7d3a, #5fae3a); } .s3 { background: linear-gradient(135deg, #1b2f5e, #2a9fd8); }
+  .meas { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11.5px; margin-top: 8px; padding: 0; list-style: none; }
+  .meas li::before { content: "● "; color: var(--green); }
+  .photo { border-radius: 12px; overflow: hidden; margin: 4px 0 8px; background: #ddd; } .photo img { width: 100%; display: block; object-fit: cover; }
+  .q { background: var(--cream); border-left: 5px solid var(--yellow); border-radius: 0 12px 12px 0; padding: 8px 10px; font-family: "Fredoka"; font-size: 15px; color: var(--navy); line-height: 1.25; }
+  .tperk { display: flex; gap: 9px; align-items: flex-start; margin-bottom: 9px; }
+  .pi { flex: 0 0 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; } .pi svg { width: 22px; height: 22px; }
+  .tperk h3 { margin: 0; font-size: 17px; color: var(--navy); } .tperk p { margin: 1px 0 0; font-size: 12.8px; line-height: 1.38; } .tperk { margin-bottom: 12px; }
+  .goes { background: var(--cream); border: 2px solid #f1dcc0; border-radius: 14px; padding: 10px 12px; }
+  .goes h3 { margin: 0 0 3px; color: var(--soil); font-size: 18px; } .goes ul { margin: 0; padding-left: 16px; font-size: 12px; line-height: 1.5; }
+  .learn { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 10px; }
+  .learn span { background: var(--navy); color: #fff; font-weight: 800; font-size: 11px; border-radius: 99px; padding: 3px 9px; }
+  .learn span:nth-child(3n+2) { background: var(--orange); } .learn span:nth-child(3n) { background: var(--dgreen); }
+  .oled-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: #1d2430; padding: 5px; border-radius: 10px; margin-top: auto; }
+  .oled-row img { width: 100%; image-rendering: pixelated; display: block; border-radius: 3px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 12px; }
+  .tiles div { color: #fff; border-radius: 12px; padding: 8px; text-align: center; font-weight: 800; font-size: 11.5px; }
+  .tiles b { display: block; font-family: "Fredoka"; font-size: 30px; line-height: 1; color: #fff; }
+  .sheetlabel { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); font-size: 9px; color: #9aa4b2; letter-spacing: .12em; }
+  @media print { .sheetlabel { display: none; } }
+
+</style>
+</head>
+<body>
+<div class="bar"><span><b>Sponsor a Bin Brochure</b> · trifold: 2 landscape sheets, print double-sided, flip on the short edge, fold in thirds. Print with <b>margins: none</b> and <b>background graphics</b> on.</span>
+  <button onclick="window.print()">Print</button></div>
+
+<!-- OUTSIDE: inside flap | back | front cover -->
+<section class="sheet">
+  <div class="sheetlabel">OUTSIDE</div>
+  <div class="panel">
+    <div class="k">HOW IT WORKS</div>
+    <h2>A smart <em>worm bin</em></h2>
+    <p>Red wigglers turn our cafeteria's food scraps into castings, the rich compost gardeners call black gold. Sensors tell us how the worms are doing, around the clock.</p>
+    <div class="steps">
+      <div class="step s1"><h3>1 · Feed</h3><p>Cafeteria scraps and shredded paper go in. Worms eat, wiggle and leave castings.</p></div>
+      <div class="step s2"><h3>2 · Sense</h3><p>Sensors read the bin twice a second. A screen on the lid shows them.</p></div>
+      <div class="step s3"><h3>3 · Share</h3><p>Every minute, Wi-Fi carries the readings to a website anyone can open.</p></div>
+    </div>
+    <ul class="meas"><li>Air temperature</li><li>Humidity</li><li>Air pressure</li><li>Soil temperature</li><li>Soil moisture</li><li>Bedding level</li><li>Light (coming)</li><li>Sound (coming)</li></ul>
+    <div class="photo" style="margin-top:10px"><img src="../board/img/build-lid-top.jpg" alt="The 3D-printed honeycomb lid with its screen case" style="height:1.75in"></div>
+    <div class="oled-row"><img src="../board/img/oled-school.png" alt="Wolverine"><img src="../board/img/oled-radar.png" alt="Worm radar"><img src="../board/img/oled-scientist.png" alt="Data"><img src="../board/img/oled-compost.png" alt="Compost"></div>
+  </div>
+  <div class="panel back">
+    <div class="big" style="margin-top:6px">Watch the bins live</div>
+    <img class="qr" src="qr-whs.svg" alt="QR code for whs.makerlabkids.com">
+    <div class="url">whs.makerlabkids.com</div>
+    <p style="margin-top:8px">Every bin, every reading, updated every minute. Open it on your phone right now.</p>
+    <div class="contact"><h3>Let's talk!</h3><p>Ms. Audra Thomas<br>Woodstock High School<br>or ask any of our students</p></div>
+    <p style="margin-top:12px;font-size:11.5px;color:var(--muted)">A vermiculture project-based learning program at Woodstock High School, with Maker Lab Kids.</p>
+    <div class="logosv"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><img src="../logo.png" alt="Maker Lab Kids"></div>
+  </div>
+  <div class="panel cover">
+    <svg class="bg" viewBox="0 0 352 816" preserveAspectRatio="none"><path class="worm" d="M219 600 q16 -14 32 0 t32 0 t32 0" stroke="rgba(255,255,255,.10)" stroke-width="10.4"/><path class="worm" d="M332 599 q17 -15 35 0 t35 0 t35 0" stroke="rgba(255,255,255,.10)" stroke-width="11.2"/><path class="worm" d="M10 381 q18 -15 35 0 t35 0 t35 0" stroke="rgba(255,255,255,.10)" stroke-width="11.3"/><path class="worm" d="M228 727 q10 -8 19 0 t19 0 t19 0" stroke="rgba(255,255,255,.10)" stroke-width="6.1"/><path class="worm" d="M165 206 q14 -12 27 0 t27 0 t27 0" stroke="rgba(255,255,255,.10)" stroke-width="8.8"/><path class="worm" d="M202 20 q11 -9 21 0 t21 0 t21 0" stroke="rgba(255,255,255,.10)" stroke-width="6.8"/><path class="worm" d="M98 739 q16 -14 32 0 t32 0 t32 0" stroke="rgba(255,255,255,.10)" stroke-width="10.2"/><path class="worm" d="M56 645 q10 -8 20 0 t20 0 t20 0" stroke="rgba(255,255,255,.10)" stroke-width="6.3"/></svg>
+    <div class="kick">WORMS · WIRES · WI-FI</div>
+    <h1>Sponsor<br><span>a Bin!</span></h1>
+    <p class="lead">Help Woodstock High students turn cafeteria scraps into real science.</p>
+    <div class="binart"><svg viewBox="196 4 368 394" role="img" aria-label="Our smart worm bin: a clear cylinder of bedding and worms, with a 3D-printed honeycomb lid, a screen in a printed case, sensors reaching into the bedding, and Wi-Fi">
+      <defs>
+        <linearGradient id="soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset=".5" stop-color="#5b3a29"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
+        <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#cfe6f7" stop-opacity=".55"/><stop offset=".5" stop-color="#eef7fd" stop-opacity=".25"/><stop offset="1" stop-color="#cfe6f7" stop-opacity=".55"/></linearGradient>
+        <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff3b5c" stop-opacity=".85"/><stop offset="1" stop-color="#ff3b5c" stop-opacity="0"/></radialGradient>
+      </defs>
+      <ellipse cx="380" cy="384" rx="190" ry="12" fill="#000" opacity=".10"/>
+      <!-- bedding inside the clear cylinder -->
+      <path d="M236 196 L236 362 A144 18 0 0 0 524 362 L524 196 Z" fill="url(#soil)"/>
+      <ellipse cx="380" cy="196" rx="144" ry="16" fill="#9a6a48"/>
+      <g fill="#b38358" opacity=".6"><circle cx="270" cy="236" r="3"/><circle cx="330" cy="262" r="2.5"/><circle cx="430" cy="226" r="3"/><circle cx="492" cy="270" r="2.5"/><circle cx="300" cy="320" r="2.5"/><circle cx="410" cy="330" r="3"/><circle cx="470" cy="312" r="2"/></g>
+      <path d="M300 194 q12 -12 26 0 q-13 6 -26 0z" fill="#6fbf3f"/><path d="M450 196 q9 -10 22 -2 q-10 8 -22 2z" fill="#f08a2c"/>
+      <g fill="none" stroke-linecap="round">
+        <path d="M252 250 q16 -14 32 0 t32 0" stroke="#e8879b" stroke-width="8"/>
+        <path d="M400 300 q14 12 28 0 t28 0" stroke="#d96d84" stroke-width="8"/>
+        <path d="M440 240 q12 -10 24 0 t24 2" stroke="#e8879b" stroke-width="7"/>
+        <path d="M290 330 q10 8 20 0 t20 -4" stroke="#d96d84" stroke-width="6"/>
+      </g>
+      <!-- probes -->
+      <rect x="344" y="112" width="8" height="184" rx="4" fill="#c7cdd6"/>
+      <rect x="452" y="120" width="20" height="112" rx="4" fill="#1d2430"/><rect x="455" y="176" width="14" height="44" rx="2" fill="#2f3a4c"/>
+      <!-- laser under the lid -->
+      <rect x="276" y="122" width="28" height="12" rx="3" fill="#111"/>
+      <line x1="290" y1="134" x2="290" y2="192" stroke="#ff2d55" stroke-width="3" stroke-dasharray="6 5"/>
+      <circle cx="290" cy="194" r="11" fill="url(#glow)"/>
+      <!-- the clear cylinder -->
+      <path d="M228 118 L228 362 A152 20 0 0 0 532 362 L532 118" fill="url(#glass)" stroke="#9cc3e0" stroke-width="3"/>
+      <rect x="244" y="140" width="10" height="200" rx="5" fill="#fff" opacity=".55"/>
+      <rect x="262" y="150" width="4" height="170" rx="2" fill="#fff" opacity=".45"/>
+      <path d="M228 168 A152 16 0 0 0 532 168" fill="none" stroke="#e9e1cf" stroke-width="3" opacity=".9"/>
+      <path d="M228 300 A152 16 0 0 0 532 300" fill="none" stroke="#e9e1cf" stroke-width="3" opacity=".9"/>
+      <!-- 3D-printed lid: yellow honeycomb -->
+      <path d="M218 104 L218 120 A162 26 0 0 0 542 120 L542 104 Z" fill="#d9ab00"/>
+      <ellipse cx="380" cy="104" rx="162" ry="26" fill="#f2c400"/>
+      <circle cx="322" cy="90" r="2.6" fill="#c99a00"/><circle cx="331" cy="90" r="2.6" fill="#c99a00"/><circle cx="340" cy="90" r="2.6" fill="#c99a00"/><circle cx="349" cy="90" r="2.6" fill="#c99a00"/><circle cx="358" cy="90" r="2.6" fill="#c99a00"/><circle cx="367" cy="90" r="2.6" fill="#c99a00"/><circle cx="376" cy="90" r="2.6" fill="#c99a00"/><circle cx="385" cy="90" r="2.6" fill="#c99a00"/><circle cx="394" cy="90" r="2.6" fill="#c99a00"/><circle cx="259" cy="97" r="2.6" fill="#c99a00"/><circle cx="322" cy="97" r="2.6" fill="#c99a00"/><circle cx="331" cy="97" r="2.6" fill="#c99a00"/><circle cx="340" cy="97" r="2.6" fill="#c99a00"/><circle cx="349" cy="97" r="2.6" fill="#c99a00"/><circle cx="358" cy="97" r="2.6" fill="#c99a00"/><circle cx="367" cy="97" r="2.6" fill="#c99a00"/><circle cx="376" cy="97" r="2.6" fill="#c99a00"/><circle cx="385" cy="97" r="2.6" fill="#c99a00"/><circle cx="394" cy="97" r="2.6" fill="#c99a00"/><circle cx="250" cy="104" r="2.6" fill="#c99a00"/><circle cx="259" cy="104" r="2.6" fill="#c99a00"/><circle cx="322" cy="104" r="2.6" fill="#c99a00"/><circle cx="331" cy="104" r="2.6" fill="#c99a00"/><circle cx="340" cy="104" r="2.6" fill="#c99a00"/><circle cx="349" cy="104" r="2.6" fill="#c99a00"/><circle cx="358" cy="104" r="2.6" fill="#c99a00"/><circle cx="367" cy="104" r="2.6" fill="#c99a00"/><circle cx="376" cy="104" r="2.6" fill="#c99a00"/><circle cx="385" cy="104" r="2.6" fill="#c99a00"/><circle cx="394" cy="104" r="2.6" fill="#c99a00"/><circle cx="511" cy="104" r="2.6" fill="#c99a00"/><circle cx="259" cy="111" r="2.6" fill="#c99a00"/><circle cx="322" cy="111" r="2.6" fill="#c99a00"/><circle cx="331" cy="111" r="2.6" fill="#c99a00"/><circle cx="340" cy="111" r="2.6" fill="#c99a00"/><circle cx="349" cy="111" r="2.6" fill="#c99a00"/><circle cx="358" cy="111" r="2.6" fill="#c99a00"/><circle cx="367" cy="111" r="2.6" fill="#c99a00"/><circle cx="376" cy="111" r="2.6" fill="#c99a00"/><circle cx="385" cy="111" r="2.6" fill="#c99a00"/><circle cx="394" cy="111" r="2.6" fill="#c99a00"/>
+      <!-- wire grommet + wires -->
+      <rect x="264" y="90" width="52" height="22" rx="6" fill="#1d2430"/>
+      <g fill="none" stroke-width="4" stroke-linecap="round">
+        <path d="M276 96 C 266 40, 300 30, 300 70" stroke="#1b1b1b"/><path d="M284 96 C 280 50, 330 40, 330 82" stroke="#c62828"/>
+        <path d="M292 96 C 300 44, 360 36, 350 86" stroke="#f2c400"/><path d="M300 96 C 316 56, 380 46, 386 70" stroke="#43a047"/>
+      </g>
+      <!-- the screen, standing in its printed case -->
+      <rect x="400" y="26" width="104" height="86" rx="10" fill="#1d2430"/>
+      <rect x="398" y="104" width="108" height="12" rx="4" fill="#111"/>
+      <rect x="410" y="36" width="84" height="56" rx="3" fill="#0b1220"/>
+      <g font-family="monospace" font-size="9.5" fill="#e6f3ff" font-weight="700">
+        <text x="416" y="50">The Wrigglers</text><line x1="416" y1="53" x2="488" y2="53" stroke="#e6f3ff" stroke-width="1"/>
+        <text x="416" y="66">AIR 24.4C 39%</text><text x="416" y="78">MOIST  62%</text><text x="416" y="89" fill="#a6e07f">DIST  70 mm</text>
+      </g>
+      <!-- wifi -->
+      <g transform="translate(452 -24) scale(.55) translate(-460 0)" fill="none" stroke="#2a9fd8" stroke-width="9" stroke-linecap="round">
+        <path d="M434 92 a40 40 0 0 1 52 0" opacity=".95"/><path d="M420 76 a62 62 0 0 1 80 0" opacity=".7"/><path d="M406 60 a84 84 0 0 1 108 0" opacity=".45"/>
+      </g>
+      <!-- fan under the lid -->
+      <g transform="translate(512 146)">
+        <rect x="-26" y="-24" width="48" height="48" rx="8" fill="#2f3540"/>
+        <circle cx="-2" cy="0" r="19" fill="#3e4652"/>
+        <g fill="#9aa4b2"><path d="M-2 0 q-4 -17 7 -17 q4 9 -7 17z"/><path d="M-2 0 q17 -4 17 7 q-9 4 -17 -7z"/><path d="M-2 0 q4 17 -7 17 q-4 -9 7 -17z"/><path d="M-2 0 q-17 4 -17 -7 q9 -4 17 7z"/></g>
+        <circle cx="-2" cy="0" r="5" fill="#20252d"/>
+      </g>
+      </svg></div>
+    <div class="burst"><svg viewBox="0 0 100 100"><polygon points="50,2 58,20 77,9 76,30 97,30 84,46 99,60 79,66 86,86 66,80 60,99 50,84 40,99 34,80 14,86 21,66 1,60 16,46 3,30 24,30 23,9 42,20" fill="#f2c400"/>
+<text x="50" y="44" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="13" fill="#1b2f5e">YOUR</text>
+<text x="50" y="58" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="13" fill="#1b2f5e">NAME</text>
+<text x="50" y="72" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="13" fill="#c8102e">HERE!</text></svg></div>
+    <p class="lead" style="margin-top:14px">Name a bin, cheer on a team, and watch the science happen live.</p>
+    <div class="chips"><span class="chip"><img src="../whs-mascot.png" alt="Woodstock Wolverine"><b>WOODSTOCK<br>HIGH SCHOOL</b></span><span class="chip"><img src="../logo.png" alt="Maker Lab Kids"></span></div>
+  </div>
+</section>
+
+<!-- INSIDE: three panels -->
+<section class="sheet">
+  <div class="sheetlabel">INSIDE</div>
+  <div class="panel">
+    <div class="k">THE PROJECT</div>
+    <h2>Scraps in, <em>science</em> out</h2>
+    <div class="photo"><img src="../board/img/build-screen.jpg" alt="A student-built worm bin with a 3D-printed lid and screen" style="height:2.3in"></div>
+    <p>Every bin is a clear cylinder or tote of red wigglers with a 3D-printed lid, a tiny Wi-Fi computer, a screen and a set of sensors, all built by students.</p>
+    <p>The worms eat scraps from our own cafeteria. The school even started a company so students can sell the castings to the public.</p>
+    <div class="q">How do we keep thousands of red wigglers happy, and prove it with data?</div>
+    <div class="photo" style="margin-top:auto"><img src="../board/img/build-red-lid.jpg" alt="An earlier red lid on a clear cylinder with the sensors inside" style="height:1.7in"></div>
+  </div>
+  <div class="panel">
+    <div class="k">FOR SPONSORS</div>
+    <h2>What you <em>get</em></h2>
+    <div class="tperk"><div class="pi" style="background:#2a9fd8"><svg viewBox="0 0 24 24"><path d="M5 7h14v10H5z" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M8 11h8M8 14h5" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></div><div><h3>Name the bin</h3><p>The team's bin carries your name, on its screen and on the website.</p></div></div><div class="tperk"><div class="pi" style="background:#e8762c"><svg viewBox="0 0 24 24"><g fill="#fff"><rect x="5" y="5" width="4" height="4"/><rect x="10" y="5" width="4" height="4"/><rect x="15" y="5" width="4" height="4"/><rect x="5" y="10" width="4" height="4"/><rect x="15" y="10" width="4" height="4"/><rect x="5" y="15" width="4" height="4"/><rect x="10" y="15" width="4" height="4"/><rect x="15" y="15" width="4" height="4" opacity=".5"/></g></svg></div><div><h3>Your logo, in pixels</h3><p>Students draw your logo as pixel art for the bin's screen.</p></div></div><div class="tperk"><div class="pi" style="background:#c8102e"><svg viewBox="0 0 24 24"><path d="M4 6h16v10H11l-5 4v-4H4z" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/><path d="M12 9.2c-1-1.6-3.6-.8-2.6 1.2.6 1.1 2.6 2.3 2.6 2.3s2-1.2 2.6-2.3c1-2-1.6-2.8-2.6-1.2z" fill="#fff"/></svg></div><div><h3>Cheer them on</h3><p>Send the team a note. It pops up on their bin's screen.</p></div></div><div class="tperk"><div class="pi" style="background:#2f7d3a"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M4 12h16M12 4c3 3 3 13 0 16M12 4c-3 3-3 13 0 16" fill="none" stroke="#fff" stroke-width="1.8"/></svg></div><div><h3>Watch it live</h3><p>Every reading, from anywhere, at whs.makerlabkids.com.</p></div></div><div class="tperk"><div class="pi" style="background:#7a5038"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="1.5" fill="none" stroke="#fff" stroke-width="2.4"/><path d="M8 8h8M8 11h8M8 14h5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><div><h3>Follow the story</h3><p>The Daily Worm writes up the day's readings as a newspaper.</p></div></div><div class="tperk"><div class="pi" style="background:#5b3fa8"><svg viewBox="0 0 24 24"><path d="M12 4l2.4 5 5.6.6-4.2 3.8 1.2 5.6L12 16.2 7 19l1.2-5.6L4 9.6 9.6 9z" fill="#fff"/></svg></div><div><h3>Come see it</h3><p>Stop by, meet the team, and watch the worms at work.</p></div></div>
+    <div class="photo" style="margin-top:auto"><img src="../board/img/skin-deck.jpg" alt="Mission control: every bin on one screen" style="height:1.75in;object-position:left top"></div>
+  </div>
+  <div class="panel">
+    <div class="k">YOUR SUPPORT</div>
+    <h2>Where it <em>goes</em></h2>
+    <div class="goes"><ul><li>Sensor kits, so every team has its own</li><li>3D printer filament and parts</li><li>Worms, bins and bedding for more classrooms</li><li>3D printers and design software</li></ul></div>
+    <h2 style="margin-top:12px">What students <em>learn</em></h2>
+    <div class="learn"><span>Microcontrollers</span><span>Coding</span><span>Circuits</span><span>Soldering</span><span>Sensors</span><span>Networking</span><span>Data visualization</span><span>3D CAD</span><span>3D printing</span><span>Worm biology</span><span>Running a business</span></div>
+    <div class="q" style="font-size:14px">Design it, build it, break it, fix it. Every failure teaches something, and that's when the learning sticks.</div>
+    <div class="tiles"><div style="background:#1b2f5e"><b>40+</b>smart bins</div><div style="background:#e8762c"><b>3</b>classrooms</div>
+      <div style="background:#2f7d3a"><b>8+</b>things measured</div><div style="background:#c8102e"><b>60s</b>a fresh reading</div></div>
+    <p style="margin-top:10px">Some of what we measure, nobody knows yet. Our students will share their data and findings so others can build on them.</p>
+  </div>
+</section>
+</body>
+</html>
