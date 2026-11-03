@@ -262,9 +262,17 @@ textarea { width: 100%; min-height: 120px; }
 .tcard .m { color: var(--gray); font-size: 13px; margin: 2px 0 8px; }
 .tcard .p { font-family: Consolas, Menlo, monospace; font-size: 17px; background: var(--light); padding: 6px 8px; border-radius: 6px; }
 .tcard .u { font-size: 12px; color: var(--gray); margin-top: 8px; }
+/* student slips: cut along the dashes */
+.slips { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0; margin-top: 12px; }
+.slip { border: 1.5px dashed #9AA4B2; padding: 10px 12px; background: #FFF; color: var(--ink); break-inside: avoid; }
+.slip .who { font-size: 18px; font-weight: bold; color: var(--navy); }
+.slip .m { color: var(--gray); font-size: 12.5px; margin: 2px 0 6px; }
+.slip .p { font-family: Consolas, Menlo, monospace; font-size: 17px; background: var(--light); padding: 5px 8px; border-radius: 6px; }
+.slip .p.cur { font-family: inherit; font-size: 13px; color: var(--gray); }
+.slip .u { font-size: 11px; color: var(--gray); margin-top: 6px; }
 @media print {
   body.print-cards > *:not(main), body.print-cards main > *:not(#cards-print) { display: none !important; }
-  body.print-cards .cards { grid-template-columns: repeat(3, 1fr); }
+  body.print-cards .cards, body.print-cards .slips { grid-template-columns: repeat(3, 1fr); }
   body { background: #FFF; }
 }
 

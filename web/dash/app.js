@@ -1277,7 +1277,17 @@
           '<div><label for="tn">name</label><input id="tn" type="text" required></div><div><label for="tp">period</label><input id="tp" type="number" min="1" max="9" required style="width:70px"></div>' +
           '<div><label for="tb">bin</label><input id="tb" type="number" min="1" required style="width:70px"></div><div><label for="tr">room</label><input id="tr" type="number" min="1" max="3" required style="width:70px"></div>' +
           '<button class="btn g" type="submit">Create</button></form>' +
-          '<h3 style="margin-top:20px">Import CSV</h3><p class="muted">One team per line: <code>team,period,bin,room</code>. Every imported team gets a fresh passphrase; they are shown once, below.</p>' +
+          '<h3 style="margin-top:20px">Add a teacher or admin</h3><p class="muted">Teachers see the admin pages and can message any bin; admins can also add people and update devices. They sign in with "Teacher or admin? Sign in by name".</p>' +
+          '<form id="newstaff" class="row2"><div><label for="sn2">name</label><input id="sn2" type="text" required placeholder="Mrs. Thomas" maxlength="40"></div>' +
+          '<div><label for="srole">role</label><select id="srole"><option value="teacher">teacher</option><option value="admin">admin</option></select></div>' +
+          '<button class="btn g" type="submit">Create</button></form>' +
+          '<h3 style="margin-top:20px">Add a class from a list</h3><p class="muted">A CSV with one student per line: <code>student,bin</code> (optional extra columns: <code>period,room,team</code>; a header row is fine). ' +
+          'Every bin gets one team login, and you get a sheet of slips to cut out, one per student. <b>Student names stay in this browser</b>: they are only printed, never sent to the server.</p>' +
+          '<input id="classfile" type="file" accept=".csv,text/csv,text/plain"> <span class="muted">or paste:</span>' +
+          '<textarea id="classcsv" placeholder="Ada Lovelace,38&#10;Grace Hopper,38&#10;Alan Turing,45"></textarea>' +
+          '<div style="margin-top:6px"><label><input id="classreset" type="checkbox"> give bins that already have a team a new passphrase (signs that team out everywhere)</label></div>' +
+          '<div style="margin-top:8px"><button class="btn" id="classgo" type="button">Preview</button></div><div id="classout"></div>' +
+          '<h3 style="margin-top:20px">Import teams (CSV)</h3><p class="muted">One team per line: <code>team,period,bin,room</code>. Every imported team gets a fresh passphrase; they are shown once, below.</p>' +
           '<textarea id="csv" placeholder="Dirt Vader,3,7,1&#10;Compost Malone,3,8,1"></textarea><div style="margin-top:8px"><button class="btn" id="imp" type="button">Import</button></div>';
         Array.prototype.forEach.call(body.querySelectorAll('button[data-act]'), function (b) {
           b.onclick = function () {
@@ -1302,6 +1312,12 @@
             showPass(list, 'Imported ' + list.length + ' teams');
           }).catch(alertErr);
         };
+        $('#newstaff', body).onsubmit = function (ev) {
+          ev.preventDefault();
+          api('/api/admin/teams', { method: 'POST', body: { name: $('#sn2', body).value.trim(), role: $('#srole', body).value } })
+            .then(function (j) { showPass([j], 'New ' + $('#srole', body).value); }).catch(alertErr);
+        };
+        wireClass(rows);
         wirePrint();
       }).catch(function (e) { body.innerHTML = '<div class="notice err">' + esc(e.message) + '</div>'; });
     }
@@ -1309,7 +1325,7 @@
     var lastCards = [];
     /* passphrases come back exactly once, so they go in a copyable block and on printable cards */
     function showPass(list, title) {
-      lastCards = list.map(function (t) { var tt = t.team || t; return { name: tt.name, period: tt.period, bin: tt.bin, room: tt.room, passphrase: t.passphrase || tt.passphrase }; });
+      lastCards = list.map(function (t) { var tt = t.team || t; return { name: tt.name, role: tt.role, period: tt.period, bin: tt.bin, room: tt.room, passphrase: t.passphrase || tt.passphrase }; });
       var text = lastCards.map(function (t) { return [t.name, 'P' + t.period, 'bin ' + t.bin, t.passphrase].join('\t'); }).join('\n');
       passBlock = '<div class="notice info" id="passnote"><b>' + esc(title) + '</b> — write these down now; they are not shown again.<br>' +
         '<pre class="pass" id="passtext">' + esc(text) + '</pre>' +
@@ -1328,14 +1344,106 @@
         var old = $('#cards-print'); if (old) old.remove();
         var sec = el('section', '', ''); sec.id = 'cards-print';
         sec.innerHTML = '<h2>Team cards <button class="btn sm ghost" id="closecards" type="button">close</button></h2><div class="cards">' + lastCards.map(function (t) {
-          return '<div class="tcard"><div class="n">' + esc(t.name) + '</div><div class="m">Period ' + esc(t.period) + ' · Bin ' + esc(t.bin) + ' · Room ' + esc(t.room) + '</div>' +
-            '<div class="p">' + esc(t.passphrase) + '</div><div class="u">' + esc(location.origin) + '/login · pick your team, type the passphrase and your first name</div></div>';
+          var staff = t.role && t.role !== 'team';
+          return '<div class="tcard"><div class="n">' + esc(t.name) + '</div><div class="m">' + (staff ? esc(t.role) : 'Period ' + esc(t.period) + ' · Bin ' + esc(t.bin) + ' · Room ' + esc(t.room)) + '</div>' +
+            '<div class="p">' + esc(t.passphrase) + '</div><div class="u">' + esc(location.origin) + '/login · ' +
+            (staff ? '"Teacher or admin? Sign in by name", then your name and this passphrase' : 'pick your team, type the passphrase and your first name') + '</div></div>';
         }).join('') + '</div>';
         $('#view').appendChild(sec);
         document.body.classList.add('print-cards');
         $('#closecards').onclick = function () { document.body.classList.remove('print-cards'); sec.remove(); };
         setTimeout(function () { window.print(); }, 50);
       };
+    }
+    /* ---- a class from a list: student,bin[,period,room,team] -> one team per bin + a slip per student ---- */
+    function parseCSV(text) {
+      return text.split(/\r?\n/).map(function (line) {
+        var out = [], cur = '', q = false;
+        for (var i = 0; i < line.length; i++) {
+          var c = line[i];
+          if (q) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+          else if (c === '"') q = true; else if (c === ',' || c === '\t' || c === ';') { out.push(cur.trim()); cur = ''; } else cur += c;
+        }
+        out.push(cur.trim());
+        return out;
+      }).filter(function (r) { return r.some(function (x) { return x; }); });
+    }
+    function classRows(text) {
+      var rows = parseCSV(text), bad = [];
+      if (rows.length && !/^\d+$/.test(rows[0][1] || '')) rows.shift();          // a header row
+      var students = [];
+      rows.forEach(function (r, i) {
+        var bin = parseInt(r[1], 10);
+        if (!r[0] || !(bin > 0)) { bad.push(i + 1); return; }
+        students.push({ name: r[0], bin: bin, period: parseInt(r[2], 10) || null, room: parseInt(r[3], 10) || null, team: (r[4] || '').slice(0, 40) });
+      });
+      return { students: students, bad: bad };
+    }
+    function wireClass(teams) {
+      var file = $('#classfile', body), ta = $('#classcsv', body), out = $('#classout', body);
+      file.onchange = function () {
+        var f = file.files && file.files[0]; if (!f) return;
+        var r = new FileReader(); r.onload = function () { ta.value = String(r.result || ''); }; r.readAsText(f);
+      };
+      $('#classgo', body).onclick = function () {
+        var c = classRows(ta.value), byBin = {};
+        if (!c.students.length) { out.innerHTML = '<div class="notice err">No students found. Each line needs a name and a bin number.</div>'; return; }
+        c.students.forEach(function (st) { (byBin[st.bin] = byBin[st.bin] || []).push(st); });
+        var reset = $('#classreset', body).checked;
+        var plan = Object.keys(byBin).map(Number).sort(function (a, b) { return a - b; }).map(function (bin) {
+          var list = byBin[bin], first = list[0];
+          var have = teams.filter(function (t) { return t.role === 'team' && !t.disabled && Number(t.bin) === bin; })[0];
+          var named = list.map(function (x) { return x.team; }).filter(Boolean)[0];
+          return { bin: bin, students: list, team: have || null, name: have ? have.name : (named || ('Bin ' + bin)),
+            period: first.period || (have && have.period) || null, room: first.room || (have && have.room) || null,
+            action: have ? (reset ? 'new passphrase' : 'keeps its passphrase') : 'new team' };
+        });
+        out.innerHTML = (c.bad.length ? '<div class="notice err">Skipped line(s) ' + c.bad.join(', ') + ': each needs a name and a bin number.</div>' : '') +
+          '<div class="tablewrap"><table><thead><tr><th>bin</th><th>team</th><th>students</th><th>what happens</th></tr></thead><tbody>' + plan.map(function (p) {
+            return '<tr><td>' + p.bin + '</td><td>' + esc(p.name) + '</td><td>' + p.students.length + '</td><td>' + esc(p.action) + '</td></tr>';
+          }).join('') + '</tbody></table></div><div style="margin-top:8px"><button class="btn g" id="classmake" type="button">Create logins and print slips</button></div>';
+        $('#classmake', body).onclick = function () {
+          var btn = this; btn.disabled = true; btn.textContent = 'Working…';
+          var chain = Promise.resolve();
+          plan.forEach(function (p) {
+            chain = chain.then(function () {
+              if (!p.team) return api('/api/admin/teams', { method: 'POST', body: { name: p.name, period: p.period, bin: p.bin, room: p.room } })
+                .then(function (j) { p.pass = j.passphrase; p.made = (j.team || {}).name || p.name; });
+              if (reset) return api('/api/admin/teams/' + encodeURIComponent(p.team.id) + '/reset', { method: 'POST', body: {} })
+                .then(function (j) { p.pass = j.passphrase; p.made = p.team.name; });
+              p.made = p.team.name; p.pass = null;
+            }).catch(function (e) { p.error = e.message; });
+          });
+          chain.then(function () {
+            var errs = plan.filter(function (p) { return p.error; });
+            out.innerHTML = errs.length ? '<div class="notice err">' + errs.map(function (p) { return 'Bin ' + p.bin + ': ' + esc(p.error); }).join('<br>') + '</div>' : '';
+            out.innerHTML += '<div class="notice info"><b>Done.</b> ' + plan.filter(function (p) { return !p.error; }).length + ' bins, ' +
+              c.students.length + ' slips. New passphrases are on the slips only; they are not shown again. ' +
+              '<button class="btn sm" id="classprint" type="button">Print slips again</button></div>';
+            $('#classprint', body).onclick = function () { printSlips(plan); };
+            printSlips(plan);
+          });
+        };
+      };
+    }
+    function printSlips(plan) {
+      var old = $('#cards-print'); if (old) old.remove();
+      var sec = el('section', '', ''); sec.id = 'cards-print';
+      var slips = [];
+      plan.forEach(function (p) {
+        if (p.error) return;
+        p.students.forEach(function (st) {
+          slips.push('<div class="slip"><div class="who">' + esc(st.name) + '</div><div class="m">' + ((p.made || p.name) === 'Bin ' + p.bin ? '' : 'Team <b>' + esc(p.made || p.name) + '</b> · ') + 'Bin ' + p.bin +
+            (p.period ? ' · Period ' + esc(p.period) : '') + '</div>' +
+            (p.pass ? '<div class="p">' + esc(p.pass) + '</div>' : '<div class="p cur">your team\'s current passphrase (ask your teacher)</div>') +
+            '<div class="u">' + esc(location.host) + ' → sign in → pick your team, type your first name, then the passphrase</div></div>');
+        });
+      });
+      sec.innerHTML = '<h2>Student slips <button class="btn sm ghost" id="closecards" type="button">close</button></h2><div class="slips">' + slips.join('') + '</div>';
+      $('#view').appendChild(sec);
+      document.body.classList.add('print-cards');
+      $('#closecards').onclick = function () { document.body.classList.remove('print-cards'); sec.remove(); };
+      setTimeout(function () { window.print(); }, 50);
     }
     function selectText(node) { var r = document.createRange(); r.selectNodeContents(node); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
     render();

@@ -61,7 +61,7 @@ Where things are: private notes/runbook/detailed architecture in MakerLabKids/wh
 - [ ] The spare card from 2026-11-03 holds a revoked burrow3 pass: in a different Pi it is refused, re-asks after
       10 min and should come up as a standby. Watch that once (first real test of the fixed re-ask).
 
-- [ ] **User: `npx wrangler deploy` in cloud/surface** for 0a1f923 + the skins dropdown (2026-11-02; the Pis pick the dashboard up on their next update-burrow.sh): anyone can view the
+- [ ] **User: `npx wrangler deploy` in cloud/surface** for 0a1f923 + the skins dropdown + the admin People screens (add a teacher/admin; a class from a CSV with printable slips, 2026-11-03) (2026-11-02; the Pis pick the dashboard up on their next update-burrow.sh): anyone can view the
   wall, bins, charts and live feed; a login only for messages, shows, admin, the signal meter and
   the Bluetooth page. The wrangler.jsonc routing changed too (.html pages go through the Worker).
 - [ ] e2e rig (tools/e2e/run.sh): no Bins reach the test Worker ("bins 0"), already broken before
