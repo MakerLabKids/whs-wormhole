@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Worms, Wires &amp; Wi-Fi</title>
-<meta name="description" content="Woodstock High School x Maker Lab Kids: a 10-page display board for the vermiculture PBL. Print on letter paper.">
+<meta name="description" content="Woodstock High School x Maker Lab Kids: an 11-page display board for the vermiculture PBL. Print on letter paper.">
 <link rel="icon" href="../favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -157,6 +157,17 @@
   .idea h3 { margin: 0 0 4px; font-size: 18px; color: var(--navy); line-height: 1.15; }
   .idea p { margin: 0; font-size: 12.6px; color: #3a4352; line-height: 1.45; }
 
+  /* ---- meet the bin ---- */
+  .build { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; margin-top: 4px; }
+  .build .shot { border-radius: 14px; background: #ddd; }
+  .build .tall img { height: 6.15in; object-fit: cover; }
+  .build-side { display: grid; grid-template-rows: 1fr 1fr; gap: 12px; }
+  .build-side .shot img { height: 3.01in; object-fit: cover; }
+  .build-notes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+  .build-notes div { background: var(--cream); border: 1.5px solid #f1dcc0; border-radius: 12px; padding: 9px 11px; font-size: 12px;
+                     line-height: 1.35; color: #3a4352; }
+  .build-notes b { display: block; font-family: "Fredoka", sans-serif; font-size: 17px; margin-bottom: 2px; }
+
   /* ---- screenshot pages ---- */
   .shot { margin: 0; border-radius: 12px; overflow: hidden; border: 1px solid #c9d1de; background: #0b1220; }
   .shot img { display: block; width: 100%; height: auto; }
@@ -187,8 +198,8 @@
 <body>
 
 <div class="bar">
-  <span><b>Display board</b> · 10 letter pages: 6 about the project, 4 of screens. Print with <b>margins: none</b> and <b>background graphics</b> on.</span>
-  <span><button type="button" onclick="window.print()">Print all 10</button> &nbsp;<a href="../index.html">Lab Guide</a></span>
+  <span><b>Display board</b> · 11 letter pages: 7 about the project, 4 of screens. Print with <b>margins: none</b> and <b>background graphics</b> on.</span>
+  <span><button type="button" onclick="window.print()">Print all 11</button> &nbsp;<a href="../index.html">Lab Guide</a></span>
 </div>
 
 <!-- ================================================================ 1 -->
@@ -206,79 +217,87 @@
   </div>
 
   <div class="hero">
-    <svg viewBox="0 0 760 400" role="img" aria-label="A smart worm bin: sensors in the bedding, a Pico computer and screen on the lid, sending its readings over Wi-Fi">
+    <svg viewBox="0 0 760 400" role="img" aria-label="Our smart worm bin: a clear cylinder of bedding and worms, with a 3D-printed honeycomb lid, a screen in a printed case, sensors reaching into the bedding, and Wi-Fi">
       <defs>
-        <linearGradient id="soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset=".45" stop-color="#5b3a29"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
-        <linearGradient id="tote" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c4a86"/><stop offset="1" stop-color="#1b2f5e"/></linearGradient>
-        <linearGradient id="lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b5ea8"/><stop offset="1" stop-color="#24407e"/></linearGradient>
-        <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff3b5c" stop-opacity=".8"/><stop offset="1" stop-color="#ff3b5c" stop-opacity="0"/></radialGradient>
+        <linearGradient id="soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a3c"/><stop offset=".5" stop-color="#5b3a29"/><stop offset="1" stop-color="#3a2419"/></linearGradient>
+        <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#cfe6f7" stop-opacity=".55"/><stop offset=".5" stop-color="#eef7fd" stop-opacity=".25"/><stop offset="1" stop-color="#cfe6f7" stop-opacity=".55"/></linearGradient>
+        <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ff3b5c" stop-opacity=".85"/><stop offset="1" stop-color="#ff3b5c" stop-opacity="0"/></radialGradient>
       </defs>
-      <ellipse cx="380" cy="372" rx="250" ry="18" fill="#000" opacity=".10"/>
-      <!-- wifi waves -->
-      <g transform="translate(0 -26)" fill="none" stroke="#2a9fd8" stroke-width="7" stroke-linecap="round">
-        <path d="M456 92 a46 46 0 0 1 60 0" opacity=".95"/><path d="M440 74 a70 70 0 0 1 92 0" opacity=".7"/><path d="M424 56 a94 94 0 0 1 124 0" opacity=".45"/>
-      </g>
-      <!-- the tote -->
-      <path d="M150 150 L610 150 L585 360 L175 360 Z" fill="url(#tote)"/>
-      <path d="M176 172 L584 172 L564 342 L196 342 Z" fill="url(#soil)"/>
-      <!-- bedding texture -->
-      <g fill="#a8774f" opacity=".55">
-        <circle cx="230" cy="200" r="3"/><circle cx="300" cy="190" r="2.5"/><circle cx="420" cy="205" r="3"/><circle cx="510" cy="195" r="2.5"/>
-        <circle cx="260" cy="260" r="2.5"/><circle cx="390" cy="275" r="3"/><circle cx="470" cy="250" r="2.5"/><circle cx="540" cy="285" r="2"/>
-        <circle cx="330" cy="310" r="2.5"/><circle cx="240" cy="320" r="2"/><circle cx="450" cy="318" r="2.5"/>
-      </g>
-      <!-- food scraps on top -->
-      <path d="M262 176 q14 -16 30 0 q-15 8 -30 0z" fill="#6fbf3f"/><path d="M500 178 q10 -12 26 -2 q-12 10 -26 2z" fill="#f08a2c"/>
-      <rect x="352" y="172" width="22" height="7" rx="3" fill="#e9dcc0" transform="rotate(-8 363 175)"/>
-      <!-- worms -->
+      <ellipse cx="380" cy="384" rx="190" ry="12" fill="#000" opacity=".10"/>
+      <!-- bedding inside the clear cylinder -->
+      <path d="M236 196 L236 362 A144 18 0 0 0 524 362 L524 196 Z" fill="url(#soil)"/>
+      <ellipse cx="380" cy="196" rx="144" ry="16" fill="#9a6a48"/>
+      <g fill="#b38358" opacity=".6"><circle cx="270" cy="236" r="3"/><circle cx="330" cy="262" r="2.5"/><circle cx="430" cy="226" r="3"/><circle cx="492" cy="270" r="2.5"/><circle cx="300" cy="320" r="2.5"/><circle cx="410" cy="330" r="3"/><circle cx="470" cy="312" r="2"/></g>
+      <path d="M300 194 q12 -12 26 0 q-13 6 -26 0z" fill="#6fbf3f"/><path d="M450 196 q9 -10 22 -2 q-10 8 -22 2z" fill="#f08a2c"/>
       <g fill="none" stroke-linecap="round">
-        <path d="M222 236 q18 -16 36 0 t36 0 t30 -6" stroke="#e8879b" stroke-width="9"/>
-        <path d="M398 296 q16 14 32 0 t32 0" stroke="#d96d84" stroke-width="9"/>
-        <path d="M480 222 q14 -12 28 0 t28 2" stroke="#e8879b" stroke-width="8"/>
-        <path d="M280 300 q12 10 24 0 t22 -4" stroke="#d96d84" stroke-width="7"/>
+        <path d="M252 250 q16 -14 32 0 t32 0" stroke="#e8879b" stroke-width="8"/>
+        <path d="M400 300 q14 12 28 0 t28 0" stroke="#d96d84" stroke-width="8"/>
+        <path d="M440 240 q12 -10 24 0 t24 2" stroke="#e8879b" stroke-width="7"/>
+        <path d="M290 330 q10 8 20 0 t20 -4" stroke="#d96d84" stroke-width="6"/>
       </g>
-      <g fill="#7a2f3e"><circle cx="324" cy="230" r="2.4"/><circle cx="462" cy="296" r="2.4"/><circle cx="536" cy="224" r="2.2"/></g>
       <!-- probes -->
-      <rect x="340" y="100" width="9" height="190" rx="4" fill="#c7cdd6"/><rect x="336" y="94" width="17" height="14" rx="3" fill="#7d8796"/>
-      <rect x="430" y="146" width="22" height="104" rx="4" fill="#1d2430"/><rect x="434" y="196" width="14" height="40" rx="2" fill="#2f3a4c"/>
-      <!-- laser beam from under the lid -->
-      <rect x="252" y="128" width="30" height="14" rx="3" fill="#111"/>
-      <line x1="267" y1="142" x2="267" y2="190" stroke="#ff2d55" stroke-width="3" stroke-dasharray="6 5"/>
-      <circle cx="267" cy="192" r="11" fill="url(#glow)"/>
-      <!-- the lid -->
-      <rect x="138" y="118" width="484" height="26" rx="10" fill="url(#lid)"/>
-      <!-- pico + screen on the lid -->
-      <rect x="430" y="78" width="140" height="44" rx="6" fill="#1f7a3a"/>
-      <g fill="#c9a227"><circle cx="440" cy="84" r="2.3"/><circle cx="450" cy="84" r="2.3"/><circle cx="460" cy="84" r="2.3"/><circle cx="470" cy="84" r="2.3"/><circle cx="480" cy="84" r="2.3"/><circle cx="490" cy="84" r="2.3"/></g>
-      <rect x="520" y="86" width="40" height="28" rx="2" fill="#c7cfd6"/>
-      <rect x="560" y="52" width="104" height="70" rx="8" fill="#0f172a" stroke="#334155" stroke-width="3"/>
-      <rect x="568" y="60" width="88" height="54" rx="3" fill="#0b1220"/>
-      <g font-family="monospace" font-size="10" fill="#bfe6ff" font-weight="700">
-        <text x="574" y="74">COMPOST</text><text x="574" y="86">COWBOYS</text><text x="574" y="102" fill="#a6e07f">76F 64%</text>
+      <rect x="344" y="112" width="8" height="184" rx="4" fill="#c7cdd6"/>
+      <rect x="452" y="120" width="20" height="112" rx="4" fill="#1d2430"/><rect x="455" y="176" width="14" height="44" rx="2" fill="#2f3a4c"/>
+      <!-- laser under the lid -->
+      <rect x="276" y="122" width="28" height="12" rx="3" fill="#111"/>
+      <line x1="290" y1="134" x2="290" y2="192" stroke="#ff2d55" stroke-width="3" stroke-dasharray="6 5"/>
+      <circle cx="290" cy="194" r="11" fill="url(#glow)"/>
+      <!-- the clear cylinder -->
+      <path d="M228 118 L228 362 A152 20 0 0 0 532 362 L532 118" fill="url(#glass)" stroke="#9cc3e0" stroke-width="3"/>
+      <rect x="244" y="140" width="10" height="200" rx="5" fill="#fff" opacity=".55"/>
+      <rect x="262" y="150" width="4" height="170" rx="2" fill="#fff" opacity=".45"/>
+      <path d="M228 168 A152 16 0 0 0 532 168" fill="none" stroke="#e9e1cf" stroke-width="3" opacity=".9"/>
+      <path d="M228 300 A152 16 0 0 0 532 300" fill="none" stroke="#e9e1cf" stroke-width="3" opacity=".9"/>
+      <!-- 3D-printed lid: yellow honeycomb -->
+      <path d="M218 104 L218 120 A162 26 0 0 0 542 120 L542 104 Z" fill="#d9ab00"/>
+      <ellipse cx="380" cy="104" rx="162" ry="26" fill="#f2c400"/>
+      <circle cx="322" cy="90" r="2.6" fill="#c99a00"/><circle cx="331" cy="90" r="2.6" fill="#c99a00"/><circle cx="340" cy="90" r="2.6" fill="#c99a00"/><circle cx="349" cy="90" r="2.6" fill="#c99a00"/><circle cx="358" cy="90" r="2.6" fill="#c99a00"/><circle cx="367" cy="90" r="2.6" fill="#c99a00"/><circle cx="376" cy="90" r="2.6" fill="#c99a00"/><circle cx="385" cy="90" r="2.6" fill="#c99a00"/><circle cx="394" cy="90" r="2.6" fill="#c99a00"/><circle cx="259" cy="97" r="2.6" fill="#c99a00"/><circle cx="322" cy="97" r="2.6" fill="#c99a00"/><circle cx="331" cy="97" r="2.6" fill="#c99a00"/><circle cx="340" cy="97" r="2.6" fill="#c99a00"/><circle cx="349" cy="97" r="2.6" fill="#c99a00"/><circle cx="358" cy="97" r="2.6" fill="#c99a00"/><circle cx="367" cy="97" r="2.6" fill="#c99a00"/><circle cx="376" cy="97" r="2.6" fill="#c99a00"/><circle cx="385" cy="97" r="2.6" fill="#c99a00"/><circle cx="394" cy="97" r="2.6" fill="#c99a00"/><circle cx="250" cy="104" r="2.6" fill="#c99a00"/><circle cx="259" cy="104" r="2.6" fill="#c99a00"/><circle cx="322" cy="104" r="2.6" fill="#c99a00"/><circle cx="331" cy="104" r="2.6" fill="#c99a00"/><circle cx="340" cy="104" r="2.6" fill="#c99a00"/><circle cx="349" cy="104" r="2.6" fill="#c99a00"/><circle cx="358" cy="104" r="2.6" fill="#c99a00"/><circle cx="367" cy="104" r="2.6" fill="#c99a00"/><circle cx="376" cy="104" r="2.6" fill="#c99a00"/><circle cx="385" cy="104" r="2.6" fill="#c99a00"/><circle cx="394" cy="104" r="2.6" fill="#c99a00"/><circle cx="511" cy="104" r="2.6" fill="#c99a00"/><circle cx="259" cy="111" r="2.6" fill="#c99a00"/><circle cx="322" cy="111" r="2.6" fill="#c99a00"/><circle cx="331" cy="111" r="2.6" fill="#c99a00"/><circle cx="340" cy="111" r="2.6" fill="#c99a00"/><circle cx="349" cy="111" r="2.6" fill="#c99a00"/><circle cx="358" cy="111" r="2.6" fill="#c99a00"/><circle cx="367" cy="111" r="2.6" fill="#c99a00"/><circle cx="376" cy="111" r="2.6" fill="#c99a00"/><circle cx="385" cy="111" r="2.6" fill="#c99a00"/><circle cx="394" cy="111" r="2.6" fill="#c99a00"/>
+      <!-- wire grommet + wires -->
+      <rect x="264" y="90" width="52" height="22" rx="6" fill="#1d2430"/>
+      <g fill="none" stroke-width="4" stroke-linecap="round">
+        <path d="M276 96 C 266 40, 300 30, 300 70" stroke="#1b1b1b"/><path d="M284 96 C 280 50, 330 40, 330 82" stroke="#c62828"/>
+        <path d="M292 96 C 300 44, 360 36, 350 86" stroke="#f2c400"/><path d="M300 96 C 316 56, 380 46, 386 70" stroke="#43a047"/>
       </g>
-      <!-- fan on the end -->
-      <g transform="translate(612 230)">
-        <rect x="-4" y="-40" width="72" height="80" rx="12" fill="#2f3540"/>
-        <circle cx="32" cy="0" r="30" fill="#3e4652"/>
-        <g fill="#9aa4b2"><path d="M32 0 q-6 -26 10 -26 q6 14 -10 26z"/><path d="M32 0 q26 -6 26 10 q-14 6 -26 -10z"/><path d="M32 0 q6 26 -10 26 q-6 -14 10 -26z"/><path d="M32 0 q-26 6 -26 -10 q14 -6 26 10z"/></g>
-        <circle cx="32" cy="0" r="8" fill="#20252d"/>
+      <!-- the screen, standing in its printed case -->
+      <rect x="400" y="26" width="104" height="86" rx="10" fill="#1d2430"/>
+      <rect x="398" y="104" width="108" height="12" rx="4" fill="#111"/>
+      <rect x="410" y="36" width="84" height="56" rx="3" fill="#0b1220"/>
+      <g font-family="monospace" font-size="9.5" fill="#e6f3ff" font-weight="700">
+        <text x="416" y="50">The Wrigglers</text><line x1="416" y1="53" x2="488" y2="53" stroke="#e6f3ff" stroke-width="1"/>
+        <text x="416" y="66">AIR 24.4C 39%</text><text x="416" y="78">MOIST  62%</text><text x="416" y="89" fill="#a6e07f">DIST  70 mm</text>
+      </g>
+      <!-- wifi -->
+      <g transform="translate(452 -24) scale(.55) translate(-460 0)" fill="none" stroke="#2a9fd8" stroke-width="9" stroke-linecap="round">
+        <path d="M434 92 a40 40 0 0 1 52 0" opacity=".95"/><path d="M420 76 a62 62 0 0 1 80 0" opacity=".7"/><path d="M406 60 a84 84 0 0 1 108 0" opacity=".45"/>
+      </g>
+      <!-- fan under the lid -->
+      <g transform="translate(512 146)">
+        <rect x="-26" y="-24" width="48" height="48" rx="8" fill="#2f3540"/>
+        <circle cx="-2" cy="0" r="19" fill="#3e4652"/>
+        <g fill="#9aa4b2"><path d="M-2 0 q-4 -17 7 -17 q4 9 -7 17z"/><path d="M-2 0 q17 -4 17 7 q-9 4 -17 -7z"/><path d="M-2 0 q4 17 -7 17 q-4 -9 7 -17z"/><path d="M-2 0 q-17 4 -17 -7 q9 -4 17 7z"/></g>
+        <circle cx="-2" cy="0" r="5" fill="#20252d"/>
       </g>
       <!-- callouts -->
       <g font-family="Nunito Sans, Arial" font-size="15" font-weight="800">
-        <text x="18" y="40" fill="#c8102e">LASER RANGER</text>
-        <text x="18" y="58" fill="#5b6475" font-weight="600" font-size="13">watches the bedding level</text>
-        <path d="M120 66 L 120 84 L 258 128" fill="none" stroke="#c8102e" stroke-width="2"/><circle cx="258" cy="128" r="4" fill="#c8102e"/>
-        <text x="222" y="18" fill="#1b2f5e">SOIL THERMOMETERS</text>
-        <text x="222" y="36" fill="#5b6475" font-weight="600" font-size="13">probes in the bedding</text>
-        <path d="M300 44 L 300 70 L 340 96" fill="none" stroke="#5b6475" stroke-width="2"/><circle cx="342" cy="98" r="4" fill="#5b6475"/>
-        <text x="742" y="18" fill="#2a9fd8" text-anchor="end">PICO 2 W + SCREEN</text>
-        <text x="742" y="36" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">a tiny computer on Wi-Fi</text>
-        <text x="742" y="292" fill="#e8762c" text-anchor="end">FAN</text>
-        <text x="742" y="309" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">kicks on when</text>
-        <text x="742" y="325" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">it's too damp</text>
-        <text x="18" y="292" fill="#1b2f5e">MOISTURE PROBE</text>
-        <text x="18" y="310" fill="#5b6475" font-weight="600" font-size="13">wet, dry, or just right?</text>
-        <path d="M150 300 C 300 304, 380 292, 430 236" fill="none" stroke="#5b6475" stroke-width="2" stroke-dasharray="4 4"/>
+        <text x="18" y="150" fill="#c8102e">LASER RANGER</text>
+        <text x="18" y="168" fill="#5b6475" font-weight="600" font-size="13">watches the bedding level</text>
+        <path d="M150 176 L 226 176 L 276 134" fill="none" stroke="#c8102e" stroke-width="2"/><circle cx="276" cy="134" r="4" fill="#c8102e"/>
+        <text x="18" y="40" fill="#b8860b">3D-PRINTED LID</text>
+        <text x="18" y="58" fill="#5b6475" font-weight="600" font-size="13">a honeycomb of air holes</text>
+        <path d="M120 66 L 120 80 L 230 100" fill="none" stroke="#b8860b" stroke-width="2"/><circle cx="232" cy="100" r="4" fill="#b8860b"/>
+        <text x="742" y="40" fill="#2a9fd8" text-anchor="end">PICO 2 W + SCREEN</text>
+        <text x="742" y="58" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">a tiny computer on Wi-Fi</text>
+        <path d="M640 66 L 640 74 L 506 74" fill="none" stroke="#2a9fd8" stroke-width="2"/><circle cx="506" cy="74" r="4" fill="#2a9fd8"/>
+        <text x="742" y="150" fill="#e8762c" text-anchor="end">FAN</text>
+        <text x="742" y="167" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">kicks on when</text>
+        <text x="742" y="183" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">it's too damp</text>
+        <path d="M640 160 L 538 150" fill="none" stroke="#e8762c" stroke-width="2"/><circle cx="538" cy="150" r="4" fill="#e8762c"/>
+        <text x="742" y="262" fill="#1b2f5e" text-anchor="end">SOIL SENSORS</text>
+        <text x="742" y="280" fill="#5b6475" text-anchor="end" font-weight="600" font-size="13">temperature and moisture</text>
+        <path d="M600 288 L 600 300 L 476 216" fill="none" stroke="#5b6475" stroke-width="2"/><circle cx="474" cy="214" r="4" fill="#5b6475"/>
+        <text x="18" y="292" fill="#1b2f5e">CLEAR CYLINDER</text>
+        <text x="18" y="310" fill="#5b6475" font-weight="600" font-size="13">watch the worms from the side</text>
+        <path d="M200 300 L 240 290" fill="none" stroke="#5b6475" stroke-width="2"/><circle cx="242" cy="290" r="4" fill="#5b6475"/>
       </g>
     </svg>
   </div>
@@ -296,7 +315,7 @@
     <div><b>Our driving question</b><span>How do we keep thousands of red wigglers happy, and prove it with data?</span></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">1 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">1 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 2 -->
@@ -326,7 +345,7 @@
         <div class="m"><div class="ic" style="background:#ece8ff"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="#6b5bd2" stroke-width="2.5"/><path d="M12 13l4-4" stroke="#6b5bd2" stroke-width="2.5" stroke-linecap="round"/></svg></div><div><b>Air pressure</b><span>weather moving through</span></div></div>
         <div class="m"><div class="ic" style="background:#f3e7df"><svg viewBox="0 0 24 24"><rect x="10" y="2" width="4" height="15" rx="2" fill="#7a5038"/><circle cx="12" cy="18.5" r="3.5" fill="#7a5038"/></svg></div><div><b>Soil temperature</b><span>waterproof probes in the bedding</span></div></div>
         <div class="m"><div class="ic" style="background:#e3f4da"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 20V9l5-5 5 5v11" fill="none" stroke="#5fae3a" stroke-width="2.5" stroke-linejoin="round"/><path d="M12 11s2.5 3 2.5 4.5a2.5 2.5 0 0 1-5 0C9.5 14 12 11 12 11z" fill="#2a9fd8"/></svg></div><div><b>Soil moisture</b><span>not too wet, not too dry</span></div></div>
-        <div class="m"><div class="ic" style="background:#fff5d6"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#f2b705"/><g stroke="#f2b705" stroke-width="2" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></g></svg></div><div><b>Light</b><span>worms like it dark</span></div></div>
+        <div class="m"><div class="ic" style="background:#fff5d6"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="#f2b705"/><g stroke="#f2b705" stroke-width="2" stroke-linecap="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></g></svg></div><div><b>Light</b><span>how bright it gets in the bin</span></div></div>
         <div class="m"><div class="ic" style="background:#ffe3e8"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="#c8102e"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4" fill="none" stroke="#c8102e" stroke-width="2" stroke-linecap="round"/></svg></div><div><b>Sound</b><span>how noisy the room gets</span></div></div>
         <div class="m"><div class="ic" style="background:#e6ebf5"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="5" rx="2" fill="#1b2f5e"/><path d="M12 8v9" stroke="#ff2d55" stroke-width="2" stroke-dasharray="2.5 2"/><path d="M4 20h16" stroke="#7a5038" stroke-width="3" stroke-linecap="round"/></svg></div><div><b>Bedding level</b><span>drops as the worms eat their bedding</span></div></div>
       </div>
@@ -346,7 +365,7 @@
       <ul>
         <li>Bedding should feel like a <b>wrung-out sponge</b>.</li>
         <li>Too wet and they can't breathe; that's when our <b>fan</b> runs.</li>
-        <li>They hate light, so the bins stay covered.</li>
+        <li>They shy away from light and burrow down to escape it.</li>
         <li>A bin that goes quiet for 10 minutes gets flagged.</li>
       </ul>
       <p style="font-size:12.5px;margin:10px 0 0;color:#5b3a29"><b>The best part:</b> we don't have to guess. If something drifts out of the
@@ -356,11 +375,41 @@
 
   <div class="facts">
     <div class="fact"><b>No lungs.</b> Worms breathe through their skin, so it has to stay moist. That's why we watch humidity so closely.</div>
-    <div class="fact"><b>No eyes, either.</b> They still sense light through their skin and dive for the dark. Lids stay on!</div>
+    <div class="fact"><b>No eyes, either.</b> They still sense light through their skin and dive for the dark. In a clear bin, you can watch them do it.</div>
     <div class="fact"><b>Big appetites.</b> A healthy bin of red wigglers can eat about half its own weight in scraps every day.</div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">2 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">2 / 11</span><span>whs.makerlabkids.com</span></footer>
+</section>
+
+<!-- ================================================================ meet the bin -->
+<section class="page" id="pM">
+  <header class="brand">
+    <div class="mlk"><img src="../logo.png" alt="Maker Lab Kids"></div>
+    <div class="whs"><div><b>WOODSTOCK HIGH SCHOOL</b><span>Wolverines · Ms. Audra Thomas</span></div><img src="../whs-mascot.png" alt="Woodstock Wolverine"></div>
+  </header>
+
+  <div class="kicker">Meet the bin</div>
+  <h2>Built, not <em>bought</em></h2>
+  <p class="lede">Many of our bins are clear 4-inch glass cylinders, so you can watch the worms tunnel from the side. The lid is
+    3D printed: big air holes on top, a case for the screen, and a tidy way in for the wires.</p>
+
+  <div class="build">
+    <figure class="shot tall"><img src="img/build-screen.jpg" alt="A worm bin with a yellow 3D-printed lid and its screen in a black printed case, showing The Wrigglers' readings"></figure>
+    <div class="build-side">
+      <figure class="shot"><img src="img/build-lid-top.jpg" alt="Top of the yellow honeycomb lid with a wire grommet and the screen case"></figure>
+      <figure class="shot"><img src="img/build-red-lid.jpg" alt="An earlier red lid with a bare screen, on a clear cylinder with the sensors inside"></figure>
+    </div>
+  </div>
+
+  <div class="build-notes">
+    <div><b style="color:#2a9fd8">Clear walls</b>See the bedding, the moisture and the worms themselves.</div>
+    <div><b style="color:#b8860b">Printed lid</b>A honeycomb of holes lets the bin breathe.</div>
+    <div><b style="color:#1b2f5e">Screen case</b>Printed to fit, so the readings face the room.</div>
+    <div><b style="color:#e8762c">A fan</b>Moves air when it gets too damp inside.</div>
+  </div>
+
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">3 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 3 -->
@@ -395,7 +444,7 @@
 
   <div class="quote">Things break. We find out why, fix it, and write it down so the next team doesn't have to learn it the hard way.</div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">3 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">4 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 4 -->
@@ -442,7 +491,7 @@
     <div class="contact"><b>Let's talk!</b><span>Stop by our bins, or reach Maker Lab Kids at<br><b style="font-size:15px;display:inline">info@makerlabkids.com</b><br>makerlabkids.com</span></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">4 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">5 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ ideas 1 -->
@@ -478,7 +527,7 @@
 
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">5 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">6 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ ideas 2 -->
@@ -515,7 +564,7 @@
 
   <div class="quote" style="margin-top:8px;font-size:18px">Most of these use sensors our bins already have. The hard part is choosing.</div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">6 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">7 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 5 -->
@@ -539,7 +588,7 @@
     <div><figure class="shot crop"><img src="img/skin-paper.jpg" alt="The Daily Worm"></figure><p class="cap"><b>The Daily Worm.</b> The day's readings, written up as a newspaper.</p></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">7 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">8 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 6 -->
@@ -574,7 +623,7 @@
     <div><figure class="shot crop"><img src="img/skin-garden.jpg" alt="Worm Ranch view"></figure><p class="cap"><b>Worm Ranch.</b> Each bin as a pixel pet. Keep your worm happy!</p></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">8 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">9 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 7 -->
@@ -682,7 +731,7 @@
     <div><b style="color:#1b2f5e">Surface</b>the website, where anyone can see it all</div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">9 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">10 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 <!-- ================================================================ 8 -->
@@ -715,7 +764,7 @@
     <div><figure class="shot"><img src="../wiring/fan.svg" alt="Fan wiring with a transistor and a diode"></figure><p class="cap"><b>The fan.</b> A transistor switches it, and a diode, stripe on the red side, protects it.</p></div>
   </div>
 
-  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">10 / 10</span><span>whs.makerlabkids.com</span></footer>
+  <footer class="foot"><span><b>Worms, Wires &amp; Wi-Fi</b> · a vermiculture PBL · Woodstock High School &times; Maker Lab Kids</span><span class="pg">11 / 11</span><span>whs.makerlabkids.com</span></footer>
 </section>
 
 </body>
