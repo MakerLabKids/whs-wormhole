@@ -440,12 +440,13 @@ SHOWS = [BigWorm, WormParty, Wormhole, Underground, Pulse, Compost, Face, Scient
 LOGOS = [School, MakerLab]          # the power-on sequence (the worm-bin), and the gallery
 
 
-def play(display, loop=True, only=None, fps=20, hold_ms=600):
+def play(display, loop=True, only=None, fps=20, hold_ms=600, shows=None):
   """Run the shows on a picolab.Display (or anything with .oled). Each
-  show runs its frames, holds its last frame a moment, then the next."""
-  period = 1000 // fps
+  show runs its frames, holds its last frame a moment, then the next.
+  shows: the list to play (default SHOWS); a show with its own fps (a
+  kid's PBM video) plays at that. hold_ms=0: straight into the next."""
   while True:
-    for cls in SHOWS:
+    for cls in (SHOWS if shows is None else shows):
       if only and cls.name != only and cls.__name__ != only:
         continue
       show = cls()
@@ -458,6 +459,7 @@ def play(display, loop=True, only=None, fps=20, hold_ms=600):
       if o is None:
         time.sleep_ms(500)
         continue
+      period = 1000 // getattr(show, "fps", fps)
       start = time.ticks_ms()
       for t in range(show.frames):
         t0 = time.ticks_ms()
@@ -469,6 +471,7 @@ def play(display, loop=True, only=None, fps=20, hold_ms=600):
           time.sleep_ms(left)
       took = time.ticks_diff(time.ticks_ms(), start)
       print("%s: %d frames in %d ms (%d fps)" % (show.name, show.frames, took, show.frames * 1000 // max(1, took)))
-      time.sleep_ms(hold_ms)
+      if hold_ms > 0:
+        time.sleep_ms(hold_ms)
     if not loop:
       return
