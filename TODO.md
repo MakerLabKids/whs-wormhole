@@ -3,6 +3,15 @@
 Open items, newest first. Tick them off or delete them; the git log is the
 record of what got done.
 
+## Geophones on one bin (2026-11-15) - plan in notes/geophone-bench-plan.md
+- [ ] Human: hang one paver from one bungee, measure the stretch (sets the stack's resonance).
+- [ ] Human: what is in the stash: op-amps (NE5532/TL072), piezo buzzer discs, proto board, a TRRS
+      headset to sacrifice. Order 27 mm piezo discs (~$8) and 3x PCM1808 boards (~$12) if not.
+- [ ] Free first channel: one SM-24 into the Galaxy S10's jack (2.2 k to GND + 10 uF series, see the
+      plan), WAV at 48 kHz, record the room floor, taps, HVAC.
+- [ ] Claude: Pico firmware that streams 3 ADC channels at ~16 kHz over USB + host script writing WAV.
+- [ ] Amp boards (geophone and piezo input flavours), then the two-stage bungee stack with a box over it.
+
 ## Next steps (2026-11-01 evening) - start here
 
 **No Bins are in the field.** The Picos the kids soldered and tested (distance sensor + display,
