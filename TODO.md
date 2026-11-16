@@ -11,6 +11,9 @@ record of what got done.
       plan), WAV at 48 kHz, record the room floor, taps, HVAC.
 - [ ] Claude: Pico firmware that streams 3 ADC channels at ~16 kHz over USB + host script writing WAV.
 - [ ] Amp boards (geophone and piezo input flavours), then the two-stage bungee stack with a box over it.
+- [ ] Worm grunting (Catania 2008, ~80 Hz): a submersible vibration motor (stash) buried at one end of a
+      clear-sided bin, PWM via the fan circuit, geophones on both end walls for the dose, camera for the
+      count. Control days with the motor off. The geophones' own experiment; page section 7.
 
 ## Next steps (2026-11-01 evening) - start here
 
